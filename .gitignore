@@ -1,0 +1,24 @@
+# Node.js
+node_modules/
+
+# npm debug
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# LocalStorage backup (if any)
+*.json.bak
