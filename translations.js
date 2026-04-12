@@ -38,6 +38,8 @@ const TRANSLATIONS = {
         btn_clear_dimensions: '🗑️ Clear Dimensions',
         btn_show_sheet: '👁️ Show Sheet',
         btn_hide_sheet: '👁️ Hide Sheet',
+        btn_add_sheet: '📄 Add Sheet',
+        btn_clear_nesting: '🗑️ Clear Nesting',
         btn_nesting_all: '📑 Nesting (All Sheets)',
         btn_nesting_current: '📑 Nesting (Current)',
         btn_import_dxf: '📥 Import DXF',
@@ -67,6 +69,13 @@ const TRANSLATIONS = {
         btn_full_rotation: '🐢',
         btn_auto_rotation: '🤖',
         btn_one_cut: '🔗 One Cut',
+        
+        // Section titles
+        metal_title: '🔩 Metal',
+        price_per_kg_label: '💰 Price per kg (₽):',
+        properties_title: 'Properties',
+        objects_title: 'Objects',
+        select_object_to_edit: 'Select an object to edit',
         
         // Status bar
         status_coords: '📍',
@@ -288,6 +297,13 @@ const TRANSLATIONS = {
         btn_full_rotation: '🐢',
         btn_auto_rotation: '🤖',
         btn_one_cut: '🔗 В один рез',
+        
+        // Заголовки секций
+        metal_title: '🔩 Металл',
+        price_per_kg_label: '💰 Цена за кг (₽):',
+        properties_title: 'Свойства',
+        objects_title: 'Объекты',
+        select_object_to_edit: 'Выберите объект для редактирования',
         
         // Статус-бар
         status_coords: '📍',
