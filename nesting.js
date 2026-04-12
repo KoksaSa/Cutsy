@@ -1,4 +1,5 @@
 
+// l: SilikinK Project
 // Кэш для выпуклых оболочек деталей (part.id → hull)
 const partHullCache = new Map();
 
