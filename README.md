@@ -6,7 +6,7 @@
 **Cutsy** is a 2D CAD application for creating technical drawings with automatic sheet metal nesting. Supports DXF import/export, SVG and PDF export.
 
 **License: Non-Commercial.** You may use this software for free for personal use. Commercial use (selling, SaaS, etc.) is prohibited. See [LICENSE](LICENSE).
-
+https://youtu.be/6bD4RjEwg08
 ## 🎬 Demo
 
 ![Cutsy Demo](screenshots/Video%20using%20the%20programm.gif)
