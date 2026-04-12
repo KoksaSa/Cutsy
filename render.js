@@ -268,9 +268,17 @@ function drawSheet() {
     let sheetLabel;
     if (isRemnant) {
         const size = sheetRemnant.size;
-        sheetLabel = `📸 Остаток: ${Math.round(size.width)} × ${Math.round(size.height)} мм (×${sheetZoom.toFixed(1)})`;
+        sheetLabel = t('sheet_info_top_remnant', {
+            width: Math.round(size.width),
+            height: Math.round(size.height),
+            zoom: sheetZoom.toFixed(1)
+        });
     } else {
-        sheetLabel = `Лист: ${sheetSize.width} × ${sheetSize.height} мм (×${sheetZoom.toFixed(1)})`;
+        sheetLabel = t('sheet_info_top', {
+            width: sheetSize.width,
+            height: sheetSize.height,
+            zoom: sheetZoom.toFixed(1)
+        });
     }
     ctx.fillStyle = '#fff';
     ctx.font = `${Math.max(10, 12 * sheetZoom)}px Segoe UI`;

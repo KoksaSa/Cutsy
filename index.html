@@ -196,63 +196,63 @@
 
     <!-- Контекстное меню для информации о детали на листе -->
     <div id="nestedInfoMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:280px;">
-        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;">📊 Информация о детали</h4>
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="nested_info_title">📊 Информация о детали</h4>
         <div id="nestedInfoContent" style="color:#ccc;font-size:12px;line-height:1.8;"></div>
         <div style="margin-top:15px;padding-top:10px;border-top:1px solid #3c3c3c;display:flex;gap:8px;justify-content:flex-end;">
-            <button id="nestedInfoClose" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Закрыть</button>
+            <button id="nestedInfoClose" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="close">Закрыть</button>
         </div>
     </div>
 
     <!-- Контекстное меню для добавления деталей на лист -->
     <div id="addPartToSheetMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:320px;max-height:400px;overflow-y:auto;">
-        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;">📦 Добавить детали на лист</h4>
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="add_parts_title">📦 Добавить детали на лист</h4>
         <div id="addPartList" style="margin-bottom:15px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-            <button id="addPartMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Отмена</button>
-            <button id="addPartMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Добавить</button>
+            <button id="addPartMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="addPartMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="add">Добавить</button>
         </div>
     </div>
 
     <!-- Меню заполнения прямоугольника разметки -->
     <div id="markupRectFillMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:350px;max-height:450px;overflow-y:auto;">
-        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;">📦 Заполнить остаток</h4>
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="fill_remnant_title">📦 Заполнить остаток</h4>
         <div id="markupRectInfo" style="color:#aaa;font-size:11px;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;"></div>
         <div id="markupRectPartList" style="margin-bottom:15px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-            <button id="markupRectCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Отмена</button>
-            <button id="markupRectOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">🚀 Разместить</button>
+            <button id="markupRectCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="markupRectOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_place">🚀 Разместить</button>
         </div>
     </div>
 
     <!-- Модальное окно для импорта DXF (мульти-выбор) -->
     <div id="importDXFDialog" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#252526;border:1px solid #3c3c3c;border-radius:8px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.7);z-index:10001;min-width:800px;max-width:95vw;max-height:90vh;overflow:hidden;">
-        <h3 style="margin:0 0 15px 0;color:#007acc;font-size:16px;">📂 Импорт деталей из DXF</h3>
+        <h3 style="margin:0 0 15px 0;color:#007acc;font-size:16px;" data-i18n="dxf_import_title">📂 Импорт деталей из DXF</h3>
 
         <!-- Сообщение о лимите файлов -->
-        <div id="importFileLimitWarning" style="display:none;background:#7a2d2d;color:#fff;padding:10px;border-radius:4px;margin-bottom:15px;font-size:12px;">
+        <div id="importFileLimitWarning" style="display:none;background:#7a2d2d;color:#fff;padding:10px;border-radius:4px;margin-bottom:15px;font-size:12px;" data-i18n="dxf_import_limit_warning">
             ⚠️ Максимум 20 файлов. Выберите не более 20 файлов DXF.
         </div>
 
         <!-- Список файлов с миниатюрами -->
         <div id="importFileList" style="max-height:400px;overflow-y:auto;margin-bottom:15px;border:1px solid #3c3c3c;border-radius:4px;background:#1e1e1e;">
             <!-- Сюда будут добавляться элементы списка через JS -->
-            <div style="padding:20px;text-align:center;color:#888;font-size:12px;">Выберите файлы DXF для импорта</div>
+            <div style="padding:20px;text-align:center;color:#888;font-size:12px;" data-i18n="dxf_import_select_files">Выберите файлы DXF для импорта</div>
         </div>
 
         <!-- Итоговая информация -->
         <div id="importSummary" style="background:#1e1e1e;padding:10px;border-radius:4px;margin-bottom:15px;font-size:12px;color:#ccc;display:none;">
-            <span style="color:#007acc;font-weight:bold;">📊 Итого:</span>
-            <span id="importSummaryCount">0</span> файлов выбрано,
-            <span id="importSummaryParts">0</span> деталей будет импортировано
+            <span style="color:#007acc;font-weight:bold;" data-i18n="dxf_import_summary">📊 Итого:</span>
+            <span id="importSummaryCount">0</span> <span data-i18n="dxf_import_files_selected">файлов выбрано</span>,
+            <span id="importSummaryParts">0</span> <span data-i18n="dxf_import_parts_will">деталей будет импортировано</span>
         </div>
 
         <!-- Кнопки действий -->
         <div style="display:flex;gap:10px;justify-content:flex-end;">
-            <button id="importDXFSelectAll" style="padding:8px 16px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">✅ Выбрать все</button>
-            <button id="importDXFDeselectAll" style="padding:8px 16px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">❌ Снять все</button>
+            <button id="importDXFSelectAll" style="padding:8px 16px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="dxf_import_select_all">✅ Выбрать все</button>
+            <button id="importDXFDeselectAll" style="padding:8px 16px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="dxf_import_deselect_all">❌ Снять все</button>
             <div style="flex:1;"></div>
-            <button id="importDXFOk" style="padding:10px 20px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;">📥 Импортировать выбранные</button>
-            <button id="importDXFCancel" style="padding:10px 20px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Отмена</button>
+            <button id="importDXFOk" style="padding:10px 20px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n="dxf_import_selected">📥 Импортировать выбранные</button>
+            <button id="importDXFCancel" style="padding:10px 20px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="cancel">Отмена</button>
         </div>
     </div>
 
@@ -287,12 +287,12 @@
 
             <!-- Навигация по листам (под листом) -->
             <div id="sheetNavigator" style="position:absolute;bottom:10px;right:10px;background:#252526;border:1px solid #3c3c3c;border-radius:6px;padding:8px 12px;display:none;gap:10px;align-items:center;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                <button id="prevSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" title="Предыдущий лист">⏮️</button>
-                <span id="sheetInfo" style="color:#fff;font-size:13px;font-weight:bold;min-width:100px;text-align:center;">Лист 1 из 1</span>
-                <button id="nextSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" title="Следующий лист">⏭️</button>
+                <button id="prevSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n-title="prev_sheet" title="Предыдущий лист">⏮️</button>
+                <span id="sheetInfo" style="color:#fff;font-size:13px;font-weight:bold;min-width:100px;text-align:center;" data-i18n="sheet_nav_info">Лист 1 из 1</span>
+                <button id="nextSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n-title="next_sheet" title="Следующий лист">⏭️</button>
                 <div style="width:1px;height:20px;background:#3c3c3c;margin:0 4px;"></div>
-                <button id="resizeSheet" style="background:#2d5a7a;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" title="Изменить размер листа">📐</button>
-                <button id="deleteSheet" style="background:#7a2d2d;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" title="Удалить лист">🗑️</button>
+                <button id="resizeSheet" style="background:#2d5a7a;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_resize_sheet" title="Изменить размер листа">📐</button>
+                <button id="deleteSheet" style="background:#7a2d2d;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_delete_sheet" title="Удалить лист">🗑️</button>
             </div>
         </div>
         <div class="status-bar">
@@ -316,28 +316,28 @@
 
         <!-- Кнопка наложения деталей (видна только когда показан лист) -->
         <div id="overlapTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;">⚠️ Зона опасности:</label>
-            <button class="action-btn" id="toggleOverlap" style="width:100%;background:#2d7a2d;" title="Разрешить деталям пересекаться при раскладке">🚫 Наложение деталей: ВЫКЛ</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="danger_zone_label">⚠️ Зона опасности:</label>
+            <button class="action-btn" id="toggleOverlap" style="width:100%;background:#2d7a2d;" data-i18n="btn_nesting_overlap_off" title="Allow parts to overlap during nesting">🚫 Наложение деталей: ВЫКЛ</button>
         </div>
 
         <!-- Кнопки отражения и поворота детали (видны только когда выбрана деталь на листе) -->
         <div id="nestedPartTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;">🔄 Поворот:</label>
-            <button class="action-btn" id="rotatePartCCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;">↺ Повернуть против часовой</button>
-            <button class="action-btn" id="rotatePartCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;">↻ Повернуть по часовой</button>
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;">🪞 Отражение:</label>
-            <button class="action-btn" id="flipPartX" style="width:100%;margin-bottom:8px;background:#5a4a7a;">↔️ Отразить по X</button>
-            <button class="action-btn" id="flipPartY" style="width:100%;background:#5a4a7a;">↕️ Отразить по Y</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="rotation_label">🔄 Поворот:</label>
+            <button class="action-btn" id="rotatePartCCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_ccw_nested">↺ Повернуть против часовой</button>
+            <button class="action-btn" id="rotatePartCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_cw_nested">↻ Повернуть по часовой</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="reflection_label">🪞 Отражение:</label>
+            <button class="action-btn" id="flipPartX" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_flip_x_nested">↔️ Отразить по X</button>
+            <button class="action-btn" id="flipPartY" style="width:100%;background:#5a4a7a;" data-i18n="btn_flip_y_nested">↕️ Отразить по Y</button>
 
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;">🔗 Соединение:</label>
-            <button class="action-btn" id="joinSelectedParts" style="width:100%;background:#2d7a5a;" title="Соединить выделенные детали в один рез">🔗 Соединить выбранные</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="join_label">🔗 Соединение:</label>
+            <button class="action-btn" id="joinSelectedParts" style="width:100%;background:#2d7a5a;" data-i18n="btn_join_selected" title="Join selected parts in one cut">🔗 Соединить выбранные</button>
         </div>
 
         <!-- Кнопка разметки остатка (видна только когда показан лист) -->
         <div id="markupRectTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;">📐 Разметка остатка:</label>
-            <button class="action-btn" id="toggleMarkupRectRight" style="width:100%;background:#5a4a2d;" title="Режим рисования прямоугольников разметки">⬜ Разметка остатка</button>
-            <button class="action-btn" id="clearMarkupRects" style="width:100%;margin-top:8px;background:#5a4a2d;" title="Очистить все прямоугольники разметки">🗑️ Очистить разметку</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="markup_remnant_label">📐 Разметка остатка:</label>
+            <button class="action-btn" id="toggleMarkupRectRight" style="width:100%;background:#5a4a2d;" data-i18n="btn_markup_remnant" title="Mode for drawing markup rectangles">⬜ Разметка остатка</button>
+            <button class="action-btn" id="clearMarkupRects" style="width:100%;margin-top:8px;background:#5a4a2d;" data-i18n="btn_clear_markup" title="Clear all markup rectangles">🗑️ Очистить разметку</button>
         </div>
         
         <div id="multiSelectInfo" class="multi-select-info" style="display: none;">
@@ -348,7 +348,7 @@
         </div>
         <div id="propertiesForm" style="display: none;">
             <div class="prop-group">
-                <label>Тип объекта</label>
+                <label data-i18n="object_type_label">Тип объекта</label>
                 <input type="text" id="objType" disabled>
             </div>
             <div id="lineProps" class="prop-group" style="display: none;">
@@ -360,9 +360,9 @@
                 <input type="number" id="circleD" step="1" min="1">
             </div>
             <div id="rectProps" class="prop-group" style="display: none;">
-                <label>📐 Ширина (Enter для применения)</label>
+                <label data-i18n="width_label">📐 Ширина (Enter для применения)</label>
                 <input type="number" id="rectW" step="1" min="1">
-                <label>📐 Высота (Enter для применения)</label>
+                <label data-i18n="height_label">📐 Высота (Enter для применения)</label>
                 <input type="number" id="rectH" step="1" min="1">
             </div>
             <div id="polygonProps" class="prop-group" style="display: none;">
@@ -6001,7 +6001,11 @@
             const currentSheet = window.allSheets[window.currentSheetIndex];
             const thickness = currentSheet?.thickness ? currentSheet.thickness.toFixed(1) : '0.8';
             
-            sheetInfo.textContent = `Лист ${window.currentSheetIndex + 1} из ${window.allSheets.length} (${thickness}мм)`;
+            sheetInfo.textContent = t('sheet_nav_info', {
+                current: window.currentSheetIndex + 1,
+                total: window.allSheets.length,
+                thickness: thickness
+            });
 
             // Блокируем кнопки если нельзя переключиться
             prevBtn.disabled = window.currentSheetIndex === 0;

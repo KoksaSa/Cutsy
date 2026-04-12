@@ -77,6 +77,38 @@ const TRANSLATIONS = {
         objects_title: 'Objects',
         select_object_to_edit: 'Select an object to edit',
         
+        // Right panel sections
+        danger_zone_label: '⚠️ Danger zone:',
+        rotation_label: '🔄 Rotation:',
+        btn_rotate_ccw_nested: '↺ Rotate CCW',
+        btn_rotate_cw_nested: '↻ Rotate CW',
+        reflection_label: '🪞 Reflection:',
+        btn_flip_x_nested: '↔ Flip X',
+        btn_flip_y_nested: '↕ Flip Y',
+        join_label: '🔗 Join:',
+        btn_join_selected: '🔗 Join selected',
+        markup_remnant_label: '📐 Remnant markup:',
+        btn_markup_remnant: '⬜ Markup remnant',
+        btn_clear_markup: '🗑️ Clear markup',
+        
+        // Properties panel
+        object_type_label: 'Object type',
+        rect_type: 'Rectangle',
+        width_label: '📐 Width (Enter to apply)',
+        height_label: '📐 Height (Enter to apply)',
+        
+        // Context menu info
+        part_size_label: '📐 Size:',
+        part_area_label: '📊 Area:',
+        part_thickness_label_info: '📏 Thickness:',
+        part_weight_label: '⚖️ Weight:',
+        part_cost_label: '💰 Cost:',
+        
+        // Sheet info
+        sheet_nav_info: 'Sheet {current} of {total} ({thickness}mm)',
+        sheet_info_top: 'Sheet: {width} × {height} mm (×{zoom})',
+        sheet_info_top_remnant: '📸 Remnant: {width} × {height} mm (×{zoom})',
+        
         // Status bar
         status_coords: '📍',
         status_tool: '🔧 Tool:',
@@ -131,6 +163,18 @@ const TRANSLATIONS = {
         ctx_select_all_parts: 'Select all this type',
         ctx_delete: '🗑️ Delete',
         ctx_fill_rect: '📦 Fill Rectangle',
+        
+        // Nested part info menu
+        nested_info_title: '📊 Part Info',
+        close: 'Close',
+        
+        // Add parts menu
+        add_parts_title: '📦 Add Parts to Sheet',
+        add: 'Add',
+        
+        // Fill remnant menu
+        fill_remnant_title: '📦 Fill Remnant',
+        btn_place: '🚀 Place',
         
         // Sheet info
         sheet_info: 'Sheet {current} of {total}',
@@ -217,6 +261,13 @@ const TRANSLATIONS = {
         dxf_import_add: 'Add Files',
         dxf_import_start: 'Start Import',
         dxf_import_cancel: 'Cancel',
+        dxf_import_summary: '📊 Summary:',
+        dxf_import_files_selected: 'files selected,',
+        dxf_import_parts_will: 'parts will be imported',
+        dxf_import_select_all: '✅ Select All',
+        dxf_import_deselect_all: '❌ Deselect All',
+        dxf_import_selected: '📥 Import Selected',
+        dxf_import_limit_warning: '⚠️ Maximum 20 files.',
         dxf_import_summary: 'Summary',
         dxf_import_total_parts: 'Total parts:',
         dxf_import_importing: 'Importing...',
@@ -305,6 +356,38 @@ const TRANSLATIONS = {
         objects_title: 'Объекты',
         select_object_to_edit: 'Выберите объект для редактирования',
         
+        // Правая панель
+        danger_zone_label: '⚠️ Зона опасности:',
+        rotation_label: '🔄 Поворот:',
+        btn_rotate_ccw_nested: '↺ Повернуть против часовой',
+        btn_rotate_cw_nested: '↻ Повернуть по часовой',
+        reflection_label: '🪞 Отражение:',
+        btn_flip_x_nested: '↔️ Отразить по X',
+        btn_flip_y_nested: '↕️ Отразить по Y',
+        join_label: '🔗 Соединение:',
+        btn_join_selected: '🔗 Соединить выбранные',
+        markup_remnant_label: '📐 Разметка остатка:',
+        btn_markup_remnant: '⬜ Разметка остатка',
+        btn_clear_markup: '🗑️ Очистить разметку',
+        
+        // Панель свойств
+        object_type_label: 'Тип объекта',
+        rect_type: 'Прямоугольник',
+        width_label: '📐 Ширина (Enter для применения)',
+        height_label: '📐 Высота (Enter для применения)',
+        
+        // Контекстное меню
+        part_size_label: '📐 Размер:',
+        part_area_label: '📊 Площадь:',
+        part_thickness_label_info: '📏 Толщина:',
+        part_weight_label: '⚖️ Вес:',
+        part_cost_label: '💰 Себестоимость:',
+        
+        // Информация о листе
+        sheet_nav_info: 'Лист {current} из {total} ({thickness}мм)',
+        sheet_info_top: 'Лист: {width} × {height} мм (×{zoom})',
+        sheet_info_top_remnant: '📸 Остаток: {width} × {height} мм (×{zoom})',
+        
         // Статус-бар
         status_coords: '📍',
         status_tool: '🔧 Инструмент:',
@@ -359,6 +442,18 @@ const TRANSLATIONS = {
         ctx_select_all_parts: 'Выделить все этого типа',
         ctx_delete: '🗑️ Удалить',
         ctx_fill_rect: '📦 Заполнить прямоугольник',
+        
+        // Меню информации о детали
+        nested_info_title: '📊 Информация о детали',
+        close: 'Закрыть',
+        
+        // Меню добавления деталей
+        add_parts_title: '📦 Добавить детали на лист',
+        add: 'Добавить',
+        
+        // Меню заполнения остатка
+        fill_remnant_title: '📦 Заполнить остаток',
+        btn_place: '🚀 Разместить',
         
         // Информация о листе
         sheet_info: 'Лист {current} из {total}',
@@ -445,6 +540,13 @@ const TRANSLATIONS = {
         dxf_import_add: 'Добавить файлы',
         dxf_import_start: 'Начать импорт',
         dxf_import_cancel: 'Отмена',
+        dxf_import_summary: '📊 Итого:',
+        dxf_import_files_selected: 'файлов выбрано,',
+        dxf_import_parts_will: 'деталей будет импортировано',
+        dxf_import_select_all: '✅ Выбрать все',
+        dxf_import_deselect_all: '❌ Снять все',
+        dxf_import_selected: '📥 Импортировать выбранные',
+        dxf_import_limit_warning: '⚠️ Максимум 20 файлов.',
         dxf_import_summary: 'Итого',
         dxf_import_total_parts: 'Всего деталей:',
         dxf_import_importing: 'Импорт...',
