@@ -5,6 +5,12 @@
 
 **Cutsy** is a 2D CAD application for creating technical drawings with automatic sheet metal nesting. Supports DXF import/export, SVG and PDF export.
 
+## 🎬 Demo
+
+![Cutsy Demo](screenshots/Video%20using%20the%20programm.gif)
+
+---
+
 ## 📸 Screenshots
 
 ### Drawing Parts
@@ -27,9 +33,6 @@
 
 ### Edit Menu
 ![Edit menu](screenshots/edit-menu.png)
-
-### Application Demo
-![Cutsy Demo](screenshots/Video%20using%20the%20programm.gif)
 
 ---
 
@@ -94,7 +97,7 @@ npm start
 
 ### 🌐 Multilingual
 - **English** and **Russian** interface
-- Language switch button 🇬/🇺
+- Language switch button EN/RU
 - Language preference saved in localStorage
 
 ---

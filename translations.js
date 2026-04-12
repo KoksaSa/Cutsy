@@ -235,8 +235,8 @@ const TRANSLATIONS = {
         prop_text: 'Text:',
         
         // Misc
-        lang_en: '🇬',
-        lang_ru: '🇷🇺',
+        lang_en: 'EN',
+        lang_ru: 'RU',
         mm: 'mm',
         deg: '°',
         degrees: 'degrees',
@@ -514,8 +514,8 @@ const TRANSLATIONS = {
         prop_text: 'Текст:',
         
         // Разное
-        lang_en: '🇬',
-        lang_ru: '🇷🇺',
+        lang_en: 'EN',
+        lang_ru: 'RU',
         mm: 'мм',
         deg: '°',
         degrees: 'градусов',
@@ -625,7 +625,8 @@ function setLanguage(lang) {
     // Обновляем кнопку языка
     const langBtn = document.getElementById('langToggle');
     if (langBtn) {
-        langBtn.textContent = lang === 'en' ? '🇷🇺' : '🇬';
+        langBtn.textContent = lang === 'en' ? 'RU' : 'EN';
+        langBtn.setAttribute('data-i18n', lang === 'en' ? 'lang_ru' : 'lang_en');
         langBtn.title = lang === 'en' ? 'Switch to Russian' : 'Переключить на английский';
     }
     
