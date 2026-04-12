@@ -6229,7 +6229,7 @@
                 : [{ nestedParts: nestedParts, sheetSize: sheetSize, thickness: parseFloat(document.getElementById('metalThickness').value) || 0.8 }];
 
             if (sheetsToReport.length === 0 || sheetsToReport[0].nestedParts.length === 0) {
-                alert('Сначала выполните раскладку (кнопка "📑 Раскладка (все листы)")');
+                alert(t('alert_nesting_required'));
                 return;
             }
 
@@ -6268,7 +6268,7 @@
                     if (!reportByThickness[key].placedPartsMap[partKey]) {
                         reportByThickness[key].placedPartsMap[partKey] = {
                             partId: part.id,
-                            name: part.name || `Деталь #${part.id}`,
+                            name: part.name || t('export_part') + ` #${part.id}`,
                             width: part.bounds.width,
                             height: part.bounds.height,
                             placedCount: 0,
@@ -6307,7 +6307,7 @@
                 if (notPlacedCount > 0) {
                     unplacedParts.push({
                         partId: part.id,
-                        name: part.name || `Деталь #${part.id}`,
+                        name: part.name || t('export_part') + ` #${part.id}`,
                         width: part.bounds.width,
                         height: part.bounds.height,
                         notPlacedCount: notPlacedCount,
@@ -6333,22 +6333,21 @@
             }, 0);
 
             const remnantArea = totalSheetArea - usedArea;
-            // Средневзвешенная толщина для расчёта остатка
             const avgThickness = Object.values(reportByThickness).reduce((sum, g) => sum + g.thickness * g.sheetCount, 0) / sheetsToReport.length;
             const remnantWeight = remnantArea * avgThickness * density / 1000000;
 
             // ═══════════════════════════════════════════════════════════════
             // ФОРМИРОВАНИЕ ОТЧЁТА
             // ═══════════════════════════════════════════════════════════════
-            let report = `📊 ОТЧЁТ ПО РАСКЛАДКЕ\n${'═'.repeat(60)}\n\n`;
-            report += `📐 Листов: ${sheetsToReport.length} шт\n`;
-            report += `📐 Размер листа: ${sheetSize.width} × ${sheetSize.height} мм\n`;
-            report += `💰 Цена за кг: ${pricePerKg} ₽\n\n`;
+            let report = `📊 ${t('export_report')}\n${'═'.repeat(60)}\n\n`;
+            report += `${t('export_sheets')}: ${sheetsToReport.length} шт\n`;
+            report += `${t('export_sheet_size')}: ${sheetSize.width} × ${sheetSize.height} мм\n`;
+            report += `${t('export_price_per_kg')}: ${pricePerKg} ₽\n\n`;
 
             // Отчёт по каждой толщине
             Object.values(reportByThickness).forEach(group => {
-                const t = group.thickness.toFixed(1);
-                report += `🔩 ТОЛЩИНА ${t} ММ (${group.sheetCount} лист(а))\n${'─'.repeat(60)}\n`;
+                const t_val = group.thickness.toFixed(1);
+                report += `🔩 ${t('export_thickness')} ${t_val} мм (${group.sheetCount} ${t('export_sheet_plural')})\n${'─'.repeat(60)}\n`;
 
                 Object.values(group.placedPartsMap).forEach(pp => {
                     const area = pp.width * pp.height;
@@ -6358,19 +6357,19 @@
                     const totalPerimeter = pp.perimeter * pp.placedCount;
                     const partCost = totalWeight * pricePerKg;
 
-                    report += `  #${pp.partId} ${pp.name !== `Деталь #${pp.id}` ? `(${pp.name})` : ''}: ${Math.round(pp.width)}×${Math.round(pp.height)}мм × ${pp.placedCount}шт\n`;
-                    report += `     Вес: ${totalWeight.toFixed(3)} кг | Рез: ${Math.round(totalPerimeter)} мм | Себ: ${partCost.toFixed(2)} ₽\n`;
+                    report += `  #${pp.partId} ${pp.name}: ${Math.round(pp.width)}×${Math.round(pp.height)}мм × ${pp.placedCount}шт\n`;
+                    report += `     ${t('export_weight')}: ${totalWeight.toFixed(3)} кг | ${t('export_cutting')}: ${Math.round(totalPerimeter)} мм | ${t('export_cost')}: ${partCost.toFixed(2)} ₽\n`;
                 });
 
                 report += `  ──\n`;
-                report += `  Итого по толщине ${t}мм: ${group.nestedParts.length} дет., Вес: ${group.totalWeight.toFixed(3)} кг, Рез: ${Math.round(group.totalCuttingLength)} мм\n\n`;
+                report += `  ${t('export_total_thickness')} ${t_val}мм: ${group.nestedParts.length} дет., ${t('export_weight')}: ${group.totalWeight.toFixed(3)} кг, ${t('export_cutting')}: ${Math.round(group.totalCuttingLength)} мм\n\n`;
             });
 
             // Не размещённые детали
             if (unplacedParts.length > 0) {
-                report += `⚠️ НЕ РАЗМЕСТИЛИСЬ (${unplacedParts.length} дет.)\n${'─'.repeat(60)}\n`;
+                report += `⚠️ ${t('export_not_placed')} (${unplacedParts.length} дет.)\n${'─'.repeat(60)}\n`;
                 unplacedParts.forEach(up => {
-                    report += `  #${up.partId} ${up.name !== `Деталь #${up.id}` ? `(${up.name})` : ''}: ${Math.round(up.width)}×${Math.round(up.height)}мм (${up.thickness}мм) — ${up.notPlacedCount} шт\n`;
+                    report += `  #${up.partId} ${up.name}: ${Math.round(up.width)}×${Math.round(up.height)}мм (${up.thickness}мм) — ${up.notPlacedCount} шт\n`;
                 });
                 report += '\n';
             }
@@ -6381,23 +6380,23 @@
             const grandTotalCost = grandTotalWeight * pricePerKg;
             const remnantCost = remnantWeight * pricePerKg;
 
-            report += `📊 ОБЩИЙ ИТОГ\n${'═'.repeat(60)}\n`;
-            report += `Всего деталей размещено: ${allNestedParts} шт\n`;
-            report += `Всего деталей не разместилось: ${unplacedParts.reduce((sum, up) => sum + up.notPlacedCount, 0)} шт\n`;
-            report += `Вес вырезанных: ${grandTotalWeight.toFixed(3)} кг\n`;
-            report += `Длина реза: ${(grandTotalCutting / 1000).toFixed(2)} м\n`;
-            report += `Себестоимость деталей: ${grandTotalCost.toFixed(2)} ₽\n\n`;
+            report += `📊 ${t('export_grand_total')}\n${'═'.repeat(60)}\n`;
+            report += `${t('export_total_placed')}: ${allNestedParts} шт\n`;
+            report += `${t('export_total_not_placed')}: ${unplacedParts.reduce((sum, up) => sum + up.notPlacedCount, 0)} шт\n`;
+            report += `${t('export_weight')}: ${grandTotalWeight.toFixed(3)} кг\n`;
+            report += `${t('export_cutting_length')}: ${(grandTotalCutting / 1000).toFixed(2)} м\n`;
+            report += `${t('export_parts_cost')}: ${grandTotalCost.toFixed(2)} ₽\n\n`;
 
-            report += `♻️ ОСТАТОК (на всех листах)\n${'─'.repeat(60)}\n`;
-            report += `Площадь остатка: ${Math.round(remnantArea)} мм²\n`;
-            report += `Вес остатка: ${remnantWeight.toFixed(3)} кг\n`;
-            report += `Цена остатка: ${remnantCost.toFixed(2)} ₽\n\n`;
+            report += `♻️ ${t('export_remnant')}\n${'─'.repeat(60)}\n`;
+            report += `${t('export_remnant_area')}: ${Math.round(remnantArea)} мм²\n`;
+            report += `${t('export_weight')}: ${remnantWeight.toFixed(3)} кг\n`;
+            report += `${t('export_remnant_cost')}: ${remnantCost.toFixed(2)} ₽\n\n`;
 
-            report += `💵 ВСЕГО\n${'═'.repeat(60)}\n`;
-            report += `Общий вес: ${(grandTotalWeight + remnantWeight).toFixed(3)} кг\n`;
-            report += `Себестоимость деталей: ${grandTotalCost.toFixed(2)} ₽\n`;
-            report += `Цена остатка: ${remnantCost.toFixed(2)} ₽\n`;
-            report += `Длина реза: ${(grandTotalCutting / 1000).toFixed(2)} м`;
+            report += `💵 ${t('export_all')}\n${'═'.repeat(60)}\n`;
+            report += `${t('export_total_weight')}: ${(grandTotalWeight + remnantWeight).toFixed(3)} кг\n`;
+            report += `${t('export_parts_cost')}: ${grandTotalCost.toFixed(2)} ₽\n`;
+            report += `${t('export_remnant_cost')}: ${remnantCost.toFixed(2)} ₽\n`;
+            report += `${t('export_cutting_length')}: ${(grandTotalCutting / 1000).toFixed(2)} м`;
 
             // Показываем отчёт в модальном окне
             showReportModal(report);
@@ -6408,24 +6407,24 @@
             // Удаляем старое модальное окно если есть
             const oldModal = document.querySelector('.modal-overlay');
             if (oldModal) oldModal.remove();
-            
+
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
                 <div class="modal-window">
                     <div class="modal-header">
-                        <h3>📊 Отчёт по раскладке</h3>
+                        <h3 data-i18n="report_title">📊 ${t('export_report')}</h3>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                     </div>
                     <div class="modal-content">${content}</div>
                 </div>
             `;
-            
+
             // Закрытие по клику вне окна
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) overlay.remove();
             });
-            
+
             document.body.appendChild(overlay);
         }
 
