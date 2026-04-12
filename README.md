@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-web-lightgrey.svg)
 
-**Cutsy** — приложение для создания 2D чертежей с автоматической раскладкой деталей на листах. Поддержка импорта/экспорта DXF, экспорта SVG/PDF.
+**Cutsy** — приложение для создания 2D чертежей с автоматической раскладкой деталей на листах. Поддержка импорта/экспорта DXF, экспорта DXF/PDF.
 
 ## 🚀 Быстрый запуск
 
