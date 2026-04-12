@@ -8,27 +8,27 @@
 </head>
 <body>
     <div class="toolbar">
-        <h3>Инструменты</h3>
+        <h3 data-i18n="toolbar_title">Инструменты</h3>
         <div class="tools-grid">
             <button class="tool-btn active" data-tool="select">
                 <span class="icon"><svg width="20" height="20"><path d="M5 2 L15 10 L8 10 Z" fill="#fff" stroke="#fff"/></svg></span>
-                Выбор
+                <span data-i18n="tool_select">Выбор</span>
             </button>
             <button class="tool-btn" data-tool="line">
                 <span class="icon"><svg width="20" height="20"><line x1="4" y1="16" x2="16" y2="4" stroke="#fff" stroke-width="2"/></svg></span>
-                Линия
+                <span data-i18n="tool_line">Линия</span>
             </button>
             <button class="tool-btn" data-tool="circle">
                 <span class="icon"><svg width="20" height="20"><circle cx="10" cy="10" r="7" stroke="#fff" stroke-width="2"/></svg></span>
-                Круг
+                <span data-i18n="tool_circle">Круг</span>
             </button>
             <button class="tool-btn" data-tool="rect">
                 <span class="icon"><svg width="20" height="20"><rect x="3" y="5" width="14" height="10" stroke="#fff" stroke-width="2"/></svg></span>
-                Прямоуг
+                <span data-i18n="tool_rect">Прямоуг</span>
             </button>
             <button class="tool-btn" data-tool="polygon">
                 <span class="icon"><svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" stroke="#fff" stroke-width="2"/></svg></span>
-                Многоуг
+                <span data-i18n="tool_polygon">Многоуг</span>
             </button>
             <button class="tool-btn" data-tool="eraser">
                 <span class="icon">
@@ -37,7 +37,7 @@
                         <line x1="6" y1="6" x2="14" y2="14" stroke="#fff" stroke-width="2"/>
                     </svg>
                 </span>
-                Ластик
+                <span data-i18n="tool_eraser">Ластик</span>
             </button>
             <button class="tool-btn" data-tool="dimension">
                 <span class="icon">
@@ -47,7 +47,7 @@
                         <line x1="17" y1="5" x2="17" y2="15" stroke="#fff" stroke-width="2"/>
                     </svg>
                 </span>
-                Размер
+                <span data-i18n="tool_dimension">Размер</span>
             </button>
             <button class="tool-btn" data-tool="angle">
                 <span class="icon">
@@ -56,7 +56,7 @@
                         <path d="M 3 13 A 10 10 0 0 1 7 3" stroke="#fff" stroke-width="1.5" fill="none"/>
                     </svg>
                 </span>
-                Угол
+                <span data-i18n="tool_angle">Угол</span>
             </button>
             <button class="tool-btn" data-tool="text">
                 <span class="icon">
@@ -64,16 +64,16 @@
                         <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="14" font-weight="bold">A</text>
                     </svg>
                 </span>
-                Текст
+                <span data-i18n="tool_text">Текст</span>
             </button>
         </div>
 
-        <h3 style="margin-top: 20px;">📋 Детали</h3>
-        <button class="align-btn" id="nestMultiParts" style="margin-top:8px;background:#5a4a7a;">📑 Раскладка (все листы)</button>
-        <button class="align-btn" id="showReport">📊 Отчёт</button>
+        <h3 style="margin-top: 20px;" data-i18n="parts_title">📋 Детали</h3>
+        <button class="align-btn" id="nestMultiParts" style="margin-top:8px;background:#5a4a7a;" data-i18n="btn_nesting_all">📑 Раскладка (все листы)</button>
+        <button class="align-btn" id="showReport" data-i18n="btn_show_report">📊 Отчёт</button>
         <div id="partsList"></div>
         
-        <h3 style="margin-top: 12px;">📐 Лист</h3>
+        <h3 style="margin-top: 12px;" data-i18n="sheet_title">📐 Лист</h3>
         <select id="sheetSize" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
             <option value="1250x2500" style="font-weight:bold;">1250 × 2500 мм (стандарт)</option>
             <option value="1000x2000" style="font-weight:bold;">1000 × 2000 мм (стандарт)</option>
@@ -126,20 +126,20 @@
             <input type="number" id="pricePerKg" value="210" min="0" step="1" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
         </div>
 
-        <h3 style="margin-top: 12px;">📐 Зазоры</h3>
+        <h3 style="margin-top: 12px;" data-i18n="gaps_title">📐 Зазоры</h3>
         <div style="margin-top:8px;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;">🔗 Зазор между деталями (мм):</label>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="gap_between_label">🔗 Зазор между деталями (мм):</label>
             <input type="number" id="partGap" value="3" min="0" max="50" step="0.5" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;margin-top:8px;">📐 Отступ от края листа (мм):</label>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;margin-top:8px;" data-i18n="edge_gap_label">📐 Отступ от края листа (мм):</label>
             <input type="number" id="edgeGap" value="3" min="0" max="100" step="0.5" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
         </div>
 
-        <h3 style="margin-top: 12px;">⚙️ Действия</h3>
-        <button class="action-btn" id="importDxf">📂 Импорт DXF</button>
-        <button class="action-btn" id="exportDxf">📄 Экспорт раскладки (DXF)</button>
-        <button class="action-btn" id="exportPdf">📊 Экспорт отчёта (PDF)</button>
-        <button class="action-btn" id="exportDrawingPdf">🖼️ Чертеж PDF</button>
-        <button class="action-btn danger" id="clearAll">🗑️ Очистить всё</button>
+        <h3 style="margin-top: 12px;" data-i18n="actions_title">⚙️ Действия</h3>
+        <button class="action-btn" id="importDxf" data-i18n="btn_import_dxf">📂 Импорт DXF</button>
+        <button class="action-btn" id="exportDxf" data-i18n="btn_export_dxf">📄 Экспорт раскладки (DXF)</button>
+        <button class="action-btn" id="exportPdf" data-i18n="btn_export_pdf_report">📊 Экспорт отчёта (PDF)</button>
+        <button class="action-btn" id="exportDrawingPdf" data-i18n="btn_export_pdf_drawing">🖼️ Чертеж PDF</button>
+        <button class="action-btn danger" id="clearAll" data-i18n="btn_clear_all">🗑️ Очистить всё</button>
     </div>
 
     <!-- Скрытый input для загрузки DXF -->
@@ -150,21 +150,21 @@
 
     <!-- Контекстное меню для создания детали -->
     <div id="contextMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:280px;">
-        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;">📦 Создать деталь</h4>
-        
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="ctx_create_part">📦 Создать деталь</h4>
+
         <!-- Информация о детали -->
         <div id="contextInfoContent" style="color:#aaa;font-size:11px;line-height:1.6;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;"></div>
-        
+
         <div style="margin-bottom:10px;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;">📝 Имя детали:</label>
-            <input type="text" id="contextPartName" value="" placeholder="Например: Деталь 1" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_name_label">📝 Имя детали:</label>
+            <input type="text" id="contextPartName" value="" data-i18n-placeholder="part_name_placeholder" placeholder="Например: Деталь 1" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
         </div>
         <div style="margin-bottom:10px;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;">📋 Количество деталей (шт):</label>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_quantity_label">📋 Количество деталей (шт):</label>
             <input type="number" id="contextPartQuantity" value="1" min="1" max="9999" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
         </div>
         <div style="margin-bottom:10px;">
-            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;">📏 Толщина металла (мм):</label>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_thickness_label">📏 Толщина металла (мм):</label>
             <select id="contextPartThickness" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
                 <option value="0.5">0.5 мм</option>
                 <option value="0.7">0.7 мм</option>
@@ -183,14 +183,14 @@
             </select>
         </div>
         <div style="margin-bottom:10px;">
-            <button id="contextMenuExportDxf" style="width:100%;padding:8px 12px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" title="Экспортировать выделенные объекты в DXF">📄 Экспорт в DXF</button>
+            <button id="contextMenuExportDxf" style="width:100%;padding:8px 12px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="btn_export_dxf_context" title="Export selected objects to DXF">📄 Export DXF</button>
         </div>
         <div style="margin-bottom:10px;">
-            <button id="contextMenuCreateRemnant" style="width:100%;padding:8px 12px;background:#2d7a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" title="Создать остаток листа из выделенных линий">📸 Создать остаток листа</button>
+            <button id="contextMenuCreateRemnant" style="width:100%;padding:8px 12px;background:#2d7a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="btn_create_remnant" title="Create sheet remnant from selected lines">📸 Create Remnant</button>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-            <button id="contextMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Отмена</button>
-            <button id="contextMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">OK</button>
+            <button id="contextMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="contextMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="ok">OK</button>
         </div>
     </div>
 
@@ -279,8 +279,10 @@
 
             <!-- Панель размеров -->
             <div style="position:absolute;top:10px;left:10px;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:8px;display:flex;gap:6px;z-index:100;">
-                <button class="align-btn" id="autoDimension" style="width:auto;margin:0;padding:8px 12px;">📏 Авто-размеры</button>
-                <button class="align-btn" id="clearDimensions" style="width:auto;margin:0;padding:8px 12px;background:#7a2d2d;">🗑️ Скрыть размеры</button>
+                <button class="align-btn" id="autoDimension" style="width:auto;margin:0;padding:8px 12px;" data-i18n="btn_auto_dimensions">📏 Авто-размеры</button>
+                <button class="align-btn" id="clearDimensions" style="width:auto;margin:0;padding:8px 12px;background:#7a2d2d;" data-i18n="btn_clear_dimensions">🗑️ Скрыть размеры</button>
+                <div style="width:1px;height:20px;background:#3c3c3c;margin:0 2px;"></div>
+                <button id="langToggle" style="background:#3c3c3c;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:16px;" title="Switch language">🇬</button>
             </div>
 
             <!-- Навигация по листам (под листом) -->
@@ -460,6 +462,9 @@
 
     <!-- Подключение глобальных переменных (СНАЧАЛА globals.js!) -->
     <script src="js/globals.js"></script>
+
+    <!-- Подключение переводов -->
+    <script src="translations.js"></script>
 
     <!-- Подключение фото-остатка листа -->
     <script src="sheet-remnant.js"></script>
