@@ -158,4 +158,14 @@ Cutsy/
 
 ---
 
+## 📬 Контакты
+
+Если у вас есть вопросы, предложения или вы нашли баг — пишите!
+
+- **Telegram:** [@SilikinK](https://t.me/SilikinK)
+- **GitHub:** [KoksaSa](https://github.com/KoksaSa)
+- **Сайт проекта:** [https://github.com/KoksaSa/Cutsy](https://github.com/KoksaSa/Cutsy)
+
+---
+
 **Приятной работы! 🎨**
