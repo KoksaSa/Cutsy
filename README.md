@@ -1,171 +1,170 @@
-# Cutsy — Раскладка деталей на листах
+# Cutsy — Sheet Metal Nesting CAD
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-web-lightgrey.svg)
 
-**Cutsy** — приложение для создания 2D чертежей с автоматической раскладкой деталей на листах. Поддержка импорта/экспорта DXF, экспорта DXF/PDF.
+**Cutsy** is a 2D CAD application for creating technical drawings with automatic sheet metal nesting. Supports DXF import/export, SVG and PDF export.
 
-## 📸 Скриншоты
+## 📸 Screenshots
 
-### Рисование деталей
-![Рисование деталей и установка размеров](screenshots/drawing.png)
+### Drawing Parts
+![Drawing parts and setting dimensions](screenshots/drawing.png)
 
-### Раскладка на листе
-![Раскладка деталей и инструменты редактирования](screenshots/nesting.png)
+### Sheet Nesting
+![Part nesting and editing tools](screenshots/nesting.png)
 
-### Импорт деталей
-![Массовый импорт деталей](screenshots/import.png)
+### Part Import
+![Batch import with thickness and quantity assignment](screenshots/import.png)
 
-### Отчёт о раскладке
-![Отчёт о разложенных деталях на листе](screenshots/nesting-report.png)
+### Nesting Report
+![Nested parts report on sheet](screenshots/nesting-report.png)
 
-### Отчёт о детали
-![Отчёт о нарисованной детали](screenshots/part-report.png)
+### Part Report
+![Drawn part report](screenshots/part-report.png)
 
-### Выбор листа
-![Выбор листа и загрузка своего остатка](screenshots/sheet-select.png)
+### Sheet Selection
+![Sheet selection and remnant loading](screenshots/sheet-select.png)
 
-### Меню редактирования
-![Меню редактирования](screenshots/edit-menu.png)
+### Edit Menu
+![Edit menu](screenshots/edit-menu.png)
+
+### Application Demo
+![Cutsy Demo](screenshots/Video%20using%20the%20programm.gif)
 
 ---
 
-## 🚀 Быстрый запуск
+## 🚀 Quick Start
 
-### Способ 1: Просто открыть
+### Option 1: Open directly
 ```bash
-# Двойной клик по index.html или
+# Double-click index.html or
 start index.html  # Windows
 open index.html   # macOS
 xdg-open index.html  # Linux
 ```
 
-### Способ 2: Через локальный сервер
+### Option 2: Via local server
 ```bash
 npm install
 npm start
-# Откройте http://localhost:8080
+# Open http://localhost:8080
 ```
 
 ---
 
-## ✨ Возможности
+## ✨ Features
 
-### 🎨 Инструменты рисования
-- **Линия** — с отображением длины
-- **Круг** — с отображением диаметра
-- **Прямоугольник** — с размерами
-- **Многоугольник** — настраиваемое количество сторон
-- **Текст** — текстовые надписи
+### 🎨 Drawing Tools
+- **Line** — with length display
+- **Circle** — with diameter display
+- **Rectangle** — with dimensions
+- **Polygon** — configurable number of sides
+- **Text** — text labels
 
-### 📐 Размеры
-- **Линейные размеры** — горизонтальные, вертикальные, наклонные
-- **Угловые размеры** — 2 клика по линиям или 3 точки
+### 📐 Dimensions
+- **Linear dimensions** — horizontal, vertical, inclined
+- **Angular dimensions** — 2 clicks on lines or 3 points
 
-### 📦 Раскладка (Nesting)
-- **Автоматическая раскладка** — оптимальное размещение деталей
-- **Многостраничная раскладка** — автоматическое создание новых листов
-- **Группировка по толщине** — детали разной толщины на отдельных листах
-- **NFP алгоритм** — точная геометрия раскладки
-- **Spatial Grid** — пространственная индексация для ускорения
-- **"В один рез"** — размещение с общей гранью (зазор 0)
-- **Режимы вращения** — fast (2 угла), full (19 углов), auto
-- **Поворот и отражение** деталей на листе
+### 📦 Nesting
+- **Automatic nesting** — optimal part placement
+- **Multi-sheet nesting** — automatic creation of new sheets
+- **Thickness grouping** — parts of different thickness on separate sheets
+- **NFP algorithm** — precise nesting geometry
+- **Spatial Grid** — spatial indexing for speed
+- **"One Cut" mode** — placement with shared edge (0 gap)
+- **Rotation modes** — fast (2 angles), full (19 angles), auto
+- **Part rotation and flipping** on sheet
 
-### 📥 Импорт
-- **DXF** — импорт чертежей с автоматическим созданием деталей
+### 📥 Import
+- **DXF** — import drawings with automatic part creation
 
-### 📤 Экспорт
-- **DXF** — совместим с AutoCAD, LibreCAD, QCAD
-- **SVG** — векторный формат
-- **PDF (чертёж)** — A4, белый фон, чёрные линии
-- **PDF (отчёт)** — отчёт о раскладке с таблицей деталей
+### 📤 Export
+- **DXF** — compatible with AutoCAD, LibreCAD, QCAD
+- **SVG** — vector format
+- **PDF (drawing)** — A4, white background, black lines
+- **PDF (report)** — nesting report with parts table
 
-### 📸 Остаток листа
-- **Фото остатка** — загрузка фото с калибровкой по 2 точкам
-- **Разметка остатка** — прямоугольники для размещения в остатках
+### 📸 Sheet Remnant
+- **Photo remnant** — load photo with 2-point calibration
+- **Remnant markup** — rectangles for placement in remnants
 
-### 💾 Кеширование
-- **Автосохранение** — детали сохраняются в localStorage каждые 3 секунды
-- **Автовосстановление** — при перезагрузке страницы детали восстанавливаются
+### 💾 Caching
+- **Auto-save** — parts saved to localStorage every 3 seconds
+- **Auto-restore** — parts restored on page reload
+
+### 🌐 Multilingual
+- **English** and **Russian** interface
+- Language switch button 🇬/🇺
+- Language preference saved in localStorage
 
 ---
 
-## ⌨️ Горячие клавиши
+## ⌨️ Keyboard Shortcuts
 
-| Клавиша | Действие |
+| Key | Action |
 |---------|----------|
-| `Ctrl+клик` | Множественный выбор |
-| `Ctrl+Z` | Отменить действие |
-| `Delete` | Удалить выделенный объект |
-| `Alt+ЛКМ` | Панорамирование |
-| `Колесико` | Зум |
+| `Ctrl+click` | Multi-select |
+| `Ctrl+Z` | Undo action |
+| `Delete` | Delete selected object |
+| `Alt+LMB` | Panning |
+| `Mouse wheel` | Zoom |
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```
 Cutsy/
-├── index.html              # Основное приложение
-├── styles.css              # Стили
-├── package.json            # Конфигурация Node.js
-├── server.js               # Простой HTTP сервер
+├── index.html              # Main application
+├── styles.css              # Styles
+├── package.json            # Node.js configuration
+├── server.js               # Simple HTTP server
 │
-├── nesting.js              # Алгоритм раскладки (NFP, Spatial Grid)
-├── nesting-worker.js       # Web Worker для раскладки
-├── render.js               # Отрисовка на Canvas
-├── shapes.js               # Классы фигур (Line, Circle, Rect, Polygon)
-├── snapping.js             # Привязки к точкам и граням
-├── dimensions.js           # Размерные линии
-├── dxf-import.js           # Импорт DXF
-├── dxf-import-ui.js        # UI импорта DXF
-├── svg-export.js           # Экспорт SVG
-├── detail-export.js        # Экспорт деталей
-├── flip-nested.js          # Отражение деталей на листе
-├── sheet-remnant.js        # Работа с остатками листа
+├── nesting.js              # Nesting algorithm (NFP, Spatial Grid)
+├── nesting-worker.js       # Web Worker for nesting
+├── render.js               # Canvas rendering
+├── shapes.js               # Shape classes (Line, Circle, Rect, Polygon)
+├── snapping.js             # Point and edge snapping
+├── dimensions.js           # Dimension lines
+├── dxf-import.js           # DXF import
+├── dxf-import-ui.js        # DXF import UI
+├── svg-export.js           # SVG export
+├── detail-export.js        # Detail export
+├── flip-nested.js          # Part flipping on sheet
+├── sheet-remnant.js        # Sheet remnant handling
+├── translations.js         # i18n translations (EN/RU)
 │
-├── screenshots/            # Скриншоты приложения
+├── screenshots/            # Application screenshots
 │
 └── js/
-    ├── globals.js          # Глобальные переменные
+    ├── globals.js          # Global variables
     ├── store.js            # State management
-    ├── validators.js       # Валидация данных
-    ├── sound.js            # Звуковые эффекты
-    ├── join-parts.js       # Объединение деталей
-    ├── mouse-events.js     # Обработка мыши
-    ├── keyboard-events.js  # Обработка клавиатуры
-    └── context-menus.js    # Контекстные меню
+    ├── validators.js       # Data validation
+    ├── sound.js            # Sound effects
+    ├── join-parts.js       # Part joining
+    ├── mouse-events.js     # Mouse handling
+    ├── keyboard-events.js  # Keyboard handling
+    └── context-menus.js    # Context menus
 ```
 
 ---
 
-## 🌐 Работа офлайн
+## 🌐 Offline Mode
 
-Приложение **полностью работает без интернета**:
-- Все данные хранятся локально (localStorage)
-- Не требуется подключение к сети после загрузки
-- Можно использовать на компьютерах без доступа к интернету
-
----
-
-## 🛠️ Технологии
-
-- **HTML5 Canvas** — отрисовка
-- **Vanilla JavaScript** — без фреймворков
-- **Web Worker** — раскладка в отдельном потоке
-- **localStorage** — кеширование данных
+The application **works completely offline**:
+- All data stored locally (localStorage)
+- No internet connection required after loading
+- Can be used on computers without internet access
 
 ---
 
-## 📬 Контакты
+## 🛠️ Technologies
 
-Если у вас есть вопросы, предложения или вы нашли баг — пишите!
-
-- **Telegram:** [@SilikinK](https://t.me/SilikinK)
-- **GitHub:** [KoksaSa](https://github.com/KoksaSa)
-- **Сайт проекта:** [https://github.com/KoksaSa/Cutsy](https://github.com/KoksaSa/Cutsy)
+- **HTML5 Canvas** — rendering
+- **Vanilla JavaScript** — no frameworks
+- **Web Worker** — nesting in separate thread
+- **localStorage** — data caching
 
 ---
 
-**Приятной работы! 🎨**
+**Enjoy using! 🎨**
