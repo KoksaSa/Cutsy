@@ -193,10 +193,18 @@ let isDrawingRect = false;      // Режим рисования прямоуг�
 let currentRect = null;         // Текущий рисуемый прямоугольник
 let selectedRectIndex = -1;     // Индекс выделенного прямоугольника
 
+// Для линии обрезки остатка
+let cutRemnantLine = null;       // { y: number } - координата Y линии обрезки
+let showCutRemnantLine = false;  // Показывать ли линию обрезки
+let isDraggingCutLine = false;   // Режим перетаскивания линии обрезки
+
 // Делаем переменные доступными для render.js
 window.markupRects = markupRects;
 window.selectedRectIndex = selectedRectIndex;
 window.currentRect = currentRect;
+window.cutRemnantLine = cutRemnantLine;
+window.showCutRemnantLine = showCutRemnantLine;
+window.isDraggingCutLine = isDraggingCutLine;
 
 // ═══════════════════════════════════════════════════════════════
 // НАСТРОЙКИ (localStorage)
@@ -206,8 +214,6 @@ const SETTINGS_KEY = 'cad_settings_v1';
 
 function saveSettings() {
     const settings = {
-        metalThickness: document.getElementById('metalThickness').value,
-        pricePerKg: document.getElementById('pricePerKg').value,
         sheetSize: document.getElementById('sheetSize').value,
         sheetWidth: document.getElementById('sheetWidth').value,
         sheetHeight: document.getElementById('sheetHeight').value
@@ -221,20 +227,7 @@ function loadSettings() {
 
     try {
         const settings = JSON.parse(saved);
-        if (settings.metalThickness) {
-            document.getElementById('metalThickness').value = settings.metalThickness;
-        }
-        if (settings.pricePerKg) {
-            // Обновляем старое значение 150 на 210
-            if (settings.pricePerKg === '150' || settings.pricePerKg === 150) {
-                document.getElementById('pricePerKg').value = '210';
-            } else {
-                document.getElementById('pricePerKg').value = settings.pricePerKg;
-            }
-        } else {
-            document.getElementById('pricePerKg').value = '210';
-        }
-        
+
         // ═══════════════════════════════════════════════════════════
         // ЗАГРУЗКА РАЗМЕРА ЛИСТА
         // ═══════════════════════════════════════════════════════════
@@ -378,30 +371,6 @@ if (typeof Store !== 'undefined') {
 // ═══════════════════════════════════════════════════════════════
 
 function initSettingsAutoSave() {
-    // Толщина металла
-    const metalThicknessSelect = document.getElementById('metalThickness');
-    if (metalThicknessSelect) {
-        metalThicknessSelect.addEventListener('change', () => {
-            saveSettings();
-            console.log(`💾 Толщина металла сохранена: ${metalThicknessSelect.value} мм`);
-        });
-    }
-
-    // Цена за кг
-    const pricePerKgInput = document.getElementById('pricePerKg');
-    if (pricePerKgInput) {
-        pricePerKgInput.addEventListener('change', () => {
-            saveSettings();
-            console.log(`💾 Цена за кг сохранена: ${pricePerKgInput.value} ₽`);
-        });
-        
-        // Также сохраняем при потере фокуса
-        pricePerKgInput.addEventListener('blur', () => {
-            saveSettings();
-            console.log(`💾 Цена за кг сохранена (blur): ${pricePerKgInput.value} ₽`);
-        });
-    }
-
     console.log('✅ Автосохранение настроек инициализировано');
 }
 

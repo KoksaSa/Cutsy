@@ -50,7 +50,6 @@ const TRANSLATIONS = {
         btn_export_pdf_drawing: '🖼️ Drawing PDF',
         btn_export_pdf_report: '📊 Report PDF',
         btn_create_remnant: '📸 Create Remnant',
-        btn_show_report: '📊 Report',
         btn_clear_all: '🗑️ Clear All',
         btn_rotate_cw: '↻ Rotate CW',
         btn_rotate_ccw: '↺ Rotate CCW',
@@ -70,10 +69,8 @@ const TRANSLATIONS = {
         btn_full_rotation: '🐢',
         btn_auto_rotation: '🤖',
         btn_one_cut: '🔗 One Cut',
-        
+
         // Section titles
-        metal_title: '🔩 Metal',
-        price_per_kg_label: '💰 Price per kg (₽):',
         properties_title: 'Properties',
         objects_title: 'Objects',
         select_object_to_edit: 'Select an object to edit',
@@ -329,7 +326,6 @@ const TRANSLATIONS = {
         btn_export_pdf_drawing: '🖼️ Чертеж PDF',
         btn_export_pdf_report: '📊 Отчёт PDF',
         btn_create_remnant: '📸 Создать остаток',
-        btn_show_report: '📊 Отчёт',
         btn_clear_all: '🗑️ Удалить всё',
         btn_rotate_cw: '↻ Повернуть →',
         btn_rotate_ccw: '↺ Повернуть ←',
@@ -351,8 +347,6 @@ const TRANSLATIONS = {
         btn_one_cut: '🔗 В один рез',
         
         // Заголовки секций
-        metal_title: '🔩 Металл',
-        price_per_kg_label: '💰 Цена за кг (₽):',
         properties_title: 'Свойства',
         objects_title: 'Объекты',
         select_object_to_edit: 'Выберите объект для редактирования',
@@ -650,6 +644,57 @@ function initLanguage() {
             setLanguage(newLang);
         });
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // СЕКУНДОМЕР
+    // ═══════════════════════════════════════════════════════════
+    const swDisplay = document.getElementById('stopwatchDisplay');
+    const swToggle = document.getElementById('stopwatchToggle');
+    const swReset = document.getElementById('stopwatchReset');
+    let swRunning = false;
+    let swSeconds = 0;
+    let swInterval = null;
+
+    function formatTime(totalSec) {
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    if (swToggle) {
+        swToggle.addEventListener('click', () => {
+            swRunning = !swRunning;
+            if (swRunning) {
+                swToggle.textContent = '⏸';
+                swToggle.style.background = '#c7a22e';
+                swInterval = setInterval(() => {
+                    swSeconds++;
+                    if (swDisplay) swDisplay.textContent = formatTime(swSeconds);
+                }, 1000);
+            } else {
+                swToggle.textContent = '▶';
+                swToggle.style.background = '#2d7d2d';
+                clearInterval(swInterval);
+            }
+        });
+    }
+
+    if (swReset) {
+        swReset.addEventListener('click', () => {
+            swRunning = false;
+            swSeconds = 0;
+            clearInterval(swInterval);
+            if (swToggle) { swToggle.textContent = '▶'; swToggle.style.background = '#2d7d2d'; }
+            if (swDisplay) swDisplay.textContent = '00:00';
+        });
+    }
+
+    // Глобальная функция для получения времени секундомера (в секундах)
+    window.getStopwatchTime = function() {
+        return swSeconds;
+    };
 }
 
 // Запускаем при загрузке страницы

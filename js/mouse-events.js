@@ -94,10 +94,22 @@ window.addEventListener('mouseup', (e) => {
         isSheetPanning = false;
         canvas.style.cursor = '';
     }
+    // Сохраняем линию обрезки в текущий лист при отпускании
+    if (window.isDraggingCutLine) {
+        const currentSheet = window.allSheets && window.allSheets.length > 0
+            ? window.allSheets[window.currentSheetIndex || 0] : null;
+        if (currentSheet) {
+            currentSheet.cutRemnantLine = window.cutRemnantLine ? {...window.cutRemnantLine} : null;
+            currentSheet.showCutRemnantLine = window.showCutRemnantLine;
+        }
+    }
 });
 
 // Обработчик mousedown
 canvas.addEventListener('mousedown', (e) => {
+    // Если перетаскиваем линию обрезки — не обрабатываем остальные клики
+    if (window.isDraggingCutLine) return;
+
     // Если средняя кнопка мыши — не обрабатываем (панорамирование листа обрабатывается отдельно)
     if (e.button === 1) return;
 
@@ -131,6 +143,24 @@ canvas.addEventListener('mousedown', (e) => {
             // Преобразуем координаты клика в координаты листа
             const clickSheetX = (e.clientX - rect.left - sheetX) / scaleX;
             const clickSheetY = (e.clientY - rect.top - sheetY) / scaleY;
+
+            // === Перетаскивание линии обрезки (приоритет №1) ===
+            // Используем линию из текущего листа если есть allSheets
+            const currentSheetForDrag = window.allSheets && window.allSheets.length > 0
+                ? window.allSheets[window.currentSheetIndex || 0] : null;
+            const dragCutLine = currentSheetForDrag ? currentSheetForDrag.cutRemnantLine : window.cutRemnantLine;
+            const dragShowCutLine = currentSheetForDrag ? currentSheetForDrag.showCutRemnantLine : window.showCutRemnantLine;
+
+            if (dragShowCutLine && dragCutLine !== null && e.button === 0) {
+                const lineY = dragCutLine.y;
+                const tolerance = 10 / scaleY;
+                if (Math.abs(clickSheetY - lineY) < tolerance) {
+                    window.isDraggingCutLine = true;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return;
+                }
+            }
 
             // === Режим рисования прямоугольника разметки ===
             if (isDrawingRect && e.button === 0) {

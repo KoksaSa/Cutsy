@@ -15,6 +15,16 @@ const nestedInfoContent = document.getElementById('nestedInfoContent');
 const addPartToSheetMenu = document.getElementById('addPartToSheetMenu');
 const markupRectFillMenu = document.getElementById('markupRectFillMenu');
 
+// Проверка что все элементы найдены
+if (!nestedInfoMenu || !nestedInfoContent || !addPartToSheetMenu || !markupRectFillMenu) {
+    console.warn('⚠️ Некоторые DOM-элементы контекстных меню не найдены:', {
+        nestedInfoMenu: !!nestedInfoMenu,
+        nestedInfoContent: !!nestedInfoContent,
+        addPartToSheetMenu: !!addPartToSheetMenu,
+        markupRectFillMenu: !!markupRectFillMenu
+    });
+}
+
 // Отключаем стандартное контекстное меню браузера
 canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -113,22 +123,19 @@ canvas.addEventListener('contextmenu', (e) => {
 // Показать информацию о выделенных объектах в контекстном меню
 function showContextInfo() {
     const bounds = getGroupBounds(selectedObjects);
-    const thickness = parseFloat(document.getElementById('metalThickness').value);
-    const pricePerKg = parseFloat(document.getElementById('pricePerKg').value) || 0;
+    const thickness = 0.8; // Толщина задаётся в списке деталей
     const density = 7.85; // Плотность стали, г/см³
 
-    // Расчёт веса и стоимости
+    // Расчёт веса
     const area = bounds.width * bounds.height; // мм²
     const volume = area * thickness / 1000; // см³
     const weight = volume * density / 1000; // кг (одна деталь)
-    const cost = weight * pricePerKg; // руб
 
     // Формируем отчёт
     let info = `<strong>📐 Размер:</strong> ${Math.round(bounds.width)} × ${Math.round(bounds.height)} мм<br>`;
     info += `<strong>📊 Площадь:</strong> ${Math.round(area)} мм²<br>`;
     info += `<strong>🔩 Толщина:</strong> ${thickness} мм<br>`;
-    info += `<strong>⚖️ Вес:</strong> ${weight.toFixed(3)} кг<br>`;
-    info += `<strong>💰 Себестоимость:</strong> ${cost.toFixed(2)} ₽`;
+    info += `<strong>⚖️ Вес:</strong> ${weight.toFixed(3)} кг`;
 
     document.getElementById('contextInfoContent').innerHTML = info;
 }
@@ -148,11 +155,10 @@ function showNestedInfo(index, clientX, clientY) {
         // Берём толщину из текущего листа
         sheetThickness = window.allSheets[window.currentSheetIndex]?.thickness || 0.8;
     } else {
-        // Если листов нет, берём из UI
-        sheetThickness = parseFloat(document.getElementById('metalThickness').value) || 0.8;
+        // Если листов нет, берём из детали
+        sheetThickness = part.thickness || 0.8;
     }
-    
-    const pricePerKg = parseFloat(document.getElementById('pricePerKg').value) || 0;
+
     const density = 7.85; // Плотность стали, г/см³
 
     // Расчёт фактической площади по выпуклой оболочке (из nesting.js)
@@ -176,12 +182,10 @@ function showNestedInfo(index, clientX, clientY) {
     // ═══════════════════════════════════════════════════════════════
     const actualVolume = actualArea * sheetThickness / 1000; // см³
     const actualWeight = actualVolume * density / 1000; // кг
-    const actualCost = actualWeight * pricePerKg; // руб
 
     // Вес детали с остатком (по bounding box)
     const bboxVolume = bboxArea * sheetThickness / 1000; // см³
     const bboxWeight = bboxVolume * density / 1000; // кг
-    const bboxCost = bboxWeight * pricePerKg; // руб
 
     // Количество размещённых деталей этого типа на листе
     const placedCount = nestedParts.filter(n => n.partId === nested.partId).length;
@@ -195,15 +199,12 @@ function showNestedInfo(index, clientX, clientY) {
     info += `🔩 <strong>Толщина листа:</strong> <span style="color:#00ff00;font-weight:bold;">${sheetThickness} мм</span><br>`;
     info += `📊 <strong>Фактическая площадь:</strong> ${(actualArea / 1000000).toFixed(4)} м²<br>`;
     info += `⚖️ <strong>Вес детали:</strong> <span style="color:#00ff00;font-weight:bold;">${actualWeight.toFixed(3)} кг</span><br>`;
-    info += `💰 <strong>Себестоимость детали:</strong> <span style="color:#00ff00;font-weight:bold;">${actualCost.toFixed(2)} ₽</span><br>`;
     info += `<span style="color:#555;">━━━━━━━━━━━━━━━━━━━━</span><br>`;
     info += `🔲 <strong>Вес детали с остатком:</strong> ${bboxWeight.toFixed(3)} кг<br>`;
-    info += `💵 <strong>Себестоимость с остатком:</strong> ${bboxCost.toFixed(2)} ₽<br>`;
     info += `<span style="color:#555;">━━━━━━━━━━━━━━━━━━━━</span><br>`;
     info += `🔲 <strong>Размещено на листе:</strong> ${placedCount} шт<br>`;
     info += `📋 <strong>Количество в заказе:</strong> ${part.quantity} шт<br>`;
-    info += `📦 <strong>Общий вес (заказ):</strong> <span style="color:#00ff00;font-weight:bold;">${(actualWeight * part.quantity).toFixed(3)} кг</span><br>`;
-    info += `💵 <strong>Общая стоимость (заказ):</strong> <span style="color:#00ff00;font-weight:bold;">${(actualCost * part.quantity).toFixed(2)} ₽</span>`;
+    info += `📦 <strong>Общий вес (заказ):</strong> <span style="color:#00ff00;font-weight:bold;">${(actualWeight * part.quantity).toFixed(3)} кг</span>`;
 
     nestedInfoContent.innerHTML = info;
     nestedInfoMenu.style.display = 'block';

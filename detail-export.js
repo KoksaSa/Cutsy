@@ -235,7 +235,7 @@ function exportSelectedObjectsToDXF() {
     link.href = URL.createObjectURL(blob);
     
     // Формируем имя файла с датой и временем
-    const thickness = parseFloat(document.getElementById('metalThickness').value) || 0;
+    const thickness = 0.8; // Толщина задаётся в списке деталей
     const now = new Date();
     const dateTime = now.toLocaleDateString('ru-RU').replace(/\//g, '.') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
     const fileName = `detail_${widthMm.toFixed(0)}x${heightMm.toFixed(0)}_thickness_${thickness}mm_${dateTime.replace(/:/g, '-')}.dxf`;

@@ -624,6 +624,44 @@ function drawSheet() {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // ОТРИСОВКА ЛИНИИ ОБРЕЗКИ ОСТАТКА
+    // ═══════════════════════════════════════════════════════════
+    // Используем линию из текущего листа если есть allSheets
+    const currentSheet = window.allSheets && window.allSheets.length > 0
+        ? window.allSheets[window.currentSheetIndex || 0] : null;
+    const cutLine = currentSheet ? currentSheet.cutRemnantLine : window.cutRemnantLine;
+    const showCutLine = currentSheet ? currentSheet.showCutRemnantLine : window.showCutRemnantLine;
+
+    if (showCutLine && cutLine !== null) {
+        const lineY = sheetY + cutLine.y * scaleY;
+        const startX = sheetX + 4 * scaleX;
+        const endX = sheetX + (sheetSize.width - 4) * scaleX;
+
+        // Пунктирная красная линия
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.moveTo(startX, lineY);
+        ctx.lineTo(endX, lineY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Маркер перетаскивания в центре
+        const centerX = (startX + endX) / 2;
+        ctx.fillStyle = '#ff3333';
+        ctx.beginPath();
+        ctx.arc(centerX, lineY, 6, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Надпись
+        ctx.fillStyle = '#ff3333';
+        ctx.font = 'bold 11px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(`✂️ Y=${Math.round(cutLine.y)} мм`, centerX, lineY - 12);
+    }
+
     ctx.restore();
 }
 

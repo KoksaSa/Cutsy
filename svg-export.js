@@ -47,7 +47,7 @@ function exportSheetToDXF() {
     console.log(`   📄 Размер листа: ${currentSheetSize.width}×${currentSheetSize.height} мм`);
     console.log(`   📦 Деталей: ${nestedParts.length}`);
     console.log(`   📋 Уникальных типов: ${new Set(nestedParts.map(n => n.partId)).size}`);
-    console.log(`   💰 Толщина: ${parseFloat(document.getElementById('metalThickness')?.value)||0} мм`);
+    console.log(`   💰 Толщина: задаётся в списке деталей`);
 
     const margin = 50;
     let dxf = [];
@@ -82,8 +82,13 @@ function exportSheetToDXF() {
     dxf.push("0","LWPOLYLINE","8","Sheet","90","4","70","1","10",x1,"20",y1,"10",x2,"20",y1,"10",x2,"20",y2,"10",x1,"20",y2);
 
     // Текст с толщиной листа над контуром
-    const thickness = parseFloat(document.getElementById('metalThickness')?.value)||0;
-    const sheetLabel = `Sheet 1 ${thickness} mm`;
+    // Берём толщину из первого размещённого nestedPart или из деталей
+    let sheetThickness = 0.8;
+    if (nestedParts.length > 0) {
+        const firstPart = window.parts?.find(p => p.id === nestedParts[0].partId);
+        if (firstPart) sheetThickness = firstPart.thickness || 0.8;
+    }
+    const sheetLabel = `Sheet 1 ${sheetThickness} mm`;
     dxf.push("0","TEXT","8","Sheet","10",margin+10,"20",y2+25,"40","12","1",sheetLabel);
 
     // Parts
@@ -116,6 +121,19 @@ function exportSheetToDXF() {
             exportNestedPartToDXF(dxf, part, nested, layerName, margin, 0);
         });
     });
+
+    // ═══════════════════════════════════════════════════════════
+    // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА
+    // ═══════════════════════════════════════════════════════════
+    const currentSheet = window.allSheets && window.allSheets.length > 0
+        ? window.allSheets[window.currentSheetIndex || 0] : null;
+    if (currentSheet && currentSheet.showCutRemnantLine && currentSheet.cutRemnantLine) {
+        console.log(`   ✂️ Экспорт линии обрезки: Y=${currentSheet.cutRemnantLine.y} мм`);
+        const cutY = currentSheet.cutRemnantLine.y;
+        const cutX1 = 4;
+        const cutX2 = currentSheetSize.width - 4;
+        dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY+margin,"11",cutX2+margin,"21",cutY+margin);
+    }
 
     // ═══════════════════════════════════════════════════════════
     // ЭКСПОРТ УГЛОВЫХ РАЗМЕРОВ
@@ -292,6 +310,16 @@ function exportAllSheetsToDXF(allSheets) {
         });
 
         // ═══════════════════════════════════════════════════════════
+        // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА (для каждого листа)
+        // ═══════════════════════════════════════════════════════════
+        if (s.showCutRemnantLine && s.cutRemnantLine) {
+            const cutY = s.cutRemnantLine.y;
+            const cutX1 = 4;
+            const cutX2 = localSheetSize.width - 4;
+            dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY+margin,"11",cutX2+margin,"21",cutY+margin);
+        }
+
+        // ═══════════════════════════════════════════════════════════
         // ЭКСПОРТ УГЛОВЫХ РАЗМЕРОВ (для каждого листа)
         // ═══════════════════════════════════════════════════════════
         if (typeof angleDimensions !== 'undefined' && angleDimensions.length > 0) {
@@ -358,7 +386,7 @@ function exportAllSheetsToDXF(allSheets) {
     const blob = new Blob([dxfContent], {type:"application/dxf"});
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    const th = parseFloat(document.getElementById('metalThickness')?.value)||0;
+    const th = allSheets.length > 0 ? (allSheets[0].thickness || 0.8) : 0.8;
     const now = new Date();
     const dt = now.toLocaleDateString('ru-RU').replace(/\//g,'.')+'_'+now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}).replace(/:/g,'-');
     const fileName = `sheets_${allSheets.length}_t${th}mm_${dt}.dxf`;
