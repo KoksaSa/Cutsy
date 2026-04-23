@@ -608,6 +608,19 @@ console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), angle=${angleDeg}°, refPoint=${hasRefPoint?'сохранён':'вычислен'} (${refPoint.x.toFixed(0)},${refPoint.y.toFixed(0)}), size=${baseWidth}×${baseHeight}, объектов=${part.objects.length}`);
     console.log(`      Объекты:`, part.objects.map(o => o.type).join(', '));
 
+    // Отладка: первые точки объектов
+    if (part.objects.length > 0) {
+        const obj = part.objects[0];
+        console.log(`      Первый объект:`, obj.type === 'line' ? 
+            `line(${obj.x1.toFixed(0)},${obj.y1.toFixed(0)} -> ${obj.x2.toFixed(0)},${obj.y2.toFixed(0)})` :
+            obj.type === 'rect' ? 
+            `rect(${obj.x.toFixed(0)},${obj.y.toFixed(0)}, ${obj.width.toFixed(0)}x${obj.height.toFixed(0)})` :
+            obj.type === 'circle' ?
+            `circle(${obj.cx.toFixed(0)},${obj.cy.toFixed(0)}, r=${obj.radius.toFixed(0)})` :
+            `polygon`
+        );
+    }
+
     // Вычисляем реальную высоту повёрнутой детали для проверки границ
     const rotatedCorners = [
         {x: 0, y: 0}, {x: baseWidth, y: 0}, {x: baseWidth, y: baseHeight}, {x: 0, y: baseHeight}
@@ -635,6 +648,12 @@ console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y
             // Поэтому: y_DXF = nestedY_DXF - (objY_local - refPoint.y)
             const y1_DXF = nestedY_DXF - (p1.y - refPoint.y);
             const y2_DXF = nestedY_DXF - (p2.y - refPoint.y);
+            
+            // Отладка для первой линии
+            if (obj === part.objects[0]) {
+                console.log(`         Линия: p1.y=${p1.y.toFixed(1)}, refPoint.y=${refPoint.y.toFixed(1)}, delta=${(p1.y - refPoint.y).toFixed(1)}`);
+                console.log(`         DXF Y: nestedY_DXF=${nestedY_DXF.toFixed(1)} - delta=${(p1.y - refPoint.y).toFixed(1)} = ${y1_DXF.toFixed(1)}`);
+            }
             p1 = { x: p1.x - refPoint.x + nested.x + margin, y: y1_DXF + margin };
             p2 = { x: p2.x - refPoint.x + nested.x + margin, y: y2_DXF + margin };
             dxf.push("0","LINE","8",layerName,"10",p1.x,"20",p1.y,"11",p2.x,"21",p2.y);
