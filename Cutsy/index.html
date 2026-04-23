@@ -4817,30 +4817,34 @@ let tableRows = '';
                         </tr>
                     `;
 
-                    // ═══════════════════════════════════════════════
-                    // ПОДЕТАЛЬНАЯ ТАБЛИЦА: каждая размещённая деталь
+// ═══════════════════════════════════════════════
+                    // ПОДЕТАЛЬНАЯ ТАБЛИЦА: один вид детали = одна строка
                     // ═══════════════════════════════════════════════
                     const singleWeight = weight.toFixed(3);
                     const singlePerimeter = perimeter;
                     const singleCutLength = (singlePerimeter / 1000).toFixed(3);
-                    const singleCutCost = (singlePerimeter / 1000 * pricePerMeterCut).toFixed(2);
-                    const singleMetalCost = (weight * getPricePerKg(th)).toFixed(2);
-                    const singlePierceCost = pricePerPierceTh.toFixed(2);
-                    const singleTotalCost = (parseFloat(singleMetalCost) + parseFloat(singleCutCost) + parseFloat(singlePierceCost)).toFixed(2);
+                    const singleCutCostPart = (singlePerimeter / 1000 * pricePerMeterCut);
+                    const singleMetalCostPart = weight * getPricePerKg(th);
+                    
+                    // ═══════════════════════════════════════════════
+                    // ТОЧНЫЙ РАСЧЁТ ПРОКОЛОВ: 1 прокол на каждый контур
+                    // ═══════════════════════════════════════════════
+                    const pierceCountPerPart = part.objects ? part.objects.length : 1;
+                    const singlePierceCostPart = pierceCountPerPart * pricePerPierceTh;
+                    const singleTotalCostPart = singleMetalCostPart + singleCutCostPart + singlePierceCostPart;
                     const smallThumbSVG = generatePartThumbnail(part, 50, 40);
                     
-                    for (let i = 0; i < count; i++) {
-                        partDetailRows += `
-                            <tr>
-                                <td class="thumb">${smallThumbSVG}</td>
-                                <td>${part.name || 'Деталь'}</td>
-                                <td>${singleWeight}</td>
-                                <td>${singleCutLength}</td>
-                                <td>1</td>
-                                <td><b>${singleTotalCost}</b></td>
-                            </tr>
-                        `;
-                    }
+                    // Одна строка на вид детали (не на каждый экземпляр)
+                    partDetailRows += `
+                        <tr>
+                            <td class="thumb">${smallThumbSVG}</td>
+                            <td>${part.name || 'Деталь'}</td>
+                            <td>${singleWeight}</td>
+                            <td>${singleCutLength}</td>
+                            <td>${pierceCountPerPart}</td>
+                            <td><b>${singleTotalCostPart.toFixed(2)}</b></td>
+                        </tr>
+                    `;
                 });
 
                 // ═══════════════════════════════════════════════════
@@ -5092,6 +5096,25 @@ sheetSummaryHTML += `
     <h1>📊 Отчёт по раскладке деталей</h1>
     <p class="date">Создано: ${now}</p>
 
+${partDetailRows ? `
+    <h2 class="section-title">📋 Подетальная таблица</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:60px;">Миниатюра</th>
+                <th>Название</th>
+                <th>Вес (кг)</th>
+                <th>Длина реза (м)</th>
+                <th>Проколов (контуров)</th>
+                <th>Итого за 1 деталь (₽)</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${partDetailRows}
+        </tbody>
+    </table>
+    ` : ''}
+
     ${thSectionHTML}
 
     <table>
@@ -5114,25 +5137,6 @@ sheetSummaryHTML += `
             ${tableRows}
         </tbody>
     </table>
-
-    ${partDetailRows ? `
-    <h2 class="section-title">📋 Подетальная таблица</h2>
-    <table>
-        <thead>
-            <tr>
-                <th style="width:60px;">Миниатюра</th>
-                <th>Название</th>
-                <th>Вес (кг)</th>
-                <th>Длина реза (м)</th>
-                <th>Проколов</th>
-                <th>Итого (₽)</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${partDetailRows}
-        </tbody>
-    </table>
-    ` : ''}
 
     ${unplacedParts.length > 0 ? `
     <h2 class="section-title" style="border-left-color:#c00;">⚠️ Не размещённые детали</h2>
