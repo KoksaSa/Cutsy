@@ -5526,8 +5526,9 @@ if (selectedObjects.length === 0) {
             });
 
             list.querySelectorAll('input[type="number"]').forEach(input => {
-                // Пропускаем поля отступа (у них свой обработчик)
+                // Пропускаем поля отступа и толщины (у них свои обработчики)
                 if (input.classList.contains('part-spacing-input')) return;
+                if (input.classList.contains('part-thickness-input')) return;
                 
                 input.addEventListener('change', (e) => {
                     const partId = parseFloat(e.target.dataset.partId);  // Используем parseFloat для дробных ID
@@ -5546,6 +5547,41 @@ if (selectedObjects.length === 0) {
                     const newValue = parseInt(e.target.value) + delta;
                     if (newValue >= 1 && newValue <= 9999) {
                         e.target.value = newValue;
+                        e.target.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+
+            // Обработчик для поля толщины металла
+            list.querySelectorAll('.part-thickness-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const partId = parseFloat(e.target.dataset.partId);
+                    const part = parts.find(p => p.id === partId);
+                    if (!part) return;
+                    
+                    const thickness = parseFloat(e.target.value);
+                    if (isNaN(thickness) || thickness < 0.1 || thickness > 50) {
+                        // Возвращаем значение по умолчанию 0.8 мм
+                        e.target.value = part.thickness !== undefined ? part.thickness : 0.8;
+                        return;
+                    }
+                    
+                    part.thickness = thickness;
+                    saveToCache();
+                    console.log(`📏 Толщина детали "${part.name}" изменена на ${thickness} мм`);
+                });
+                input.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.target.select();
+                });
+                input.addEventListener('wheel', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                    const newValue = parseFloat(e.target.value) + delta;
+                    if (newValue >= 0.1 && newValue <= 50) {
+                        e.target.value = Number(newValue.toFixed(1));
                         e.target.dispatchEvent(new Event('change'));
                     }
                 });
