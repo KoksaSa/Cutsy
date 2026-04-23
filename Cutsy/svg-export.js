@@ -164,25 +164,27 @@ function exportSheetToDXF() {
         // Text with part name
         const fn = partsByType[partId][0];
         if (fn) {
-            dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",fn.y+margin-15,"40","8","1",partName);
+            // Инвертируем Y для DXF (система координат DXF начинается снизу-слева)
+            const dxfTextY = currentSheetSize.height - fn.y + margin - 15;
+            dxf.push("0","TEXT","8","Parts","10",fn.x+margin,"20",dxfTextY,"40","8","1",partName);
         }
 
         console.log(`   ✅ Экспорт детали #${partId} "${partName}": ${partsByType[partId].length} шт., ${part.objects.length} объектов`);
         partsByType[partId].forEach(nested => {
-            exportNestedPartToDXF(dxf, part, nested, layerName, margin, 0);
+            exportNestedPartToDXF(dxf, part, nested, layerName, margin, 0, currentSheetSize.height);
         });
     });
 
     // ═══════════════════════════════════════════════════════════
     // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА
     // ═══════════════════════════════════════════════════════════
-    // currentSheet уже определена выше (строка 96)
+    // Инвертируем Y для DXF
+    const cutY_DXF = currentSheetSize.height - currentSheet.cutRemnantLine.y;
     if (currentSheet && currentSheet.showCutRemnantLine && currentSheet.cutRemnantLine) {
-        console.log(`   ✂️ Экспорт линии обрезки: Y=${currentSheet.cutRemnantLine.y} мм`);
-        const cutY = currentSheet.cutRemnantLine.y;
+        console.log(`   ✂️ Экспорт линии обрезки: Y=${currentSheet.cutRemnantLine.y} мм -> DXF Y=${cutY_DXF} мм`);
         const cutX1 = 4;
         const cutX2 = currentSheetSize.width - 4;
-        dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY+margin,"11",cutX2+margin,"21",cutY+margin);
+        dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY_DXF+margin,"11",cutX2+margin,"21",cutY_DXF+margin);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -192,22 +194,27 @@ function exportSheetToDXF() {
         console.log(`   📐 Экспорт угловых размеров: ${angleDimensions.length} шт.`);
         
         angleDimensions.forEach(angleDim => {
+            // Инвертируем Y для DXF
+            const dxfY = angleDim.y;
+            const dxfY1 = angleDim.y1;
+            const dxfY2 = angleDim.y2;
+            
             // Линия 1 (от вершины до точки 1)
             dxf.push("0","LINE","8","Dimensions",
-                "10",angleDim.x + margin,"20",angleDim.y + margin,
-                "11",angleDim.x1 + margin,"21",angleDim.y1 + margin);
+                "10",angleDim.x + margin,"20",dxfY + margin,
+                "11",angleDim.x1 + margin,"21",dxfY1 + margin);
             
             // Линия 2 (от вершины до точки 2)
             dxf.push("0","LINE","8","Dimensions",
-                "10",angleDim.x + margin,"20",angleDim.y + margin,
-                "11",angleDim.x2 + margin,"21",angleDim.y2 + margin);
+                "10",angleDim.x + margin,"20",dxfY + margin,
+                "11",angleDim.x2 + margin,"21",dxfY2 + margin);
             
             // Дуга угла
             const startAngleDeg = angleDim.startAngle * 180 / Math.PI;
             const endAngleDeg = angleDim.endAngle * 180 / Math.PI;
             
             dxf.push("0","ARC","8","Dimensions",
-                "10",angleDim.x + margin,"20",angleDim.y + margin,"30",0,
+                "10",angleDim.x + margin,"20",dxfY + margin,"30",0,
                 "40",angleDim.radius,
                 "50",startAngleDeg,"51",endAngleDeg);
             
@@ -389,15 +396,16 @@ function exportAllSheetsToDXF(allSheets) {
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
 
-            // Text with part name
+            // Text with part name - инвертируем Y для DXF
             const fn = pbt[pid][0];
             if (fn) {
-                dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",fn.y+margin-15,"40","8","1",pn);
+                const dxfTextY = localSheetSize.height - fn.y + margin - 15;
+                dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",dxfTextY,"40","8","1",pn);
             }
 
             console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
             pbt[pid].forEach(nested => {
-                exportNestedPartToDXF(dxf, part, nested, ln, margin, 0);
+                exportNestedPartToDXF(dxf, part, nested, ln, margin, 0, localSheetSize.height);
             });
         });
 
@@ -413,11 +421,12 @@ function exportAllSheetsToDXF(allSheets) {
         // ═══════════════════════════════════════════════════════════
         // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА (для каждого листа)
         // ═══════════════════════════════════════════════════════════
+        // Инвертируем Y для DXF
+        const cutY_DXF = localSheetSize.height - s.cutRemnantLine.y;
         if (s.showCutRemnantLine && s.cutRemnantLine) {
-            const cutY = s.cutRemnantLine.y;
             const cutX1 = 4;
             const cutX2 = localSheetSize.width - 4;
-            dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY+margin,"11",cutX2+margin,"21",cutY+margin);
+            dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY_DXF+margin,"11",cutX2+margin,"21",cutY_DXF+margin);
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -517,7 +526,7 @@ function exportAllSheetsToDXF(allSheets) {
 }
 
 // Export single nested part
-function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY) {
+function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sheetHeight) {
     const bbox = part.bounds;
     const baseWidth = nested.baseWidth || bbox.width;
     const baseHeight = nested.baseHeight || bbox.height;
@@ -561,24 +570,31 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY) {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // ИНВЕРСИЯ Y ДЛЯ DXF
+    // Canvas: Y растёт вниз (0 вверху), DXF: Y растёт вверх (0 внизу)
+    // Инвертируем координаты Y деталей относительно высоты листа
+    // ═══════════════════════════════════════════════════════════
+    const nestedY_DXF = sheetHeight - nested.y - baseHeight;
+    
     const angleDeg = (angle * 180 / Math.PI).toFixed(1);
     const hasRefPoint = !!nested.refPoint;
-    console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y}), angle=${angleDeg}°, refPoint=${hasRefPoint?'сохранён':'вычислен'} (${refPoint.x.toFixed(0)},${refPoint.y.toFixed(0)}), size=${baseWidth}×${baseHeight}, объектов=${part.objects.length}`);
+    console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), angle=${angleDeg}°, refPoint=${hasRefPoint?'сохранён':'вычислен'} (${refPoint.x.toFixed(0)},${refPoint.y.toFixed(0)}), size=${baseWidth}×${baseHeight}, объектов=${part.objects.length}`);
     console.log(`      Объекты:`, part.objects.map(o => o.type).join(', '));
 
-    // Экспортируем объекты с учётом refPoint и нормализации
+    // Экспортируем объекты с учётом refPoint, нормализации и инверсии Y
     // Координаты объектов нормализуются относительно minX/minY
     part.objects.forEach(obj => {
         if (obj.type === 'line') {
             let p1 = rotate(obj.x1 - normOffsetX, obj.y1 - normOffsetY);
             let p2 = rotate(obj.x2 - normOffsetX, obj.y2 - normOffsetY);
-            // Применяем нормализацию (refPoint) и позицию на листе (nested.x, nested.y)
-            p1 = { x: p1.x - refPoint.x + nested.x + margin, y: p1.y - refPoint.y + nested.y + offsetY + margin };
-            p2 = { x: p2.x - refPoint.x + nested.x + margin, y: p2.y - refPoint.y + nested.y + offsetY + margin };
+            // Применяем нормализацию (refPoint) и позицию на листе (nested.x, nestedY_DXF для DXF)
+            p1 = { x: p1.x - refPoint.x + nested.x + margin, y: p1.y - refPoint.y + nestedY_DXF + offsetY + margin };
+            p2 = { x: p2.x - refPoint.x + nested.x + margin, y: p2.y - refPoint.y + nestedY_DXF + offsetY + margin };
             dxf.push("0","LINE","8",layerName,"10",p1.x,"20",p1.y,"11",p2.x,"21",p2.y);
         } else if (obj.type === 'circle') {
             let c = rotate(obj.cx - normOffsetX, obj.cy - normOffsetY);
-            c = { x: c.x - refPoint.x + nested.x + margin, y: c.y - refPoint.y + nested.y + offsetY + margin };
+            c = { x: c.x - refPoint.x + nested.x + margin, y: c.y - refPoint.y + nestedY_DXF + offsetY + margin };
             dxf.push("0","CIRCLE","8",layerName,"10",c.x,"20",c.y,"40",obj.radius);
         } else if (obj.type === 'rect') {
             const corners = [
@@ -591,7 +607,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY) {
                 let r = rotate(c.x, c.y);
                 return {
                     x: r.x - refPoint.x + nested.x + margin,
-                    y: r.y - refPoint.y + nested.y + offsetY + margin
+                    y: r.y - refPoint.y + nestedY_DXF + offsetY + margin
                 };
             });
             dxf.push("0","LWPOLYLINE","8",layerName,"90",pts.length,"70","1");
@@ -604,7 +620,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY) {
                 let r = rotate(x, y);
                 pts.push({
                     x: r.x - refPoint.x + nested.x + margin,
-                    y: r.y - refPoint.y + nested.y + offsetY + margin
+                    y: r.y - refPoint.y + nestedY_DXF + offsetY + margin
                 });
             }
             dxf.push("0","LWPOLYLINE","8",layerName,"90",pts.length,"70","1");
