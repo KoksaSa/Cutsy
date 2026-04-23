@@ -704,6 +704,7 @@ console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y
     const minObjX = nested.x + actualMargin;
     const maxObjX = nested.x + actualMargin + baseWidth;
     // В DXF: refPoint (низ детали в Canvas) = maxObjY, верх детали = nestedY_DXF - rotatedHeight
+    // margin уже учтён в позиционировании объектов, здесь только границы детали
     const minObjY = nestedY_DXF - rotatedHeight + actualMargin;
     const maxObjY = nestedY_DXF + actualMargin;
     
@@ -711,6 +712,7 @@ console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y
     console.log(`      X: ${minObjX.toFixed(1)} - ${maxObjX.toFixed(1)} (лист: ${actualMargin} - ${actualSheetWidth-actualMargin})`);
     console.log(`      Y: ${minObjY.toFixed(1)} - ${maxObjY.toFixed(1)} (лист: ${actualMargin} - ${sheetHeight-actualMargin})`);
     
+    // Проверяем с учётом margin: деталь + margin должна быть в пределах листа
     const inBoundsX = minObjX >= actualMargin && maxObjX <= actualSheetWidth - actualMargin;
     const inBoundsY = minObjY >= actualMargin && maxObjY <= sheetHeight - actualMargin;
     
