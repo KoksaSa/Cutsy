@@ -691,6 +691,7 @@ function createPartFromImport(quantity, name) {
 
     if (typeof parts !== 'undefined') {
         parts.push(part);
+        if (typeof syncGlobalsToStore === 'function') syncGlobalsToStore();
         if (typeof updatePartsList === 'function') updatePartsList();
         if (typeof saveToCache === 'function') saveToCache();
     }

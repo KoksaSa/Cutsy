@@ -342,6 +342,25 @@ loadSettings();
 // СИНХРОНИЗАЦИЯ С STORE (для совместимости)
 // ═══════════════════════════════════════════════════════════════
 
+// Функция синхронизации глобальных переменных с Store
+function syncGlobalsToStore() {
+    if (typeof Store !== 'undefined') {
+        // Синхронизируем window.XXX с локальными переменными
+        allSheets = window.allSheets || allSheets;
+        currentSheetIndex = window.currentSheetIndex || currentSheetIndex;
+        markupRects = window.markupRects || markupRects;
+        
+        Store.set('parts', parts, { silent: true });
+        Store.set('nestedParts', nestedParts, { silent: true });
+        Store.set('sheetSize', sheetSize, { silent: true });
+        Store.set('showSheetView', showSheetView, { silent: true });
+        Store.set('allSheets', allSheets, { silent: true });
+        Store.set('currentSheetIndex', currentSheetIndex, { silent: true });
+        Store.set('markupRects', markupRects, { silent: true });
+        Store.set('allowOverlap', allowOverlap, { silent: true });
+    }
+}
+
 // При изменении Store, обновляем глобальные переменные
 if (typeof Store !== 'undefined') {
     // Подписка на изменения
