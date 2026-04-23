@@ -603,10 +603,24 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
     // В DXF: Y растёт снизу, поэтому инвертируем
     const nestedY_DXF = sheetHeight - nested.y;
     
-    console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), dxfImported=${isDxfImported}, angle=${angleDeg}°, baseHeight=${baseHeight}, sheetHeight=${sheetHeight}`);
+console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), dxfImported=${isDxfImported}, angle=${angleDeg}°, baseHeight=${baseHeight}, sheetHeight=${sheetHeight}`);
     const hasRefPoint = !!nested.refPoint;
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), angle=${angleDeg}°, refPoint=${hasRefPoint?'сохранён':'вычислен'} (${refPoint.x.toFixed(0)},${refPoint.y.toFixed(0)}), size=${baseWidth}×${baseHeight}, объектов=${part.objects.length}`);
     console.log(`      Объекты:`, part.objects.map(o => o.type).join(', '));
+
+    // Вычисляем реальную высоту повёрнутой детали для проверки границ
+    const rotatedCorners = [
+        {x: 0, y: 0}, {x: baseWidth, y: 0}, {x: baseWidth, y: baseHeight}, {x: 0, y: baseHeight}
+    ].map(p => rotate(p.x, p.y));
+    let minY_local = rotatedCorners[0].y, maxY_local = rotatedCorners[0].y;
+    for (const c of rotatedCorners) {
+        if (c.y < minY_local) minY_local = c.y;
+        if (c.y > maxY_local) maxY_local = c.y;
+    }
+    const rotatedHeight = maxY_local - minY_local;
+    
+    // refPoint.y = minY_local (нижняя точка в Canvas = верхняя в DXF)
+    // В DXF: maxObjY = nestedY_DXF (refPoint), minObjY = nestedY_DXF - rotatedHeight
 
     // Экспортируем объекты с учётом refPoint, нормализации и инверсии Y
     // Координаты объектов нормализуются относительно minX/minY
@@ -624,9 +638,9 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
             p1 = { x: p1.x - refPoint.x + nested.x + margin, y: y1_DXF + margin };
             p2 = { x: p2.x - refPoint.x + nested.x + margin, y: y2_DXF + margin };
             dxf.push("0","LINE","8",layerName,"10",p1.x,"20",p1.y,"11",p2.x,"21",p2.y);
-        } else if (obj.type === 'circle') {
+} else if (obj.type === 'circle') {
             let c = rotate(obj.cx - normOffsetX, obj.cy - normOffsetY);
-            const cY_DXF = (c.y - refPoint.y) + nestedY_DXF;
+            const cY_DXF = nestedY_DXF - (c.y - refPoint.y);
             c = { x: c.x - refPoint.x + nested.x + margin, y: cY_DXF + margin };
             dxf.push("0","CIRCLE","8",layerName,"10",c.x,"20",c.y,"40",obj.radius);
         } else if (obj.type === 'rect') {
@@ -638,7 +652,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
             ];
             const pts = corners.map(c => {
                 let r = rotate(c.x, c.y);
-                const rY_DXF = (r.y - refPoint.y) + nestedY_DXF;
+                const rY_DXF = nestedY_DXF - (r.y - refPoint.y);
                 return {
                     x: r.x - refPoint.x + nested.x + margin,
                     y: rY_DXF + margin
@@ -652,7 +666,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
                 const a = (Math.PI * 2 / sides) * i - Math.PI / 2;
                 let x = obj.cx - normOffsetX + Math.cos(a) * radius, y = obj.cy - normOffsetY + Math.sin(a) * radius;
                 let r = rotate(x, y);
-                const rY_DXF = (r.y - refPoint.y) + nestedY_DXF;
+                const rY_DXF = nestedY_DXF - (r.y - refPoint.y);
                 pts.push({
                     x: r.x - refPoint.x + nested.x + margin,
                     y: rY_DXF + margin
@@ -663,15 +677,16 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
         }
     });
     
-    // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
     // ПРОВЕРКА ГРАНИЦ (для отладки)
     // ═══════════════════════════════════════════════════════════
     const actualMargin = margin || 4; // Глобальный отступ
     const actualSheetWidth = sheetWidth || 1250;
     const minObjX = nested.x + actualMargin;
     const maxObjX = nested.x + actualMargin + baseWidth;
-    const minObjY = nestedY_DXF + actualMargin;
-    const maxObjY = nestedY_DXF + actualMargin + baseHeight;
+    // В DXF: refPoint (низ детали в Canvas) = maxObjY, верх детали = nestedY_DXF - rotatedHeight
+    const minObjY = nestedY_DXF - rotatedHeight + actualMargin;
+    const maxObjY = nestedY_DXF + actualMargin;
     
     console.log(`   📏 Границы детали в DXF:`);
     console.log(`      X: ${minObjX.toFixed(1)} - ${maxObjX.toFixed(1)} (лист: ${actualMargin} - ${actualSheetWidth-actualMargin})`);
