@@ -381,6 +381,15 @@ function exportAllSheetsToDXF(allSheets) {
         let sheetExportedCount = 0;
         const sheetSkipped = [];
         
+        console.log(`\n   ═══════════════════════════`);
+        console.log(`   📋 ЛИСТ ${i+1} - Детали ДО экспорта:`);
+        console.log(`   ═══════════════════════════`);
+        s.nestedParts.forEach((n, idx) => {
+            const part = allPartDefs[n.partId];
+            const pn = part?.name ? transliterate(part.name) : `D${n.partId}`;
+            console.log(`      #${idx+1} ${pn}: x=${n.x}, y=${n.y}, baseHeight=${n.baseHeight||'?'}, rotation=${n.rotation||0}, angle=${n.angle||'?'}`);
+        });
+        
         Object.keys(pbt).forEach(pid => {
             const part = allPartDefs[pid];
             const count = pbt[pid].length;
@@ -398,11 +407,19 @@ function exportAllSheetsToDXF(allSheets) {
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
 
-            // Text with part name - инвертируем Y для DXF
+            // Text with part name
             const fn = pbt[pid][0];
-            const firstObj = part.objects[0];
-            const isDxfImported = firstObj && firstObj._dxfImported;
-            console.log(`      ✅ #${pid} "${pn}": ${count} шт., dxfImported=${isDxfImported}`);
+            if (fn) {
+                const dxfTextY = localSheetSize.height - fn.y + margin - 15;
+                dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",dxfTextY,"40","8","1",pn);
+            }
+
+            console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
+            
+            console.log(`   ═══════════════════════════`);
+            console.log(`   📋 ЛИСТ ${i+1} - Детали ПОСЛЕ экспорта (DXF координаты):`);
+            console.log(`   ═══════════════════════════`);
+            
             pbt[pid].forEach(nested => {
                 exportNestedPartToDXF(dxf, part, nested, ln, margin, 0, localSheetSize.height);
             });
@@ -572,7 +589,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
     // ═══════════════════════════════════════════════════════════
     // ИНВЕРСИЯ Y ДЛЯ DXF
     // Canvas: Y растёт вниз (0 вверху), DXF: Y растёт вверх (0 внизу)
-    // Всегда инвертируем Y для правильной ориентации в DXF
+    // Инвертируем и позицию детали, и координаты всех объектов внутри
     // ═══════════════════════════════════════════════════════════
     const angleDeg = (angle * 180 / Math.PI).toFixed(1);
     
@@ -580,7 +597,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
     const firstObj = part.objects[0];
     const isDxfImported = firstObj && firstObj._dxfImported;
     
-    // ВСЕГДА инвертируем Y: Canvas Y растёт вниз, DXF Y растёт вверх
+    // Инвертируем позицию детали
     const nestedY_DXF = sheetHeight - nested.y - baseHeight;
     
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), dxfImported=${isDxfImported}, angle=${angleDeg}°, baseHeight=${baseHeight}, sheetHeight=${sheetHeight}`);
@@ -594,13 +611,13 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
         if (obj.type === 'line') {
             let p1 = rotate(obj.x1 - normOffsetX, obj.y1 - normOffsetY);
             let p2 = rotate(obj.x2 - normOffsetX, obj.y2 - normOffsetY);
-            // Применяем нормализацию (refPoint) и позицию на листе (nested.x, nestedY_DXF для DXF)
-            p1 = { x: p1.x - refPoint.x + nested.x + margin, y: p1.y - refPoint.y + nestedY_DXF + offsetY + margin };
-            p2 = { x: p2.x - refPoint.x + nested.x + margin, y: p2.y - refPoint.y + nestedY_DXF + offsetY + margin };
+            // Инвертируем Y для объектов: sheetHeight - objY
+            p1 = { x: p1.x - refPoint.x + nested.x + margin, y: sheetHeight - (p1.y - refPoint.y) + nestedY_DXF + offsetY + margin };
+            p2 = { x: p2.x - refPoint.x + nested.x + margin, y: sheetHeight - (p2.y - refPoint.y) + nestedY_DXF + offsetY + margin };
             dxf.push("0","LINE","8",layerName,"10",p1.x,"20",p1.y,"11",p2.x,"21",p2.y);
         } else if (obj.type === 'circle') {
             let c = rotate(obj.cx - normOffsetX, obj.cy - normOffsetY);
-            c = { x: c.x - refPoint.x + nested.x + margin, y: c.y - refPoint.y + nestedY_DXF + offsetY + margin };
+            c = { x: c.x - refPoint.x + nested.x + margin, y: sheetHeight - (c.y - refPoint.y) + nestedY_DXF + offsetY + margin };
             dxf.push("0","CIRCLE","8",layerName,"10",c.x,"20",c.y,"40",obj.radius);
         } else if (obj.type === 'rect') {
             const corners = [
@@ -613,7 +630,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
                 let r = rotate(c.x, c.y);
                 return {
                     x: r.x - refPoint.x + nested.x + margin,
-                    y: r.y - refPoint.y + nestedY_DXF + offsetY + margin
+                    y: sheetHeight - (r.y - refPoint.y) + nestedY_DXF + offsetY + margin
                 };
             });
             dxf.push("0","LWPOLYLINE","8",layerName,"90",pts.length,"70","1");
@@ -626,7 +643,7 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
                 let r = rotate(x, y);
                 pts.push({
                     x: r.x - refPoint.x + nested.x + margin,
-                    y: r.y - refPoint.y + nestedY_DXF + offsetY + margin
+                    y: sheetHeight - (r.y - refPoint.y) + nestedY_DXF + offsetY + margin
                 });
             }
             dxf.push("0","LWPOLYLINE","8",layerName,"90",pts.length,"70","1");

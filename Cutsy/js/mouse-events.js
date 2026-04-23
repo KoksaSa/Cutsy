@@ -274,9 +274,23 @@ canvas.addEventListener('mousedown', (e) => {
 
                 const nested = nestedParts[foundIndex];
                 
-                // ═══════════════════════════════════════════════════════════
-                // РЕЖИМ ДИАГОНАЛЬНОГО ПАТТЕРНА (Fusion 360 style)
-                // ═══════════════════════════════════════════════════════════
+                // ═══════════════════════════════════════════════════════
+                // ЛОГИРОВАНИЕ: номер детали на листе и DXF координаты
+                // ═══════════════════════════════════════════════════════
+                const partNumber = foundIndex + 1;
+                const sheetHeight = sheetSize.height || 2500;
+                const baseHeight = nested.baseHeight || nested.height || 100;
+                const dxfY = sheetHeight - nested.y - baseHeight;
+                
+                console.log(`\n🎯 [КЛИК ПО ДЕТАЛИ]`);
+                console.log(`   📍 Номер на листе: #${partNumber} из ${nestedParts.length}`);
+                console.log(`   📋 Позиция на листе: x=${nested.x.toFixed(1)}, y=${nested.y.toFixed(1)}`);
+                console.log(`   📐 Размер: ${nested.width.toFixed(1)} × ${baseHeight.toFixed(1)}`);
+                console.log(`   📄 DXF координаты: x=${nested.x.toFixed(1)}, y=${dxfY.toFixed(1)}`);
+                console.log(`   🔄 Поворот: rotation=${nested.rotation||0}, angle=${nested.angle ? nested.angle.toFixed(2) + '°' : '0°'}`);
+                console.log(`   🔧 baseHeight: ${baseHeight.toFixed(2)}, sheetHeight: ${sheetHeight}`);
+                console.log('');
+                
                 if (window.diagonalLayoutEnabled) {
                     console.log('📐 Режим диагональной раскладки активирован');
                     window.diagonalPatternSource = nested;
