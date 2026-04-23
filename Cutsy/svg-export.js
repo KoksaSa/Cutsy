@@ -398,17 +398,12 @@ function exportAllSheetsToDXF(allSheets) {
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
 
-        // Text with part name - инвертируем Y для DXF
+            // Text with part name - инвертируем Y для DXF
             const fn = pbt[pid][0];
-            if (fn) {
-                const dxfTextY = localSheetSize.height - fn.y + margin - 15;
-                console.log(`      📍 Текст #${pid}: fn.y=${fn.y}, sheetHeight=${localSheetSize.height}, dxfTextY=${dxfTextY}`);
-                dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",dxfTextY,"40","8","1",pn);
-            }
-
-            console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
+            const firstObj = part.objects[0];
+            const isDxfImported = firstObj && firstObj._dxfImported;
+            console.log(`      ✅ #${pid} "${pn}": ${count} шт., dxfImported=${isDxfImported}`);
             pbt[pid].forEach(nested => {
-                console.log(`         🔧 Деталь: x=${nested.x}, y=${nested.y}, baseHeight=${nested.baseHeight}, sheetHeight=${localSheetSize.height}, nestedY_DXF=${localSheetSize.height - nested.y - (nested.baseHeight || 0)}`);
                 exportNestedPartToDXF(dxf, part, nested, ln, margin, 0, localSheetSize.height);
             });
         });
@@ -574,18 +569,21 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
         }
     }
 
-// ═══════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     // ИНВЕРСИЯ Y ДЛЯ DXF
     // Canvas: Y растёт вниз (0 вверху), DXF: Y растёт вверх (0 внизу)
-    // Инвертируем координаты Y деталей относительно высоты листа
     // ИМПОРТИРОВАННЫЕ ИЗ DXF детали уже инвертированы при импорте
     // ═══════════════════════════════════════════════════════════
-    const needsYInversion = !part.objects.some(obj => obj._dxfImported);
+    const angleDeg = (angle * 180 / Math.PI).toFixed(1);
+    
+    // Проверяем, были ли детали импортированы из DXF
+    const firstObj = part.objects[0];
+    const needsYInversion = !(firstObj && firstObj._dxfImported);
+    
+    // Инверсия Y: для нарисованных деталей инвертируем, для импортированных - нет
     const nestedY_DXF = needsYInversion ? (sheetHeight - nested.y - baseHeight) : nested.y;
     
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), needsInversion=${needsYInversion}, angle=${angleDeg}°`);
-    
-    const angleDeg = (angle * 180 / Math.PI).toFixed(1);
     const hasRefPoint = !!nested.refPoint;
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), angle=${angleDeg}°, refPoint=${hasRefPoint?'сохранён':'вычислен'} (${refPoint.x.toFixed(0)},${refPoint.y.toFixed(0)}), size=${baseWidth}×${baseHeight}, объектов=${part.objects.length}`);
     console.log(`      Объекты:`, part.objects.map(o => o.type).join(', '));
