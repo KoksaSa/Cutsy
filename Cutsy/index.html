@@ -4487,7 +4487,7 @@ if (selectedObjects.length === 0) {
 
         // Обработчик загрузки файла (УДАЛЁН - теперь в dxf-import.js)
         
-        // Генерация SVG-миниатюры детали
+// Генерация SVG-миниатюры детали
         function generatePartThumbnail(part, width, height) {
             if (!part || !part.objects || part.objects.length === 0) return '';
 
@@ -4499,12 +4499,18 @@ if (selectedObjects.length === 0) {
             const ox = (width - vw * scale) / 2;
             const oy = (height - vh * scale) / 2;
 
+            // ═══════════════════════════════════════════════════════
+            // Уникальный цвет для каждого типа детали
+            // Цвет вычисляется из part.id (хэш)
+            // ═══════════════════════════════════════════════════════
+            const colors = ['#4a90d9','#d94a4a','#4ad97a','#d9c44a','#9a4ad9','#4ad9c4','#d97a4a','#4a7ad9','#d94a9a','#7ad94a'];
+            const colorIndex = Math.abs(parseInt(part.id) % colors.length);
+            const stroke = colors[colorIndex];
+            const sw = 1.2;
+
             let svgContent = '';
 
             part.objects.forEach(obj => {
-                const stroke = '#1a1a1a';
-                const sw = 1.2;
-
                 if (obj.type === 'line') {
                     const x1 = ox + (obj.x1 - bounds.minX + pad) * scale;
                     const y1 = oy + (obj.y1 - bounds.minY + pad) * scale;
@@ -4532,8 +4538,14 @@ if (selectedObjects.length === 0) {
                 }
             });
 
-            return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border:1px solid #ccc;border-radius:3px;">${svgContent}</svg>`;
+return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border:1px solid #ccc;border-radius:3px;">${svgContent}</svg>`;
         }
+
+        // ═══════════════════════════════════════════════════════
+        // ВАЖНО: generatePartThumbnail использует те же цвета,
+        // что и generateSheetThumbnail (hash от part.id), поэтому
+        // миниатюры в таблице соответствуют цветам на листах
+        // ═══════════════════════════════════════════════════════
 
         // Экспорт в PDF (отчёт) — табличный формат с миниатюрами
         document.getElementById('exportPdf').addEventListener('click', () => {
@@ -4641,15 +4653,25 @@ if (selectedObjects.length === 0) {
                 const ox = (w - sw * scale) / 2;
                 const oy = 20 + (h - 20 - sh * scale) / 2;
 
-                let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" height="${(sh * scale).toFixed(1)}" fill="#f0f0f0" stroke="#999" stroke-width="1"/>`;
+let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" height="${(sh * scale).toFixed(1)}" fill="#f0f0f0" stroke="#999" stroke-width="1"/>`;
 
                 const colors = ['#4a90d9','#d94a4a','#4ad97a','#d9c44a','#9a4ad9','#4ad9c4','#d97a4a','#4a7ad9','#d94a9a','#7ad94a'];
                 const partColors = {};
 
+                // ═══════════════════════════════════════════════════════
+                // ВАЖНО: Цвет назначается по part.id (типу детали),
+                // а не по индексу в списке. Это гарантирует, что все
+                // детали одного типа имеют одинаковый цвет на всех листах.
+                // ═══════════════════════════════════════════════════════
                 sheet.nestedParts.forEach((nested, idx) => {
                     const part = parts.find(p => p.id === nested.partId);
                     if (!part) return;
-                    if (!partColors[part.id]) partColors[part.id] = colors[idx % colors.length];
+                    // Назначаем цвет по part.id, а не по индексу
+                    if (!partColors[part.id]) {
+                        // Используем hash от part.id для выбора цвета
+                        const colorIndex = Math.abs(parseInt(part.id) % colors.length);
+                        partColors[part.id] = colors[colorIndex];
+                    }
 
                     const strokeColor = partColors[part.id];
                     const strokeWidth = 0.8;
