@@ -4757,9 +4757,10 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
             let grandTotalSheets = 0;
             let grandTotalPlaced = 0;
 
-            let tableRows = '';
+let tableRows = '';
             let thSectionHTML = '';
             let sheetSummaryHTML = ''; // Сводка по каждому листу
+            let partDetailRows = '';   // Подетальная таблица
 
             Object.keys(reportByThickness).forEach(key => {
                 const group = reportByThickness[key];
@@ -4767,7 +4768,7 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                 grandTotalSheets += group.sheets.length;
                 grandTotalPlaced += group.totalPlaced;
 
-// ═══════════════════════════════════════════════════
+                // ═══════════════════════════════════════════════════
                 // Сначала считаем вес по всем деталям
                 // ═══════════════════════════════════════════════════
                 let groupTableRows = '';
@@ -4785,7 +4786,7 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                     group.totalWeight += totalW;
                     group.totalLength += totalL;
 
-const thumbSVG = generatePartThumbnail(part, 80, 60);
+                    const thumbSVG = generatePartThumbnail(part, 80, 60);
                     // ═══════════════════════════════════════════════
                     // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
                     // ═══════════════════════════════════════════════
@@ -4815,6 +4816,31 @@ const thumbSVG = generatePartThumbnail(part, 80, 60);
                             <td><b>${partTotalCost.toFixed(2)}</b></td>
                         </tr>
                     `;
+
+                    // ═══════════════════════════════════════════════
+                    // ПОДЕТАЛЬНАЯ ТАБЛИЦА: каждая размещённая деталь
+                    // ═══════════════════════════════════════════════
+                    const singleWeight = weight.toFixed(3);
+                    const singlePerimeter = perimeter;
+                    const singleCutLength = (singlePerimeter / 1000).toFixed(3);
+                    const singleCutCost = (singlePerimeter / 1000 * pricePerMeterCut).toFixed(2);
+                    const singleMetalCost = (weight * getPricePerKg(th)).toFixed(2);
+                    const singlePierceCost = pricePerPierceTh.toFixed(2);
+                    const singleTotalCost = (parseFloat(singleMetalCost) + parseFloat(singleCutCost) + parseFloat(singlePierceCost)).toFixed(2);
+                    const smallThumbSVG = generatePartThumbnail(part, 50, 40);
+                    
+                    for (let i = 0; i < count; i++) {
+                        partDetailRows += `
+                            <tr>
+                                <td class="thumb">${smallThumbSVG}</td>
+                                <td>${part.name || 'Деталь'}</td>
+                                <td>${singleWeight}</td>
+                                <td>${singleCutLength}</td>
+                                <td>1</td>
+                                <td><b>${singleTotalCost}</b></td>
+                            </tr>
+                        `;
+                    }
                 });
 
                 // ═══════════════════════════════════════════════════
@@ -5088,6 +5114,25 @@ sheetSummaryHTML += `
             ${tableRows}
         </tbody>
     </table>
+
+    ${partDetailRows ? `
+    <h2 class="section-title">📋 Подетальная таблица</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:60px;">Миниатюра</th>
+                <th>Название</th>
+                <th>Вес (кг)</th>
+                <th>Длина реза (м)</th>
+                <th>Проколов</th>
+                <th>Итого (₽)</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${partDetailRows}
+        </tbody>
+    </table>
+    ` : ''}
 
     ${unplacedParts.length > 0 ? `
     <h2 class="section-title" style="border-left-color:#c00;">⚠️ Не размещённые детали</h2>
