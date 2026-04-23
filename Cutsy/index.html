@@ -4757,6 +4757,144 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
             let grandTotalSheets = 0;
             let grandTotalPlaced = 0;
 
+            // ═══════════════════════════════════════════════════════════
+            // ФУНКЦИЯ: Подсчёт количества контуров в детали
+            // Группирует соединённые линии в замкнутые контуры
+            // ═══════════════════════════════════════════════════════════
+            function countPartContours(part) {
+                if (!part || !part.objects || part.objects.length === 0) return 1;
+                
+                const objects = part.objects;
+                
+                // Если есть только 1 объект (круг, прямоугольник) - 1 контур
+                if (objects.length === 1) {
+                    if (objects[0].type === 'circle' || objects[0].type === 'rect') {
+                        return 1;
+                    }
+                }
+                
+                // Если есть только круги и прямоугольники - считаем их количество
+                const circlesAndRects = objects.filter(obj => 
+                    obj.type === 'circle' || obj.type === 'rect'
+                );
+                if (circlesAndRects.length === objects.length) {
+                    return objects.length;
+                }
+                
+                // Для линий: группируем соединённые линии в контуры
+                const lines = objects.filter(obj => obj.type === 'line');
+                if (lines.length === 0) return 1;
+                
+                // Создаём граф соединений
+                const EPS = 0.001; // Допуск для сравнения координат
+                
+                function pointsMatch(p1, p2) {
+                    return Math.abs(p1.x - p2.x) < EPS && Math.abs(p1.y - p2.y) < EPS;
+                }
+                
+                // Для каждой линии создаём узлы начала и конца
+                const segments = lines.map((line, idx) => ({
+                    id: idx,
+                    p1: { x: line.x1, y: line.y1 },
+                    p2: { x: line.x2, y: line.y2 },
+                    visited: false
+                }));
+                
+                let contourCount = 0;
+                
+                // DFS для поиска замкнутых контуров
+                function findContour(startIdx) {
+                    const stack = [{ idx: startIdx, path: [startIdx] }];
+                    const visitedInContour = new Set([startIdx]);
+                    
+                    while (stack.length > 0) {
+                        const { idx, path } = stack.pop();
+                        const currentSeg = segments[idx];
+                        
+                        // Проверяем все возможные продолжения
+                        for (let i = 0; i < segments.length; i++) {
+                            if (visitedInContour.has(i)) continue;
+                            
+                            const nextSeg = segments[i];
+                            
+                            // Проверяем соединения: конец текущей с началом следующей
+                            const connects1 = pointsMatch(currentSeg.p2, nextSeg.p1) ||
+                                              pointsMatch(currentSeg.p2, nextSeg.p2);
+                            const connects2 = pointsMatch(currentSeg.p1, nextSeg.p1) ||
+                                              pointsMatch(currentSeg.p1, nextSeg.p2);
+                            
+                            if (connects1 || connects2) {
+                                const newPath = [...path, i];
+                                
+                                // Проверяем, замкнулся ли контур
+                                const endPt = connects1 ? nextSeg.p2 : 
+                                              pointsMatch(currentSeg.p1, nextSeg.p1) ? nextSeg.p2 : nextSeg.p1;
+                                
+                                if (pointsMatch(endPt, segments[startIdx].p1) && newPath.length >= 3) {
+                                    // Контур замкнулся
+                                    newPath.forEach(segIdx => segments[segIdx].visited = true);
+                                    return true;
+                                }
+                                
+                                visitedInContour.add(i);
+                                stack.push({ idx: i, path: newPath });
+                            }
+                        }
+                    }
+                    
+                    return false;
+                }
+
+                // Ищем все контуры
+                for (let i = 0; i < segments.length; i++) {
+                    if (!segments[i].visited) {
+                        if (findContour(i)) {
+                            contourCount++;
+                        }
+                    }
+                }
+                
+                // Если не нашлось замкнутых контуров, считаем группы связанных линий
+                if (contourCount === 0) {
+                    const visited = new Set();
+                    
+                    function findGroup(startIdx) {
+                        const stack = [startIdx];
+                        
+                        while (stack.length > 0) {
+                            const idx = stack.pop();
+                            if (visited.has(idx)) continue;
+                            visited.add(idx);
+                            
+                            const currentSeg = segments[idx];
+                            
+                            for (let i = 0; i < segments.length; i++) {
+                                if (visited.has(i)) continue;
+                                
+                                const nextSeg = segments[i];
+                                const connects = pointsMatch(currentSeg.p1, nextSeg.p1) ||
+                                                pointsMatch(currentSeg.p1, nextSeg.p2) ||
+                                                pointsMatch(currentSeg.p2, nextSeg.p1) ||
+                                                pointsMatch(currentSeg.p2, nextSeg.p2);
+                                
+                                if (connects) {
+                                    stack.push(i);
+                                }
+                            }
+                        }
+                    }
+                    
+                    for (let i = 0; i < segments.length; i++) {
+                        if (!visited.has(i)) {
+                            findGroup(i);
+                            contourCount++;
+                        }
+                    }
+                }
+                
+                return Math.max(1, contourCount);
+            }
+
 let tableRows = '';
             let thSectionHTML = '';
             let sheetSummaryHTML = ''; // Сводка по каждому листу
@@ -4827,9 +4965,9 @@ let tableRows = '';
                     const singleMetalCostPart = weight * getPricePerKg(th);
                     
                     // ═══════════════════════════════════════════════
-                    // ТОЧНЫЙ РАСЧЁТ ПРОКОЛОВ: 1 прокол на каждый контур
+                    // ТОЧНЫЙ РАСЧЁТ ПРОКОЛОВ: группируем линии в контуры
                     // ═══════════════════════════════════════════════
-                    const pierceCountPerPart = part.objects ? part.objects.length : 1;
+                    const pierceCountPerPart = countPartContours(part);
                     const singlePierceCostPart = pierceCountPerPart * pricePerPierceTh;
                     const singleTotalCostPart = singleMetalCostPart + singleCutCostPart + singlePierceCostPart;
                     const smallThumbSVG = generatePartThumbnail(part, 50, 40);
