@@ -586,10 +586,11 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
     // ИНВЕРСИЯ Y ДЛЯ DXF
     // Canvas: Y растёт вниз (0 вверху), DXF: Y растёт вверх (0 внизу)
-    // Инвертируем и позицию детали, и координаты всех объектов внутри
+    // ВСЕ детали в памяти хранятся в Canvas системе (Y вниз)
+    // Поэтому нужно инвертировать Y для всех деталей при экспорте
     // ═══════════════════════════════════════════════════════════
     const angleDeg = (angle * 180 / Math.PI).toFixed(1);
     
@@ -597,8 +598,10 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
     const firstObj = part.objects[0];
     const isDxfImported = firstObj && firstObj._dxfImported;
     
-    // Инвертируем позицию детали
-    const nestedY_DXF = sheetHeight - nested.y - baseHeight;
+// ИНВЕРСИЯ Y ДЛЯ ВСЕХ ДЕТАЛЕЙ (Canvas → DXF)
+    // nested.y - это позиция refPoint детали на листе Canvas (от верха)
+    // В DXF: Y растёт снизу, поэтому инвертируем
+    const nestedY_DXF = sheetHeight - nested.y;
     
     console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), dxfImported=${isDxfImported}, angle=${angleDeg}°, baseHeight=${baseHeight}, sheetHeight=${sheetHeight}`);
     const hasRefPoint = !!nested.refPoint;
@@ -611,10 +614,13 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, sheetHeight
         if (obj.type === 'line') {
             let p1 = rotate(obj.x1 - normOffsetX, obj.y1 - normOffsetY);
             let p2 = rotate(obj.x2 - normOffsetX, obj.y2 - normOffsetY);
-            // Y объекта: (objY - refPointY) + позиция детали на листе (nestedY_DXF)
-            // Инверсия уже учтена в nestedY_DXF
-            const y1_DXF = (p1.y - refPoint.y) + nestedY_DXF;
-            const y2_DXF = (p2.y - refPoint.y) + nestedY_DXF;
+// Y объекта: позиция детали на листе (nestedY_DXF) + локальный Y объекта
+            // refPoint - нижняя точка (минимальная Y после вращения)
+            // В Canvas: объекты выше refPoint имеют МЕНЬШИЙ Y
+            // В DXF: объекты выше refPoint имеют БОЛЬШИЙ Y
+            // Поэтому: y_DXF = nestedY_DXF - (objY_local - refPoint.y)
+            const y1_DXF = nestedY_DXF - (p1.y - refPoint.y);
+            const y2_DXF = nestedY_DXF - (p2.y - refPoint.y);
             p1 = { x: p1.x - refPoint.x + nested.x + margin, y: y1_DXF + margin };
             p2 = { x: p2.x - refPoint.x + nested.x + margin, y: y2_DXF + margin };
             dxf.push("0","LINE","8",layerName,"10",p1.x,"20",p1.y,"11",p2.x,"21",p2.y);
