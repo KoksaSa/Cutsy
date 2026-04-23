@@ -4828,13 +4828,14 @@ const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * s
                 // ═══════════════════════════════════════════════════
                 // ФОРМИРОВАНИЕ HTML СЕКЦИИ (без миниатюр)
                 // ═══════════════════════════════════════════════════
-                thSectionHTML += `
+thSectionHTML += `
                     <h2 class="section-title">🔩 Толщина: ${th} мм</h2>
                     <div class="summary th-summary">
                         <div class="summary-grid">
                             <div class="summary-item"><div class="label">Листов</div><div class="value">${group.sheets.length}</div></div>
                             <div class="summary-item"><div class="label">Размещено</div><div class="value">${group.totalPlaced} шт</div></div>
                             <div class="summary-item"><div class="label">Вес деталей</div><div class="value">${group.totalWeight.toFixed(3)} кг</div></div>
+                            <div class="summary-item"><div class="label">Цена металла</div><div class="value">${getPricePerKg(th).toFixed(2)} ₽/кг</div></div>
                             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(group.totalLength / 1000).toFixed(2)} м</div></div>
                             <div class="summary-item"><div class="label">Проколов</div><div class="value">${groupPierceCount} шт × ${pricingSettings.pricePerPierce} ₽</div></div>
                             <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${groupCost.toFixed(2)} ₽</div></div>
