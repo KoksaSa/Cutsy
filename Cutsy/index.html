@@ -4767,7 +4767,7 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                 grandTotalSheets += group.sheets.length;
                 grandTotalPlaced += group.totalPlaced;
 
-                // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
                 // Сначала считаем вес по всем деталям
                 // ═══════════════════════════════════════════════════
                 let groupTableRows = '';
@@ -4785,10 +4785,20 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                     group.totalWeight += totalW;
                     group.totalLength += totalL;
 
-                    const thumbSVG = generatePartThumbnail(part, 80, 60);
-                    const partPierceCost = count * pricingSettings.pricePerPierce;
+const thumbSVG = generatePartThumbnail(part, 80, 60);
+                    // ═══════════════════════════════════════════════
+                    // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
+                    // ═══════════════════════════════════════════════
+                    const pricePerPierceTh = getPricePerPierceByTh(th);
+                    // ═══════════════════════════════════════════════
+                    // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
+                    // ═══════════════════════════════════════════════
+                    const pricePerMeterCut = getPricePerMeterCut(th);
+                    const partCutCost = (totalL / 1000) * pricePerMeterCut;
+                    
+                    const partPierceCost = count * pricePerPierceTh;
                     const partMetalCost = totalW * getPricePerKg(th);
-                    const partTotalCost = partMetalCost + partPierceCost;
+                    const partTotalCost = partMetalCost + partPierceCost + partCutCost;
 
                     groupTableRows += `
                         <tr>
@@ -4799,6 +4809,7 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                             <td>${count}</td>
                             <td>${totalW.toFixed(3)}</td>
                             <td>${(totalL / 1000).toFixed(3)}</td>
+                            <td>${partCutCost.toFixed(2)}</td>
                             <td>${partMetalCost.toFixed(2)}</td>
                             <td>${partPierceCost.toFixed(2)}</td>
                             <td><b>${partTotalCost.toFixed(2)}</b></td>
@@ -4815,13 +4826,23 @@ const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * s
                     return ss + (p ? p.bounds.width * p.bounds.height : 0);
                 }, 0), 0);
                 const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea); // Защита от отрицательного значения
-                const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
+const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
                 const groupCost = group.totalWeight * getPricePerKg(th);
+                // ═══════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
+                // ═══════════════════════════════════════════════
+                const pricePerMeterCut = getPricePerMeterCut(th);
+                const groupCutCost = (group.totalLength / 1000) * pricePerMeterCut;
+                
                 const groupPierceCount = group.totalPlaced; // 1 прокол на каждую размещённую деталь
-                const groupPierceCost = groupPierceCount * pricingSettings.pricePerPierce;
+                // ═══════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
+                // ═══════════════════════════════════════════════
+                const pricePerPierceTh = getPricePerPierceByTh(th);
+                const groupPierceCost = groupPierceCount * pricePerPierceTh;
                 const groupNestingTime = group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
                 const groupTimeCost = (groupNestingTime / 3600) * pricingSettings.pricePerHour;
-                const groupTotalCost = groupCost + groupPierceCost + groupTimeCost;
+                const groupTotalCost = groupCost + groupCutCost + groupPierceCost + groupTimeCost;
                 const groupEfficiency = group.totalWeight + groupRemnantWeight > 0
                     ? (group.totalWeight / (group.totalWeight + groupRemnantWeight) * 100).toFixed(1) : '0.0';
 
@@ -4837,8 +4858,10 @@ thSectionHTML += `
                             <div class="summary-item"><div class="label">Вес деталей</div><div class="value">${group.totalWeight.toFixed(3)} кг</div></div>
                             <div class="summary-item"><div class="label">Цена металла</div><div class="value">${getPricePerKg(th).toFixed(2)} ₽/кг</div></div>
                             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(group.totalLength / 1000).toFixed(2)} м</div></div>
-                            <div class="summary-item"><div class="label">Проколов</div><div class="value">${groupPierceCount} шт × ${pricingSettings.pricePerPierce} ₽</div></div>
+                            <div class="summary-item"><div class="label">Цена реза</div><div class="value">${pricePerMeterCut.toFixed(2)} ₽/м</div></div>
+                            <div class="summary-item"><div class="label">Проколов</div><div class="value">${groupPierceCount} шт × ${pricePerPierceTh.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${groupCost.toFixed(2)} ₽</div></div>
+                            <div class="summary-item"><div class="label">Стоимость реза</div><div class="value">${groupCutCost.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Стоимость проколов</div><div class="value">${groupPierceCost.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Время раскладки</div><div class="value">${groupNestingTime > 0 ? groupNestingTime.toFixed(0) + ' сек' : '—'}</div></div>
                             <div class="summary-item"><div class="label">Стоимость времени</div><div class="value">${groupTimeCost > 0 ? groupTimeCost.toFixed(2) + ' ₽' : '—'}</div></div>
@@ -4879,10 +4902,20 @@ thSectionHTML += `
                     sheetWeight += w;
                 });
 
-                const sheetCost = sheetWeight * getPricePerKg(sheetTh);
-                const sheetPierceCost = sheetPartCount * pricingSettings.pricePerPierce;
+const sheetCost = sheetWeight * getPricePerKg(sheetTh);
+                // ═══════════════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
+                // ═══════════════════════════════════════════════════════
+                const pricePerMeterCut = getPricePerMeterCut(sheetTh);
+                const sheetCutCost = (sheetCuttingLength / 1000) * pricePerMeterCut;
+                
+                // ═══════════════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
+                // ═══════════════════════════════════════════════════════
+                const pricePerPierceTh = getPricePerPierceByTh(sheetTh);
+                const sheetPierceCost = sheetPartCount * pricePerPierceTh;
                 const sheetTimeCost = ((sheet.nestingTime || 0) / 3600) * pricingSettings.pricePerHour;
-const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
+const sheetTotalCost = sheetCost + sheetCutCost + sheetPierceCost + sheetTimeCost;
                 // ═══════════════════════════════════════════════════════
                 // ВАЖНО: Остаток считаем как площадь листа минус СУММА
                 // площадей bounding box всех размещённых деталей.
@@ -4900,7 +4933,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
 
                 const sheetThumb = generateSheetThumbnail(sheet, 0); // index не важен, заголовок переопределим
 
-                sheetSummaryHTML += `
+sheetSummaryHTML += `
                     <div class="sheet-report-card">
                         <div class="sheet-report-header">
                             <div class="sheet-report-thumb">${sheetThumb}</div>
@@ -4909,6 +4942,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
                                 <div class="sheet-report-stats">
                                     <div class="stat"><span class="stat-label">Деталей</span><span class="stat-value">${sheetPartCount} шт</span></div>
                                     <div class="stat"><span class="stat-label">Длина реза</span><span class="stat-value">${(sheetCuttingLength / 1000).toFixed(3)} м</span></div>
+                                    <div class="stat"><span class="stat-label">Рез</span><span class="stat-value">${sheetCutCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Металл</span><span class="stat-value">${sheetCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Проколы</span><span class="stat-value">${sheetPierceCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Время</span><span class="stat-value">${sheet.nestingTime ? sheet.nestingTime.toFixed(0) + ' сек' : '—'}</span></div>
@@ -4922,15 +4956,25 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
                 globalSheetIndex++;
             });
 
-            // Итоговая стоимость — считаем по каждой толщине отдельно
+// Итоговая стоимость — считаем по каждой толщине отдельно
             let grandTotalMetalCost = 0;
+            let grandTotalCutCost = 0;
             let grandTotalPierceCost = 0;
             let grandTotalTimeCost = 0;
             let grandTotalNestingTime = 0;
             Object.keys(reportByThickness).forEach(key => {
                 const g = reportByThickness[key];
                 grandTotalMetalCost += g.totalWeight * getPricePerKg(g.thickness);
-                grandTotalPierceCost += g.totalPlaced * pricingSettings.pricePerPierce;
+                // ═══════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: цена за прокол по толщине
+                // ═══════════════════════════════════════════════
+                const pricePerPierceTh = getPricePerPierceByTh(g.thickness);
+                grandTotalPierceCost += g.totalPlaced * pricePerPierceTh;
+                // ═══════════════════════════════════════════════
+                // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
+                // ═══════════════════════════════════════════════
+                const pricePerMeterCut = getPricePerMeterCut(g.thickness);
+                grandTotalCutCost += (g.totalLength / 1000) * pricePerMeterCut;
                 grandTotalNestingTime += g.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
             });
 
@@ -4938,7 +4982,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
             const stopwatchTime = (typeof window.getStopwatchTime === 'function') ? window.getStopwatchTime() : 0;
             const workTimeSeconds = stopwatchTime > 0 ? stopwatchTime : grandTotalNestingTime;
             grandTotalTimeCost = (workTimeSeconds / 3600) * pricingSettings.pricePerHour;
-            const grandTotalCost = grandTotalMetalCost + grandTotalPierceCost + grandTotalTimeCost;
+            const grandTotalCost = grandTotalMetalCost + grandTotalCutCost + grandTotalPierceCost + grandTotalTimeCost;
             const remnantCost = remnantWeight * getPricePerKg(avgTh);
 
             // Форматирование времени для отчёта
@@ -5034,6 +5078,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
                 <th>Кол-во</th>
                 <th>Вес (кг)</th>
                 <th>Рез (м)</th>
+                <th>Рез (₽)</th>
                 <th>Металл (₽)</th>
                 <th>Проколы (₽)</th>
                 <th>Итого (₽)</th>
@@ -5068,7 +5113,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
     ${sheetSummaryHTML}
     ` : ''}
 
-    <div class="summary" style="margin-top: 24px;">
+<div class="summary" style="margin-top: 24px;">
         <h3>Общая сводка</h3>
         <div class="summary-grid">
             <div class="summary-item"><div class="label">Листов</div><div class="value">${grandTotalSheets}</div></div>
@@ -5076,6 +5121,7 @@ const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
             <div class="summary-item"><div class="label">Не размещено</div><div class="value">${unplacedParts.reduce((s, u) => s + u.notPlaced, 0)} шт</div></div>
             <div class="summary-item"><div class="label">Общий вес</div><div class="value">${grandTotalWeight.toFixed(3)} кг</div></div>
             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(grandTotalLength / 1000).toFixed(2)} м</div></div>
+            <div class="summary-item"><div class="label">Стоимость реза</div><div class="value">${grandTotalCutCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${grandTotalMetalCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Стоимость проколов</div><div class="value">${grandTotalPierceCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Время работы</div><div class="value">${workTimeSeconds > 0 ? formatTime(workTimeSeconds) : '—'}</div></div>
@@ -6782,26 +6828,51 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             }, 100);
         });
 
-        // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
         // МОДАЛЬНОЕ ОКНО «УСТАНОВИТЬ ЦЕНЫ»
         // ═══════════════════════════════════════════════════════════════
 
-        // Загрузка сохранённых цен
+        // Загрузка настроек цен с новыми полями
         function loadPricingSettings() {
-            try {
-                const saved = JSON.parse(localStorage.getItem('cadPricingSettings') || '{}');
+            const saved = localStorage.getItem('cadPricingSettings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Добавляем новые поля если их нет
                 return {
-                    pricePerKg: saved.pricePerKg || {},       // { "0.8": 210, "1.0": 190, ... }
-                    pricePerPierce: saved.pricePerPierce || 5,
-                    pricePerHour: saved.pricePerHour || 0
+                    pricePerKg: parsed.pricePerKg || {},
+                    pricePerPierce: parsed.pricePerPierce !== undefined ? parsed.pricePerPierce : 2,
+                    pricePerHour: parsed.pricePerHour !== undefined ? parsed.pricePerHour : 1,
+                    pricePerMeterCut: parsed.pricePerMeterCut || {},  // Цена за метр реза по толщине
+                    pricePerPierceByTh: parsed.pricePerPierceByTh || {}  // Цена за прокол по толщине
                 };
-            } catch { return { pricePerKg: {}, pricePerPierce: 5, pricePerHour: 0 }; }
+            }
+            return {
+                pricePerKg: {},
+                pricePerPierce: 2,
+                pricePerHour: 1,
+                pricePerMeterCut: {},
+                pricePerPierceByTh: {}
+            };
         }
 
         // Сохранение цен
         function savePricingSettings(settings) {
             localStorage.setItem('cadPricingSettings', JSON.stringify(settings));
         }
+
+        // Глобальная функция для получения цены за метр реза
+        window.getPricePerMeterCut = function(thickness) {
+            const pricing = loadPricingSettings();
+            const thKey = thickness.toFixed(1);
+            return pricing.pricePerMeterCut[thKey] || pricing.pricePerMeterCut[thickness] || 0;
+        };
+
+        // Глобальная функция для получения цены за прокол по толщине
+        window.getPricePerPierceByTh = function(thickness) {
+            const pricing = loadPricingSettings();
+            const thKey = thickness.toFixed(1);
+            return pricing.pricePerPierceByTh[thKey] || pricing.pricePerPierceByTh[thickness] || pricing.pricePerPierce || 0;
+        };
 
         document.getElementById('setPricesBtn').addEventListener('click', () => {
             // Удаляем старое окно если есть
@@ -6821,14 +6892,18 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             }
             const finalThicknesses = sortedTh.length > 0 ? sortedTh : Array.from(thicknesses).sort((a, b) => parseFloat(a) - parseFloat(b));
 
-            // Формируем HTML для полей цен за кг по толщинам
+            // Формируем HTML для полей цен по толщинам
             let thicknessRows = '';
             finalThicknesses.forEach(th => {
-                const price = pricing.pricePerKg[th] || pricing.pricePerKg[parseFloat(th)] || '';
+                const priceKg = pricing.pricePerKg[th] || pricing.pricePerKg[parseFloat(th)] || '';
+                const priceCut = pricing.pricePerMeterCut[th] || pricing.pricePerMeterCut[parseFloat(th)] || '';
+                const pricePierce = pricing.pricePerPierceByTh[th] || pricing.pricePerPierceByTh[parseFloat(th)] || '';
                 thicknessRows += `
                     <tr>
                         <td style="padding:3px 10px;font-weight:600;font-size:12px;">${th} мм</td>
-                        <td style="padding:3px;"><input type="number" class="price-per-kg" data-thickness="${th}" value="${price}" min="0" step="1" placeholder="₽/кг" style="width:100px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-kg" data-thickness="${th}" value="${priceKg}" min="0" step="1" placeholder="₽/кг" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за кг"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-meter-cut" data-thickness="${th}" value="${priceCut}" min="0" step="0.5" placeholder="₽/м" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за метр реза"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-pierce-th" data-thickness="${th}" value="${pricePierce}" min="0" step="0.5" placeholder="₽/шт" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за прокол"></td>
                     </tr>
                 `;
             });
@@ -6837,23 +6912,29 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             overlay.id = 'pricingModal';
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
-                <div class="modal-window" style="max-width:420px;width:90%;">
+                <div class="modal-window" style="max-width:520px;width:95%;">
                     <div class="modal-header">
                         <h3>💰 Установить цены</h3>
                         <button class="modal-close" id="closePricingModal">×</button>
                     </div>
                     <div class="modal-content" style="max-height:60vh;overflow-y:auto;padding:12px 16px;">
-                        <h4 style="margin:0 0 4px 0;color:#007acc;font-size:12px;">🔩 Цена за кг по толщине</h4>
-                        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+                        <h4 style="margin:0 0 8px 0;color:#007acc;font-size:12px;">🔩 Цены по толщине металла</h4>
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px;">
+                            <thead>
+                                <tr style="background:#2a2a2a;">
+                                    <th style="padding:6px 10px;text-align:left;color:#fff;font-size:11px;">Толщина</th>
+                                    <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">💰 Цена за кг</th>
+                                    <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">✂️ Рез (₽/м)</th>
+                                    <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">⚡ Прокол (₽)</th>
+                                </tr>
+                            </thead>
                             ${thicknessRows}
                         </table>
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                            <label style="color:#aaa;font-size:12px;white-space:nowrap;">⚡ Прокол:</label>
-                            <input type="number" id="pricePerPierceInput" value="${pricing.pricePerPierce}" min="0" step="0.5" placeholder="₽/шт" style="width:90px;padding:5px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
-                            <span style="color:#888;font-size:11px;">₽/шт</span>
-                            <label style="color:#aaa;font-size:12px;white-space:nowrap;margin-left:8px;">⏱️ Время:</label>
-                            <input type="number" id="pricePerHourInput" value="${pricing.pricePerHour}" min="0" step="10" placeholder="₽/час" style="width:90px;padding:5px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #333;">
+                            <label style="color:#aaa;font-size:12px;white-space:nowrap;">⏱️ Время работы:</label>
+                            <input type="number" id="pricePerHourInput" value="${pricing.pricePerHour}" min="0" step="10" placeholder="₽/час" style="width:100px;padding:5px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
                             <span style="color:#888;font-size:11px;">₽/час</span>
+                            <span style="color:#666;font-size:11px;margin-left:8px;">(для расчёта стоимости раскладки)</span>
                         </div>
                     </div>
                     <div class="modal-footer" style="display:flex;gap:6px;justify-content:flex-end;padding:8px 16px;border-top:1px solid #333;">
@@ -6873,15 +6954,32 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             // Сохранение
             overlay.querySelector('#savePricing').addEventListener('click', () => {
                 const newPricePerKg = {};
+                const newPricePerMeterCut = {};
+                const newPricePerPierceByTh = {};
+                
                 overlay.querySelectorAll('.price-per-kg').forEach(input => {
                     const th = input.dataset.thickness;
                     const val = parseFloat(input.value);
                     if (val > 0) newPricePerKg[th] = val;
                 });
+                
+                overlay.querySelectorAll('.price-per-meter-cut').forEach(input => {
+                    const th = input.dataset.thickness;
+                    const val = parseFloat(input.value);
+                    if (val > 0) newPricePerMeterCut[th] = val;
+                });
+                
+                overlay.querySelectorAll('.price-per-pierce-th').forEach(input => {
+                    const th = input.dataset.thickness;
+                    const val = parseFloat(input.value);
+                    if (val > 0) newPricePerPierceByTh[th] = val;
+                });
 
                 const settings = {
                     pricePerKg: newPricePerKg,
-                    pricePerPierce: parseFloat(document.getElementById('pricePerPierceInput').value) || 0,
+                    pricePerMeterCut: newPricePerMeterCut,
+                    pricePerPierceByTh: newPricePerPierceByTh,
+                    pricePerPierce: parseFloat(document.getElementById('pricePerPierceInput')?.value) || 2,  // Для обратной совместимости
                     pricePerHour: parseFloat(document.getElementById('pricePerHourInput').value) || 0
                 };
 
@@ -6890,7 +6988,9 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
 
                 // Уведомление
                 const thCount = Object.keys(newPricePerKg).length;
-                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n⚡ Прокол: ${settings.pricePerPierce} ₽/шт\n⏱️ Время: ${settings.pricePerHour} ₽/час`);
+                const cutCount = Object.keys(newPricePerMeterCut).length;
+                const pierceCount = Object.keys(newPricePerPierceByTh).length;
+                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n✂️ Цена за метр реза: ${cutCount} толщин\n⚡ Прокол по толщине: ${pierceCount} толщин\n⏱️ Время: ${settings.pricePerHour} ₽/час`);
             });
 
             document.body.appendChild(overlay);
