@@ -1,0 +1,21 @@
+{
+  "name": "2d-cad-nesting",
+  "version": "1.0.0",
+  "description": "2D CAD приложение для создания чертежей с автоматической раскладкой деталей на листах",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "open": "start index.html"
+  },
+  "keywords": [
+    "cad",
+    "2d",
+    "nesting",
+    "dxf",
+    "svg",
+    "раскладка",
+    "чертежи"
+  ],
+  "author": "",
+  "license": "Non-Commercial",
+}

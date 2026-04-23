@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir *)",
+      "Bash(findstr *)",
+      "Bash(powershell *)",
+      "Bash(node *)",
+      "Bash(type *)",
+      "Bash(select-object *)",
+      "Bash(move *)",
+      "Bash(del *)",
+      "WebFetch(localhost)",
+      "Bash(taskkill *)",
+      "Bash(git init)",
+      "Bash(\"c:\\program files\\git\\cmd\\git.exe\" *)",
+      "Bash(cmd *)"
+    ]
+  },
+  "$version": 3
+}

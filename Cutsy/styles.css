@@ -1,0 +1,541 @@
+/* ═══════════════════════════════════════════════════════════════
+   2D CAD - СТИЛИ (CSS)
+   ═══════════════════════════════════════════════════════════════ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1e1e1e; color: #fff;
+    display: flex; height: 100vh; overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ПАНЕЛЬ ИНСТРУМЕНТОВ
+   ═══════════════════════════════════════════════════════════════ */
+.toolbar {
+    width: 280px; background: #252526; padding: 12px;
+    border-right: 1px solid #3c3c3c;
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+.toolbar h3 {
+    margin: 8px 0 10px 0; color: #007acc;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    padding-bottom: 6px; border-bottom: 1px solid #3c3c3c;
+}
+
+#partsList {
+    margin-top: 8px;
+    max-height: none;
+    min-height: 400px;
+    flex: 1;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   КНОПКИ ИНСТРУМЕНТОВ
+   ═══════════════════════════════════════════════════════════════ */
+.tool-btn {
+    width: 100%;
+    padding: 6px 4px;
+    background: #3c3c3c;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-align: center;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    min-height: 50px;
+}
+
+.tool-btn:hover { background: #4c4c4c; }
+.tool-btn.active { background: #007acc; }
+
+.tool-btn .icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-btn .icon line, .tool-btn .icon circle, .tool-btn .icon rect, .tool-btn .icon polygon {
+    stroke: #fff; fill: none; stroke-width: 2;
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   КНОПКИ ДЕЙСТВИЙ
+   ═══════════════════════════════════════════════════════════════ */
+.align-btn {
+    padding: 8px 12px; background: #2d5a2d; border: none;
+    color: #fff; cursor: pointer; border-radius: 4px;
+    transition: all 0.2s; font-size: 12px; margin-top: 5px; width: 100%;
+}
+
+.align-btn:hover { background: #3d7a3d; }
+.align-btn:disabled { background: #3a3a3a; cursor: not-allowed; opacity: 0.5; }
+
+.toggle-btn {
+    padding: 8px 12px; background: #5a4a2d; border: none;
+    color: #fff; cursor: pointer; border-radius: 4px;
+    transition: all 0.2s; font-size: 12px; margin-top: 5px; width: 100%;
+}
+
+.toggle-btn.active { background: #2d7a5a; }
+.toggle-btn:hover { background: #6a5a3d; }
+
+.undo-btn {
+    padding: 8px 12px; background: #5a5a2d; border: none;
+    color: #fff; cursor: pointer; border-radius: 4px;
+    transition: all 0.2s; font-size: 12px; margin-top: 5px; width: 100%;
+}
+
+.undo-btn:hover { background: #7a7a3d; }
+.undo-btn:disabled { background: #3a3a3a; cursor: not-allowed; opacity: 0.5; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ПАНЕЛЬ СВОЙСТВ
+   ═══════════════════════════════════════════════════════════════ */
+.properties-panel {
+    width: 220px; background: #252526; padding: 15px;
+    border-left: 1px solid #3c3c3c;
+    display: flex; flex-direction: column; gap: 15px;
+}
+
+.properties-panel h3 {
+    color: #007acc; font-size: 14px;
+    margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
+}
+
+.prop-group { display: flex; flex-direction: column; gap: 8px; }
+.prop-group label { font-size: 12px; color: #aaa; }
+
+.prop-group input {
+    padding: 8px; background: #3c3c3c; border: 1px solid #555;
+    color: #fff; border-radius: 4px; font-size: 13px;
+}
+
+.prop-group input:focus { outline: none; border-color: #007acc; }
+
+.action-btn {
+    padding: 10px 15px; background: #007acc; border: none;
+    color: #fff; cursor: pointer; border-radius: 4px;
+    transition: background 0.2s; font-size: 13px; width: 100%;
+}
+
+.action-btn:hover { background: #005a9e; }
+.action-btn.danger { background: #c72e2e; }
+.action-btn.danger:hover { background: #a02525; }
+.action-btn.success { background: #2d7d2d; }
+.action-btn.success:hover { background: #3d9d3d; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ОСНОВНАЯ ОБЛАСТЬ
+   ═══════════════════════════════════════════════════════════════ */
+.main-area { flex: 1; display: flex; flex-direction: column; }
+
+.canvas-container {
+    flex: 1; position: relative;
+    background: #1e1e1e; overflow: hidden;
+}
+
+#canvas { display: block; cursor: crosshair; }
+
+/* ═══════════════════════════════════════════════════════════════
+   СТАТУС БАР
+   ═══════════════════════════════════════════════════════════════ */
+.status-bar {
+    height: 30px; background: #007acc;
+    display: flex; align-items: center;
+    padding: 0 15px; font-size: 12px; gap: 15px;
+}
+
+.status-item { display: flex; align-items: center; gap: 5px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   СПИСОК ОБЪЕКТОВ
+   ═══════════════════════════════════════════════════════════════ */
+.objects-list {
+    flex: 1; overflow-y: auto; background: #1e1e1e;
+    border: 1px solid #3c3c3c; border-radius: 4px;
+}
+
+.object-item {
+    padding: 8px 10px; border-bottom: 1px solid #3c3c3c;
+    cursor: pointer; font-size: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+.object-item:hover { background: #2a2a2a; }
+.object-item.selected { background: #007acc; }
+.object-item.selected small { color: #ccc !important; }
+
+.object-item .delete-obj {
+    background: #c72e2e; border: none; color: #fff;
+    width: 20px; height: 20px; border-radius: 3px;
+    cursor: pointer; font-size: 14px;
+}
+
+.object-item .delete-obj:hover { background: #ff4444; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ПОДСКАЗКИ И ИНДИКАТОРЫ
+   ═══════════════════════════════════════════════════════════════ */
+.dimension-label {
+    position: absolute; background: rgba(0, 122, 204, 0.9);
+    color: #fff; padding: 6px 12px; border-radius: 4px;
+    font-size: 13px; font-weight: bold; pointer-events: none;
+    z-index: 1000; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.snap-indicator {
+    position: absolute; background: rgba(255, 165, 0, 0.9);
+    color: #fff; padding: 4px 8px; border-radius: 4px;
+    font-size: 11px; pointer-events: none; z-index: 1000;
+}
+
+.multi-select-info {
+    background: #007acc; padding: 10px; border-radius: 4px;
+    font-size: 12px; text-align: center; margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   МОДАЛЬНОЕ ОКНО ДЛЯ ОТЧЁТА
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-window {
+    background: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #3c3c3c;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #007acc;
+    font-size: 16px;
+}
+
+.modal-close {
+    background: #c72e2e;
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.modal-close:hover {
+    background: #ff4444;
+}
+
+.modal-content {
+    padding: 20px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #ccc;
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   МУЛЬТИ-ИМПОРТ DXF
+   ═══════════════════════════════════════════════════════════════ */
+
+.import-file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #3c3c3c;
+    background: #1e1e1e;
+    transition: background 0.2s;
+}
+
+.import-file-item:hover {
+    background: #2a2a2a;
+}
+
+.import-file-item:last-child {
+    border-bottom: none;
+}
+
+.import-file-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #007acc;
+}
+
+.import-file-thumbnail {
+    width: 80px;
+    height: 60px;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    background: #252526;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.import-file-thumbnail svg {
+    width: 100%;
+    height: 100%;
+}
+
+.import-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.import-file-name {
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.import-file-details {
+    color: #888;
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.import-file-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.import-file-inputs label {
+    color: #aaa;
+    font-size: 11px;
+}
+
+.import-file-inputs input[type="text"] {
+    width: 150px;
+    padding: 6px 8px;
+    background: #3c3c3c;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.import-file-inputs input[type="number"] {
+    width: 60px;
+    padding: 6px 8px;
+    background: #3c3c3c;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.import-file-error {
+    color: #ff6b6b;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   БАННЕР ДОНАТА
+   ═══════════════════════════════════════════════════════════════ */
+.donate-banner {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    transform: none;
+    background: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(0, 122, 204, 0.4);
+    border-radius: 12px;
+    padding: 24px 32px;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: donateFadeIn 0.5s ease-out;
+    pointer-events: auto;
+    max-width: 380px;
+    text-align: center;
+    opacity: 0.5;
+    display: none;
+}
+
+.donate-content {
+    position: relative;
+    color: #fff;
+}
+
+.donate-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 28px;
+    height: 28px;
+    background: #c72e2e;
+    border: 2px solid #252526;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    pointer-events: auto;
+}
+
+.donate-close:hover {
+    background: #ff4444;
+    transform: scale(1.1);
+}
+
+.donate-icon {
+    font-size: 24px;
+    display: inline-block;
+    animation: donatePulse 2s ease-in-out infinite;
+}
+
+.donate-text {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.donate-text strong {
+    color: #007acc;
+}
+
+.donate-card {
+    display: inline-block;
+    background: rgba(0, 122, 204, 0.15);
+    border: 1px solid rgba(0, 122, 204, 0.3);
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.donate-card strong {
+    color: #4fc3f7;
+    letter-spacing: 0.5px;
+}
+
+.donate-hint {
+    display: block;
+    color: #888;
+    font-size: 11px;
+    margin-top: 6px;
+}
+
+.donate-timer {
+    background: rgba(0, 122, 204, 0.2);
+    border: 1px solid rgba(0, 122, 204, 0.3);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #4fc3f7;
+    display: inline-block;
+}
+
+.donate-banner.fade-out {
+    animation: donateFadeOut 0.5s ease-out forwards;
+}
+
+@keyframes donateFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 0.5;
+        transform: translateX(0);
+    }
+}
+
+@keyframes donateFadeOut {
+    from {
+        opacity: 0.5;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+@keyframes donatePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+}
