@@ -355,17 +355,12 @@ function exportAllSheetsToDXF(allSheets) {
 
         dxf.push("0","BLOCK","2",bn,"70","2","10","0","20","0","3",bn,"1","");
 
-        // Sheet contour с использованием размера конкретного листа
+// Sheet contour с использованием размера конкретного листа
         dxf.push("0","LWPOLYLINE","8","Sheet","90","4","70","1",
             "10",margin,"20",margin,
             "10",margin+localSheetSize.width,"20",margin,
             "10",margin+localSheetSize.width,"20",margin+localSheetSize.height,
             "10",margin,"20",margin+localSheetSize.height);
-
-        // Sheet number + thickness
-        const sheetThickness = s.thickness || 0.8;
-        const sheetLabel = `Sheet ${i+1} ${sheetThickness} mm`;
-        dxf.push("0","TEXT","8","Sheet","10",margin+10,"20",localSheetSize.height+margin+25,"40","12","1",sheetLabel);
 
         // Parts
         const pbt = {};
@@ -403,16 +398,9 @@ function exportAllSheetsToDXF(allSheets) {
                 sheetSkipped.push({ partId: pid, count, reason: 'нет объектов' });
                 return;
             }
-            sheetExportedCount += count;
+sheetExportedCount += count;
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
-
-            // Text with part name
-            const fn = pbt[pid][0];
-            if (fn) {
-                const dxfTextY = localSheetSize.height - fn.y + margin - 15;
-                dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",dxfTextY,"40","8","1",pn);
-            }
 
             console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
             
