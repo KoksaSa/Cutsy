@@ -38,16 +38,7 @@ async function importDXF(file) {
         }
 
         dxfBounds = calculateBounds(importedObjects);
-
-        const height = dxfBounds.maxY - dxfBounds.minY;
-        importedObjects.forEach(obj => {
-            invertY(obj, height);
-        });
-
-        // Помечаем, что детали были импортированы из DXF (уже инвертированы)
-        importedObjects.forEach(obj => {
-            obj._dxfImported = true;
-        });
+        console.log('DXF Import Bounds:', dxfBounds);
 
         return {
             objects: importedObjects,
