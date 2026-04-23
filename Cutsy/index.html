@@ -4972,15 +4972,18 @@ let tableRows = '';
                     const singleTotalCostPart = singleMetalCostPart + singleCutCostPart + singlePierceCostPart;
                     const smallThumbSVG = generatePartThumbnail(part, 50, 40);
                     
-                    // Одна строка на вид детали (не на каждый экземпляр)
+                    // Одна строка на вид детали с редактируемым полем проколов
                     partDetailRows += `
-                        <tr>
+                        <tr data-part-id="${part.id}" data-base-pierces="${pierceCountPerPart}" data-price-per-pierce="${pricePerPierceTh}" data-metal-cost="${singleMetalCostPart}" data-cut-cost="${singleCutCostPart}">
                             <td class="thumb">${smallThumbSVG}</td>
                             <td>${part.name || 'Деталь'}</td>
                             <td>${singleWeight}</td>
                             <td>${singleCutLength}</td>
-                            <td>${pierceCountPerPart}</td>
-                            <td><b>${singleTotalCostPart.toFixed(2)}</b></td>
+                            <td><input type="number" min="1" max="999" value="${pierceCountPerPart}" 
+                                style="width:60px;padding:4px;text-align:center;" 
+                                onchange="updatePartPierceCost(this)"></td>
+                            <td>${pricePerPierceTh.toFixed(2)}</td>
+                            <td><b class="part-total-cost">${singleTotalCostPart.toFixed(2)}</b></td>
                         </tr>
                     `;
                 });
@@ -5198,6 +5201,8 @@ sheetSummaryHTML += `
         tr:hover { background: #f0f7ff; }
         td.thumb { width: 90px; text-align: center; padding: 4px; }
         td.thumb svg { display: block; margin: 0 auto; }
+        input[type="number"] { border: 1px solid #ddd; border-radius: 3px; padding: 2px 6px; font-size: 12px; }
+        input[type="number"]:focus { outline: none; border-color: #007acc; }
         .summary { background: #fff; border-radius: 6px; padding: 16px 20px; margin: 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
         .th-summary { padding: 10px 14px; margin: 8px 0 12px 0; }
         .summary h3 { color: #007acc; margin-bottom: 8px; font-size: 15px; }
@@ -5227,8 +5232,33 @@ sheetSummaryHTML += `
             .sheet-thumb svg { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sheet-report-card { box-shadow: none; border: 1px solid #ddd; }
             .no-print { display: none; }
+            input[type="number"] { border: none; background: transparent; }
         }
     </style>
+    <script>
+        // Функция обновления стоимости при изменении количества проколов
+        function updatePartPierceCost(input) {
+            const row = input.closest('tr');
+            const newPierceCount = parseInt(input.value) || 1;
+            const basePierces = parseFloat(row.dataset.basePierces);
+            const pricePerPierce = parseFloat(row.dataset.pricePerPierce);
+            const metalCost = parseFloat(row.dataset.metalCost);
+            const cutCost = parseFloat(row.dataset.cutCost);
+            
+            // Пересчитываем стоимость проколов и общую стоимость
+            const newPierceCost = newPierceCount * pricePerPierce;
+            const newTotalCost = metalCost + cutCost + newPierceCost;
+            
+            // Обновляем отображение
+            row.querySelector('.part-total-cost').textContent = newTotalCost.toFixed(2);
+            
+            // Подсветка изменения
+            input.style.backgroundColor = '#e8f5e9';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 500);
+        }
+    </script>
 </head>
 <body>
     <h1>📊 Отчёт по раскладке деталей</h1>
@@ -5244,6 +5274,7 @@ ${partDetailRows ? `
                 <th>Вес (кг)</th>
                 <th>Длина реза (м)</th>
                 <th>Проколов (контуров)</th>
+                <th>Цена за прокол (₽)</th>
                 <th>Итого за 1 деталь (₽)</th>
             </tr>
         </thead>
@@ -5251,6 +5282,7 @@ ${partDetailRows ? `
             ${partDetailRows}
         </tbody>
     </table>
+    <p style="color:#666;font-size:11px;margin-top:8px;">💡 Кликните на количество проколов чтобы изменить вручную</p>
     ` : ''}
 
     ${thSectionHTML}
