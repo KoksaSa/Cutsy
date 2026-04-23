@@ -175,7 +175,17 @@ document.addEventListener('keydown', (e) => {
         // Переключаем выделение на новые детали
         selectedNestedParts = newSelectedIndices;
 
+        // ═══════════════════════════════════════════════════════════
+        // Сохраняем и обновляем UI
+        // ═══════════════════════════════════════════════════════════
+        saveToCache();
+        if (window.allSheets && window.allSheets.length > 0 && window.currentSheetIndex >= 0) {
+            window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
+            console.log(`   📋 Обновлено allSheets[${window.currentSheetIndex}]: ${nestedParts.length} деталей (вставлено ${newSelectedIndices.length})`);
+        }
         render();
+        updatePartsList();
+        console.log(`✅ Вставлено ${newSelectedIndices.length} деталей на лист`);
     }
     // Ctrl+X / Ctrl+Ч - вырезать объекты (английская/русская раскладка)
     if ((e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'ч') && (e.ctrlKey || e.metaKey) && selectedObjects.length > 0 && !showSheetView) {
@@ -213,7 +223,7 @@ document.addEventListener('keydown', (e) => {
     if ((e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'м') && (e.ctrlKey || e.metaKey) && clipboard.length > 0 && !showSheetView) {
         e.preventDefault();
         saveState();
-
+    
         const newObjects = [];
 
         // Вставляем объекты со смещением
@@ -316,6 +326,13 @@ document.addEventListener('keydown', (e) => {
                 }
             });
 
+            // ═══════════════════════════════════════════════════════════
+            // Сохраняем и обновляем UI
+            // ═══════════════════════════════════════════════════════════
+            saveToCache();
+            if (window.allSheets && window.allSheets.length > 0 && window.currentSheetIndex >= 0) {
+                window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
+            }
             render();
         }
     }

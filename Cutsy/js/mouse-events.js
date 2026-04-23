@@ -983,6 +983,17 @@ function createDiagonalPattern(count, sourceNested, startPoint, endPoint) {
     
     console.log(`✅ Создано ${createdCount} копий детали`);
     console.log(`   Всего деталей в паттерне: ${count} (1 исходная + ${createdCount} копий)`);
+    
+    // ═══════════════════════════════════════════════════════════
+    // Сохраняем и обновляем UI
+    // ═══════════════════════════════════════════════════════════
+    saveToCache();
+    if (window.allSheets && window.allSheets.length > 0 && window.currentSheetIndex >= 0) {
+        window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
+        console.log(`   📋 Обновлено allSheets[${window.currentSheetIndex}]: ${nestedParts.length} деталей`);
+    }
+    render();
+    updatePartsList();
 }
 
 function createNestedCopy(source) {

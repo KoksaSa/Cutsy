@@ -2600,8 +2600,17 @@ if (selectedObjects.length === 0) {
             // Сброс перетаскивания детали на листе
             if (isDraggingNested) {
                 isDraggingNested = false;
+                // ═══════════════════════════════════════════════════════════
+                // Сохраняем и обновляем UI
+                // ═══════════════════════════════════════════════════════════
+                saveToCache();
+                if (window.allSheets && window.allSheets.length > 0 && window.currentSheetIndex >= 0) {
+                    window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
+                    console.log(`   📋 Обновлено allSheets[${window.currentSheetIndex}]: ${nestedParts.length} деталей`);
+                }
                 saveState();  // Сохраняем состояние после перемещения
                 render();
+                updatePartsList();
                 return;
             }
 
