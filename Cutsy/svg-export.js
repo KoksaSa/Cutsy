@@ -351,6 +351,8 @@ function exportAllSheetsToDXF(allSheets) {
         const bn = `SHEET_${i+1}`;
         const localSheetSize = s.sheetSize || { width: 1250, height: 2500 };  // Размер конкретного листа
 
+        console.log(`   📋 Лист ${i+1}: sheetSize=${JSON.stringify(s.sheetSize)}, localSheetSize=${localSheetSize.width}×${localSheetSize.height}`);
+
         dxf.push("0","BLOCK","2",bn,"70","2","10","0","20","0","3",bn,"1","");
 
         // Sheet contour с использованием размера конкретного листа
@@ -396,15 +398,17 @@ function exportAllSheetsToDXF(allSheets) {
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
 
-            // Text with part name - инвертируем Y для DXF
+        // Text with part name - инвертируем Y для DXF
             const fn = pbt[pid][0];
             if (fn) {
                 const dxfTextY = localSheetSize.height - fn.y + margin - 15;
+                console.log(`      📍 Текст #${pid}: fn.y=${fn.y}, sheetHeight=${localSheetSize.height}, dxfTextY=${dxfTextY}`);
                 dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",dxfTextY,"40","8","1",pn);
             }
 
             console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
             pbt[pid].forEach(nested => {
+                console.log(`         🔧 Деталь: x=${nested.x}, y=${nested.y}, baseHeight=${nested.baseHeight}, sheetHeight=${localSheetSize.height}, nestedY_DXF=${localSheetSize.height - nested.y - (nested.baseHeight || 0)}`);
                 exportNestedPartToDXF(dxf, part, nested, ln, margin, 0, localSheetSize.height);
             });
         });
@@ -570,12 +574,16 @@ function exportNestedPartToDXF(dxf, part, nested, layerName, margin, offsetY, sh
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
     // ИНВЕРСИЯ Y ДЛЯ DXF
     // Canvas: Y растёт вниз (0 вверху), DXF: Y растёт вверх (0 внизу)
     // Инвертируем координаты Y деталей относительно высоты листа
+    // ИМПОРТИРОВАННЫЕ ИЗ DXF детали уже инвертированы при импорте
     // ═══════════════════════════════════════════════════════════
-    const nestedY_DXF = sheetHeight - nested.y - baseHeight;
+    const needsYInversion = !part.objects.some(obj => obj._dxfImported);
+    const nestedY_DXF = needsYInversion ? (sheetHeight - nested.y - baseHeight) : nested.y;
+    
+    console.log(`   🔧 Деталь #${nested.partId}: pos=(${nested.x},${nested.y} -> DXF Y=${nestedY_DXF}), needsInversion=${needsYInversion}, angle=${angleDeg}°`);
     
     const angleDeg = (angle * 180 / Math.PI).toFixed(1);
     const hasRefPoint = !!nested.refPoint;

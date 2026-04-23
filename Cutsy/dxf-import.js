@@ -44,7 +44,10 @@ async function importDXF(file) {
             invertY(obj, height);
         });
 
-        dxfBounds = calculateBounds(importedObjects);
+        // Помечаем, что детали были импортированы из DXF (уже инвертированы)
+        importedObjects.forEach(obj => {
+            obj._dxfImported = true;
+        });
 
         return {
             objects: importedObjects,
