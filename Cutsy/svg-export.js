@@ -145,12 +145,16 @@ function exportSheetToDXF() {
         const part = singleSheetPartDefs[partId];
         if (!part) {
             console.warn(`   ⚠️ Пропускаем деталь #${partId}: определение не найдено`);
+            console.warn(`      partsByType[partId].length=${partsByType[partId].length} экземпляров этой детали на листе!`);
             return;
         }
         
         // Проверяем, есть ли объекты у детали
         if (!part.objects || part.objects.length === 0) {
-            console.warn(`   ⚠️ Деталь #${partId} не имеет объектов для экспорта`);
+            console.warn(`   ⚠️ Деталь #${partId} "${part.name || 'Без имени'}" не имеет объектов для экспорта`);
+            console.warn(`      partsByType[partId].length=${partsByType[partId].length} экземпляров на листе!`);
+            console.warn(`      part.objects =`, part.objects);
+            console.warn(`      part =`, part);
             return;
         }
         
@@ -163,8 +167,8 @@ function exportSheetToDXF() {
             dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",fn.y+margin-15,"40","8","1",partName);
         }
 
+        console.log(`   ✅ Экспорт детали #${partId} "${partName}": ${partsByType[partId].length} шт., ${part.objects.length} объектов`);
         partsByType[partId].forEach(nested => {
-            console.log(`   📦 Экспорт детали #${partId} на (${nested.x},${nested.y}), угол=${(nested.angle||0).toFixed(1)}, объектов: ${part.objects.length}`);
             exportNestedPartToDXF(dxf, part, nested, layerName, margin, 0);
         });
     });
@@ -228,6 +232,22 @@ function exportSheetToDXF() {
         if (item === 'TEXT' && dxf[i-2] === '0') entityCounts.TEXT++;
     });
 
+    // Подсчёт экспортированных деталей
+    let exportedPartCount = 0;
+    const skippedParts = [];
+    Object.keys(partsByType).forEach(partId => {
+        const part = singleSheetPartDefs[partId];
+        if (part && part.objects && part.objects.length > 0) {
+            exportedPartCount += partsByType[partId].length;
+        } else {
+            skippedParts.push({
+                partId,
+                count: partsByType[partId].length,
+                reason: part ? 'нет объектов' : 'нет определения'
+            });
+        }
+    });
+
 // Save
     const dxfContent = dxf.join("\n");
     const blob = new Blob([dxfContent], {type:"application/dxf"});
@@ -247,7 +267,14 @@ function exportSheetToDXF() {
     console.log(`   📁 Файл: ${fileName}`);
     console.log(`   💾 Размер: ${fileSize} КБ`);
     console.log(`   📊 Сущности: LINE=${entityCounts.LINE}, CIRCLE=${entityCounts.CIRCLE}, POLY=${entityCounts.LWPOLYLINE}, TEXT=${entityCounts.TEXT}`);
-    console.log(`   📦 Деталей: ${nestedParts.length}\n`);
+    console.log(`   📦 Всего деталей на листе: ${nestedParts.length}`);
+    console.log(`   ✅ Экспортировано деталей: ${exportedPartCount}`);
+    if (skippedParts.length > 0) {
+        console.warn(`   ⚠️ Пропущено деталей: ${skippedParts.reduce((s,p) => s + p.count, 0)} шт.`);
+        skippedParts.forEach(sp => {
+            console.warn(`      #${sp.partId}: ${sp.count} шт. (${sp.reason})`);
+        });
+    }
 
     alert(`✅ DXF экспортирован\nДеталей: ${nestedParts.length}\nФайл: ${fileName}`);
 }
@@ -264,6 +291,10 @@ function exportAllSheetsToDXF(allSheets) {
 
     const margin = 50;
     let dxf = [];
+
+    // Счётчики для итоговой сводки
+    let exportedPartCount = 0;
+    const skippedParts = [];
 
     // Собираем определения деталей из всех листов
     // (т.к. window.parts может быть пустым после раскладки)
@@ -337,10 +368,24 @@ function exportAllSheetsToDXF(allSheets) {
         console.log(`      Доступные partIds: ${Object.keys(pbt).join(', ')}`);
         console.log(`      Определений деталей: ${Object.keys(allPartDefs).length}`);
 
+        // Подсчёт экспортированных и пропущенных деталей для этого листа
+        let sheetExportedCount = 0;
+        const sheetSkipped = [];
+        
         Object.keys(pbt).forEach(pid => {
             const part = allPartDefs[pid];
-            console.log(`      Поиск partId=${pid}: ${part ? `НАЙДЕН (${part.objects?.length} объектов)` : 'НЕ НАЙДЕН'}`);
-            if (!part) return;
+            const count = pbt[pid].length;
+            if (!part) {
+                console.warn(`      ⚠️ #${pid}: ${count} шт. НЕ НАЙДЕНО определение`);
+                sheetSkipped.push({ partId: pid, count, reason: 'нет определения' });
+                return;
+            }
+            if (!part.objects || part.objects.length === 0) {
+                console.warn(`      ⚠️ #${pid} "${part.name||'Без имени'}": ${count} шт. нет объектов`);
+                sheetSkipped.push({ partId: pid, count, reason: 'нет объектов' });
+                return;
+            }
+            sheetExportedCount += count;
             const pn = part?.name ? transliterate(part.name) : `D${pid}`;
             const ln = `PART_${pid}_${pn.replace(/[^a-zA-Z0-9_]/g,'_').substring(0,10)}`;
 
@@ -350,10 +395,20 @@ function exportAllSheetsToDXF(allSheets) {
                 dxf.push("0","TEXT","8","Parts","10",fn.x+margin+5,"20",fn.y+margin-15,"40","8","1",pn);
             }
 
+            console.log(`      ✅ #${pid} "${pn}": ${count} шт.`);
             pbt[pid].forEach(nested => {
                 exportNestedPartToDXF(dxf, part, nested, ln, margin, 0);
             });
         });
+
+        if (sheetSkipped.length > 0) {
+            console.warn(`   ⚠️ Лист ${i+1}: Экспортировано ${sheetExportedCount} из ${s.nestedParts.length} деталей`);
+            sheetSkipped.forEach(sk => {
+                console.warn(`      Пропущено #${sk.partId}: ${sk.count} шт. (${sk.reason})`);
+            });
+            skippedParts.push(...sheetSkipped);
+        }
+        exportedPartCount += sheetExportedCount;
 
         // ═══════════════════════════════════════════════════════════
         // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА (для каждого листа)
@@ -447,9 +502,18 @@ function exportAllSheetsToDXF(allSheets) {
     console.log(`   📁 Файл: ${fileName}`);
     console.log(`   💾 Размер: ${fileSize} КБ`);
     console.log(`   📊 Сущности: LINE=${entityCounts.LINE}, CIRCLE=${entityCounts.CIRCLE}, POLY=${entityCounts.LWPOLYLINE}, TEXT=${entityCounts.TEXT}, INSERT=${entityCounts.INSERT}`);
-    console.log(`   📦 Деталей: ${totalParts}\n`);
+    console.log(`   📦 Всего деталей: ${totalParts}`);
+    console.log(`   ✅ Экспортировано: ${exportedPartCount}`);
+    if (skippedParts.length > 0) {
+        const skippedTotal = skippedParts.reduce((s, p) => s + p.count, 0);
+        console.warn(`   ⚠️ Пропущено: ${skippedTotal} шт.`);
+        skippedParts.forEach(sp => {
+            console.warn(`      #${sp.partId}: ${sp.count} шт. (${sp.reason})`);
+        });
+    }
+    console.log('');
 
-    alert(`✅ DXF экспортирован\nЛистов: ${allSheets.length}\nДеталей: ${totalParts}\nФайл: ${fileName}`);
+    alert(`✅ DXF экспортирован\nЛистов: ${allSheets.length}\nДеталей всего: ${totalParts}\nЭкспортировано: ${exportedPartCount}\n${skippedParts.length > 0 ? `Пропущено: ${skippedParts.reduce((s,p) => s + p.count, 0)}\n` : ''}Файл: ${fileName}`);
 }
 
 // Export single nested part
