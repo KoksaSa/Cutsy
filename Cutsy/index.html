@@ -4564,7 +4564,7 @@ return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}
                 return;
             }
 
-            // Загружаем настройки цен (по толщине + прокол + время)
+            // Загружаем настройки цен (по толщине + время)
             const pricingSettings = loadPricingSettings();
 
             // Функция получения цены за кг для конкретной толщины
@@ -4757,144 +4757,6 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
             let grandTotalSheets = 0;
             let grandTotalPlaced = 0;
 
-            // ═══════════════════════════════════════════════════════════
-            // ФУНКЦИЯ: Подсчёт количества контуров в детали
-            // Группирует соединённые линии в замкнутые контуры
-            // ═══════════════════════════════════════════════════════════
-            function countPartContours(part) {
-                if (!part || !part.objects || part.objects.length === 0) return 1;
-                
-                const objects = part.objects;
-                
-                // Если есть только 1 объект (круг, прямоугольник) - 1 контур
-                if (objects.length === 1) {
-                    if (objects[0].type === 'circle' || objects[0].type === 'rect') {
-                        return 1;
-                    }
-                }
-                
-                // Если есть только круги и прямоугольники - считаем их количество
-                const circlesAndRects = objects.filter(obj => 
-                    obj.type === 'circle' || obj.type === 'rect'
-                );
-                if (circlesAndRects.length === objects.length) {
-                    return objects.length;
-                }
-                
-                // Для линий: группируем соединённые линии в контуры
-                const lines = objects.filter(obj => obj.type === 'line');
-                if (lines.length === 0) return 1;
-                
-                // Создаём граф соединений
-                const EPS = 0.001; // Допуск для сравнения координат
-                
-                function pointsMatch(p1, p2) {
-                    return Math.abs(p1.x - p2.x) < EPS && Math.abs(p1.y - p2.y) < EPS;
-                }
-                
-                // Для каждой линии создаём узлы начала и конца
-                const segments = lines.map((line, idx) => ({
-                    id: idx,
-                    p1: { x: line.x1, y: line.y1 },
-                    p2: { x: line.x2, y: line.y2 },
-                    visited: false
-                }));
-                
-                let contourCount = 0;
-                
-                // DFS для поиска замкнутых контуров
-                function findContour(startIdx) {
-                    const stack = [{ idx: startIdx, path: [startIdx] }];
-                    const visitedInContour = new Set([startIdx]);
-                    
-                    while (stack.length > 0) {
-                        const { idx, path } = stack.pop();
-                        const currentSeg = segments[idx];
-                        
-                        // Проверяем все возможные продолжения
-                        for (let i = 0; i < segments.length; i++) {
-                            if (visitedInContour.has(i)) continue;
-                            
-                            const nextSeg = segments[i];
-                            
-                            // Проверяем соединения: конец текущей с началом следующей
-                            const connects1 = pointsMatch(currentSeg.p2, nextSeg.p1) ||
-                                              pointsMatch(currentSeg.p2, nextSeg.p2);
-                            const connects2 = pointsMatch(currentSeg.p1, nextSeg.p1) ||
-                                              pointsMatch(currentSeg.p1, nextSeg.p2);
-                            
-                            if (connects1 || connects2) {
-                                const newPath = [...path, i];
-                                
-                                // Проверяем, замкнулся ли контур
-                                const endPt = connects1 ? nextSeg.p2 : 
-                                              pointsMatch(currentSeg.p1, nextSeg.p1) ? nextSeg.p2 : nextSeg.p1;
-                                
-                                if (pointsMatch(endPt, segments[startIdx].p1) && newPath.length >= 3) {
-                                    // Контур замкнулся
-                                    newPath.forEach(segIdx => segments[segIdx].visited = true);
-                                    return true;
-                                }
-                                
-                                visitedInContour.add(i);
-                                stack.push({ idx: i, path: newPath });
-                            }
-                        }
-                    }
-                    
-                    return false;
-                }
-
-                // Ищем все контуры
-                for (let i = 0; i < segments.length; i++) {
-                    if (!segments[i].visited) {
-                        if (findContour(i)) {
-                            contourCount++;
-                        }
-                    }
-                }
-                
-                // Если не нашлось замкнутых контуров, считаем группы связанных линий
-                if (contourCount === 0) {
-                    const visited = new Set();
-                    
-                    function findGroup(startIdx) {
-                        const stack = [startIdx];
-                        
-                        while (stack.length > 0) {
-                            const idx = stack.pop();
-                            if (visited.has(idx)) continue;
-                            visited.add(idx);
-                            
-                            const currentSeg = segments[idx];
-                            
-                            for (let i = 0; i < segments.length; i++) {
-                                if (visited.has(i)) continue;
-                                
-                                const nextSeg = segments[i];
-                                const connects = pointsMatch(currentSeg.p1, nextSeg.p1) ||
-                                                pointsMatch(currentSeg.p1, nextSeg.p2) ||
-                                                pointsMatch(currentSeg.p2, nextSeg.p1) ||
-                                                pointsMatch(currentSeg.p2, nextSeg.p2);
-                                
-                                if (connects) {
-                                    stack.push(i);
-                                }
-                            }
-                        }
-                    }
-                    
-                    for (let i = 0; i < segments.length; i++) {
-                        if (!visited.has(i)) {
-                            findGroup(i);
-                            contourCount++;
-                        }
-                    }
-                }
-                
-                return Math.max(1, contourCount);
-            }
-
 let tableRows = '';
             let thSectionHTML = '';
             let sheetSummaryHTML = ''; // Сводка по каждому листу
@@ -4926,18 +4788,13 @@ let tableRows = '';
 
                     const thumbSVG = generatePartThumbnail(part, 80, 60);
                     // ═══════════════════════════════════════════════
-                    // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
-                    // ═══════════════════════════════════════════════
-                    const pricePerPierceTh = getPricePerPierceByTh(th);
-                    // ═══════════════════════════════════════════════
                     // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
                     // ═══════════════════════════════════════════════
                     const pricePerMeterCut = getPricePerMeterCut(th);
                     const partCutCost = (totalL / 1000) * pricePerMeterCut;
                     
-                    const partPierceCost = count * pricePerPierceTh;
                     const partMetalCost = totalW * getPricePerKg(th);
-                    const partTotalCost = partMetalCost + partPierceCost + partCutCost;
+                    const partTotalCost = partMetalCost + partCutCost;
 
                     groupTableRows += `
                         <tr>
@@ -4950,40 +4807,32 @@ let tableRows = '';
                             <td>${(totalL / 1000).toFixed(3)}</td>
                             <td>${partCutCost.toFixed(2)}</td>
                             <td>${partMetalCost.toFixed(2)}</td>
-                            <td>${partPierceCost.toFixed(2)}</td>
                             <td><b>${partTotalCost.toFixed(2)}</b></td>
                         </tr>
                     `;
 
-// ═══════════════════════════════════════════════
-                    // ПОДЕТАЛЬНАЯ ТАБЛИЦА: один вид детали = одна строка
+                    // ═══════════════════════════════════════════════
+                    // ПОДЕТАЛЬНАЯ ТАБЛИЦА: расчёт за одну деталь
                     // ═══════════════════════════════════════════════
                     const singleWeight = weight.toFixed(3);
                     const singlePerimeter = perimeter;
                     const singleCutLength = (singlePerimeter / 1000).toFixed(3);
                     const singleCutCostPart = (singlePerimeter / 1000 * pricePerMeterCut);
                     const singleMetalCostPart = weight * getPricePerKg(th);
-                    
-                    // ═══════════════════════════════════════════════
-                    // ТОЧНЫЙ РАСЧЁТ ПРОКОЛОВ: группируем линии в контуры
-                    // ═══════════════════════════════════════════════
-                    const pierceCountPerPart = countPartContours(part);
-                    const singlePierceCostPart = pierceCountPerPart * pricePerPierceTh;
-                    const singleTotalCostPart = singleMetalCostPart + singleCutCostPart + singlePierceCostPart;
+                    const singleTotalCostPart = singleMetalCostPart + singleCutCostPart;
                     const smallThumbSVG = generatePartThumbnail(part, 50, 40);
                     
-                    // Одна строка на вид детали с редактируемым полем проколов
                     partDetailRows += `
-                        <tr data-part-id="${part.id}" data-base-pierces="${pierceCountPerPart}" data-price-per-pierce="${pricePerPierceTh}" data-metal-cost="${singleMetalCostPart}" data-cut-cost="${singleCutCostPart}">
+                        <tr>
                             <td class="thumb">${smallThumbSVG}</td>
                             <td>${part.name || 'Деталь'}</td>
+                            <td>${Math.round(part.bounds.width)} × ${Math.round(part.bounds.height)}</td>
+                            <td>${th}</td>
                             <td>${singleWeight}</td>
                             <td>${singleCutLength}</td>
-                            <td><input type="number" min="1" max="999" value="${pierceCountPerPart}" 
-                                style="width:60px;padding:4px;text-align:center;" 
-                                onchange="updatePartPierceCost(this)"></td>
-                            <td>${pricePerPierceTh.toFixed(2)}</td>
-                            <td><b class="part-total-cost">${singleTotalCostPart.toFixed(2)}</b></td>
+                            <td>${singleCutCostPart.toFixed(2)}</td>
+                            <td>${singleMetalCostPart.toFixed(2)}</td>
+                            <td><b>${singleTotalCostPart.toFixed(2)}</b></td>
                         </tr>
                     `;
                 });
@@ -4996,7 +4845,7 @@ const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * s
                     const p = parts.find(pp => pp.id === n.partId);
                     return ss + (p ? p.bounds.width * p.bounds.height : 0);
                 }, 0), 0);
-                const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea); // Защита от отрицательного значения
+                const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea);
 const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
                 const groupCost = group.totalWeight * getPricePerKg(th);
                 // ═══════════════════════════════════════════════
@@ -5005,15 +4854,9 @@ const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
                 const pricePerMeterCut = getPricePerMeterCut(th);
                 const groupCutCost = (group.totalLength / 1000) * pricePerMeterCut;
                 
-                const groupPierceCount = group.totalPlaced; // 1 прокол на каждую размещённую деталь
-                // ═══════════════════════════════════════════════
-                // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
-                // ═══════════════════════════════════════════════
-                const pricePerPierceTh = getPricePerPierceByTh(th);
-                const groupPierceCost = groupPierceCount * pricePerPierceTh;
                 const groupNestingTime = group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
                 const groupTimeCost = (groupNestingTime / 3600) * pricingSettings.pricePerHour;
-                const groupTotalCost = groupCost + groupCutCost + groupPierceCost + groupTimeCost;
+                const groupTotalCost = groupCost + groupCutCost + groupTimeCost;
                 const groupEfficiency = group.totalWeight + groupRemnantWeight > 0
                     ? (group.totalWeight / (group.totalWeight + groupRemnantWeight) * 100).toFixed(1) : '0.0';
 
@@ -5030,10 +4873,8 @@ thSectionHTML += `
                             <div class="summary-item"><div class="label">Цена металла</div><div class="value">${getPricePerKg(th).toFixed(2)} ₽/кг</div></div>
                             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(group.totalLength / 1000).toFixed(2)} м</div></div>
                             <div class="summary-item"><div class="label">Цена реза</div><div class="value">${pricePerMeterCut.toFixed(2)} ₽/м</div></div>
-                            <div class="summary-item"><div class="label">Проколов</div><div class="value">${groupPierceCount} шт × ${pricePerPierceTh.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${groupCost.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Стоимость реза</div><div class="value">${groupCutCost.toFixed(2)} ₽</div></div>
-                            <div class="summary-item"><div class="label">Стоимость проколов</div><div class="value">${groupPierceCost.toFixed(2)} ₽</div></div>
                             <div class="summary-item"><div class="label">Время раскладки</div><div class="value">${groupNestingTime > 0 ? groupNestingTime.toFixed(0) + ' сек' : '—'}</div></div>
                             <div class="summary-item"><div class="label">Стоимость времени</div><div class="value">${groupTimeCost > 0 ? groupTimeCost.toFixed(2) + ' ₽' : '—'}</div></div>
                             <div class="summary-item" style="background:#e8f5e9;"><div class="label">ИТОГО</div><div class="value">${groupTotalCost.toFixed(2)} ₽</div></div>
@@ -5080,13 +4921,8 @@ const sheetCost = sheetWeight * getPricePerKg(sheetTh);
                 const pricePerMeterCut = getPricePerMeterCut(sheetTh);
                 const sheetCutCost = (sheetCuttingLength / 1000) * pricePerMeterCut;
                 
-                // ═══════════════════════════════════════════════════════
-                // НОВЫЙ РАСЧЁТ: используем цену за прокол по толщине
-                // ═══════════════════════════════════════════════════════
-                const pricePerPierceTh = getPricePerPierceByTh(sheetTh);
-                const sheetPierceCost = sheetPartCount * pricePerPierceTh;
                 const sheetTimeCost = ((sheet.nestingTime || 0) / 3600) * pricingSettings.pricePerHour;
-const sheetTotalCost = sheetCost + sheetCutCost + sheetPierceCost + sheetTimeCost;
+const sheetTotalCost = sheetCost + sheetCutCost + sheetTimeCost;
                 // ═══════════════════════════════════════════════════════
                 // ВАЖНО: Остаток считаем как площадь листа минус СУММА
                 // площадей bounding box всех размещённых деталей.
@@ -5115,7 +4951,6 @@ sheetSummaryHTML += `
                                     <div class="stat"><span class="stat-label">Длина реза</span><span class="stat-value">${(sheetCuttingLength / 1000).toFixed(3)} м</span></div>
                                     <div class="stat"><span class="stat-label">Рез</span><span class="stat-value">${sheetCutCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Металл</span><span class="stat-value">${sheetCost.toFixed(2)} ₽</span></div>
-                                    <div class="stat"><span class="stat-label">Проколы</span><span class="stat-value">${sheetPierceCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Время</span><span class="stat-value">${sheet.nestingTime ? sheet.nestingTime.toFixed(0) + ' сек' : '—'}</span></div>
                                     <div class="stat"><span class="stat-label">Итого</span><span class="stat-value" style="color:#2d7a5a;">${sheetTotalCost.toFixed(2)} ₽</span></div>
                                     <div class="stat"><span class="stat-label">Остаток</span><span class="stat-value">${(sheetRemnantMm2 / 1000000).toFixed(3)} м²</span></div>
@@ -5130,17 +4965,11 @@ sheetSummaryHTML += `
 // Итоговая стоимость — считаем по каждой толщине отдельно
             let grandTotalMetalCost = 0;
             let grandTotalCutCost = 0;
-            let grandTotalPierceCost = 0;
             let grandTotalTimeCost = 0;
             let grandTotalNestingTime = 0;
             Object.keys(reportByThickness).forEach(key => {
                 const g = reportByThickness[key];
                 grandTotalMetalCost += g.totalWeight * getPricePerKg(g.thickness);
-                // ═══════════════════════════════════════════════
-                // НОВЫЙ РАСЧЁТ: цена за прокол по толщине
-                // ═══════════════════════════════════════════════
-                const pricePerPierceTh = getPricePerPierceByTh(g.thickness);
-                grandTotalPierceCost += g.totalPlaced * pricePerPierceTh;
                 // ═══════════════════════════════════════════════
                 // НОВЫЙ РАСЧЁТ: цена за метр реза по толщине
                 // ═══════════════════════════════════════════════
@@ -5153,7 +4982,7 @@ sheetSummaryHTML += `
             const stopwatchTime = (typeof window.getStopwatchTime === 'function') ? window.getStopwatchTime() : 0;
             const workTimeSeconds = stopwatchTime > 0 ? stopwatchTime : grandTotalNestingTime;
             grandTotalTimeCost = (workTimeSeconds / 3600) * pricingSettings.pricePerHour;
-            const grandTotalCost = grandTotalMetalCost + grandTotalCutCost + grandTotalPierceCost + grandTotalTimeCost;
+            const grandTotalCost = grandTotalMetalCost + grandTotalCutCost + grandTotalTimeCost;
             const remnantCost = remnantWeight * getPricePerKg(avgTh);
 
             // Форматирование времени для отчёта
@@ -5201,8 +5030,6 @@ sheetSummaryHTML += `
         tr:hover { background: #f0f7ff; }
         td.thumb { width: 90px; text-align: center; padding: 4px; }
         td.thumb svg { display: block; margin: 0 auto; }
-        input[type="number"] { border: 1px solid #ddd; border-radius: 3px; padding: 2px 6px; font-size: 12px; }
-        input[type="number"]:focus { outline: none; border-color: #007acc; }
         .summary { background: #fff; border-radius: 6px; padding: 16px 20px; margin: 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
         .th-summary { padding: 10px 14px; margin: 8px 0 12px 0; }
         .summary h3 { color: #007acc; margin-bottom: 8px; font-size: 15px; }
@@ -5232,60 +5059,36 @@ sheetSummaryHTML += `
             .sheet-thumb svg { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sheet-report-card { box-shadow: none; border: 1px solid #ddd; }
             .no-print { display: none; }
-            input[type="number"] { border: none; background: transparent; }
         }
     </style>
-    <script>
-        // Функция обновления стоимости при изменении количества проколов
-        function updatePartPierceCost(input) {
-            const row = input.closest('tr');
-            const newPierceCount = parseInt(input.value) || 1;
-            const basePierces = parseFloat(row.dataset.basePierces);
-            const pricePerPierce = parseFloat(row.dataset.pricePerPierce);
-            const metalCost = parseFloat(row.dataset.metalCost);
-            const cutCost = parseFloat(row.dataset.cutCost);
-            
-            // Пересчитываем стоимость проколов и общую стоимость
-            const newPierceCost = newPierceCount * pricePerPierce;
-            const newTotalCost = metalCost + cutCost + newPierceCost;
-            
-            // Обновляем отображение
-            row.querySelector('.part-total-cost').textContent = newTotalCost.toFixed(2);
-            
-            // Подсветка изменения
-            input.style.backgroundColor = '#e8f5e9';
-            setTimeout(() => {
-                input.style.backgroundColor = '';
-            }, 500);
-        }
-    </script>
 </head>
 <body>
     <h1>📊 Отчёт по раскладке деталей</h1>
     <p class="date">Создано: ${now}</p>
 
 ${partDetailRows ? `
-    <h2 class="section-title">📋 Подетальная таблица</h2>
+    <h2 class="section-title">📋 Расчет стоимости 1 детали</h2>
     <table>
         <thead>
             <tr>
                 <th style="width:60px;">Миниатюра</th>
                 <th>Название</th>
+                <th>Размер (мм)</th>
+                <th>Толщ. (мм)</th>
                 <th>Вес (кг)</th>
-                <th>Длина реза (м)</th>
-                <th>Проколов (контуров)</th>
-                <th>Цена за прокол (₽)</th>
-                <th>Итого за 1 деталь (₽)</th>
+                <th>Рез (м)</th>
+                <th>Рез (₽)</th>
+                <th>Металл (₽)</th>
+                <th>Итого (₽)</th>
             </tr>
         </thead>
         <tbody>
             ${partDetailRows}
         </tbody>
     </table>
-    <p style="color:#666;font-size:11px;margin-top:8px;">💡 Кликните на количество проколов чтобы изменить вручную</p>
     ` : ''}
 
-    ${thSectionHTML}
+${thSectionHTML}
 
     <table>
         <thead>
@@ -5299,7 +5102,6 @@ ${partDetailRows ? `
                 <th>Рез (м)</th>
                 <th>Рез (₽)</th>
                 <th>Металл (₽)</th>
-                <th>Проколы (₽)</th>
                 <th>Итого (₽)</th>
             </tr>
         </thead>
@@ -5342,7 +5144,6 @@ ${partDetailRows ? `
             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(grandTotalLength / 1000).toFixed(2)} м</div></div>
             <div class="summary-item"><div class="label">Стоимость реза</div><div class="value">${grandTotalCutCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${grandTotalMetalCost.toFixed(2)} ₽</div></div>
-            <div class="summary-item"><div class="label">Стоимость проколов</div><div class="value">${grandTotalPierceCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Время работы</div><div class="value">${workTimeSeconds > 0 ? formatTime(workTimeSeconds) : '—'}</div></div>
             <div class="summary-item"><div class="label">Стоимость времени</div><div class="value">${grandTotalTimeCost > 0 ? grandTotalTimeCost.toFixed(2) + ' ₽' : '—'}</div></div>
             <div class="summary-item" style="background:#e8f5e9;"><div class="label">ИТОГО</div><div class="value">${grandTotalCost.toFixed(2)} ₽</div></div>
@@ -7059,18 +6860,14 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                 // Добавляем новые поля если их нет
                 return {
                     pricePerKg: parsed.pricePerKg || {},
-                    pricePerPierce: parsed.pricePerPierce !== undefined ? parsed.pricePerPierce : 2,
                     pricePerHour: parsed.pricePerHour !== undefined ? parsed.pricePerHour : 1,
-                    pricePerMeterCut: parsed.pricePerMeterCut || {},  // Цена за метр реза по толщине
-                    pricePerPierceByTh: parsed.pricePerPierceByTh || {}  // Цена за прокол по толщине
+                    pricePerMeterCut: parsed.pricePerMeterCut || {}  // Цена за метр реза по толщине
                 };
             }
             return {
                 pricePerKg: {},
-                pricePerPierce: 2,
                 pricePerHour: 1,
-                pricePerMeterCut: {},
-                pricePerPierceByTh: {}
+                pricePerMeterCut: {}
             };
         }
 
@@ -7084,13 +6881,6 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             const pricing = loadPricingSettings();
             const thKey = thickness.toFixed(1);
             return pricing.pricePerMeterCut[thKey] || pricing.pricePerMeterCut[thickness] || 0;
-        };
-
-        // Глобальная функция для получения цены за прокол по толщине
-        window.getPricePerPierceByTh = function(thickness) {
-            const pricing = loadPricingSettings();
-            const thKey = thickness.toFixed(1);
-            return pricing.pricePerPierceByTh[thKey] || pricing.pricePerPierceByTh[thickness] || pricing.pricePerPierce || 0;
         };
 
         document.getElementById('setPricesBtn').addEventListener('click', () => {
@@ -7116,13 +6906,11 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             finalThicknesses.forEach(th => {
                 const priceKg = pricing.pricePerKg[th] || pricing.pricePerKg[parseFloat(th)] || '';
                 const priceCut = pricing.pricePerMeterCut[th] || pricing.pricePerMeterCut[parseFloat(th)] || '';
-                const pricePierce = pricing.pricePerPierceByTh[th] || pricing.pricePerPierceByTh[parseFloat(th)] || '';
                 thicknessRows += `
                     <tr>
                         <td style="padding:3px 10px;font-weight:600;font-size:12px;">${th} мм</td>
                         <td style="padding:3px;"><input type="number" class="price-per-kg" data-thickness="${th}" value="${priceKg}" min="0" step="1" placeholder="₽/кг" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за кг"></td>
                         <td style="padding:3px;"><input type="number" class="price-per-meter-cut" data-thickness="${th}" value="${priceCut}" min="0" step="0.5" placeholder="₽/м" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за метр реза"></td>
-                        <td style="padding:3px;"><input type="number" class="price-per-pierce-th" data-thickness="${th}" value="${pricePierce}" min="0" step="0.5" placeholder="₽/шт" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за прокол"></td>
                     </tr>
                 `;
             });
@@ -7144,7 +6932,6 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                                     <th style="padding:6px 10px;text-align:left;color:#fff;font-size:11px;">Толщина</th>
                                     <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">💰 Цена за кг</th>
                                     <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">✂️ Рез (₽/м)</th>
-                                    <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">⚡ Прокол (₽)</th>
                                 </tr>
                             </thead>
                             ${thicknessRows}
@@ -7174,7 +6961,6 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             overlay.querySelector('#savePricing').addEventListener('click', () => {
                 const newPricePerKg = {};
                 const newPricePerMeterCut = {};
-                const newPricePerPierceByTh = {};
                 
                 overlay.querySelectorAll('.price-per-kg').forEach(input => {
                     const th = input.dataset.thickness;
@@ -7188,17 +6974,9 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                     if (val > 0) newPricePerMeterCut[th] = val;
                 });
                 
-                overlay.querySelectorAll('.price-per-pierce-th').forEach(input => {
-                    const th = input.dataset.thickness;
-                    const val = parseFloat(input.value);
-                    if (val > 0) newPricePerPierceByTh[th] = val;
-                });
-
                 const settings = {
                     pricePerKg: newPricePerKg,
                     pricePerMeterCut: newPricePerMeterCut,
-                    pricePerPierceByTh: newPricePerPierceByTh,
-                    pricePerPierce: parseFloat(document.getElementById('pricePerPierceInput')?.value) || 2,  // Для обратной совместимости
                     pricePerHour: parseFloat(document.getElementById('pricePerHourInput').value) || 0
                 };
 
@@ -7208,8 +6986,7 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                 // Уведомление
                 const thCount = Object.keys(newPricePerKg).length;
                 const cutCount = Object.keys(newPricePerMeterCut).length;
-                const pierceCount = Object.keys(newPricePerPierceByTh).length;
-                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n✂️ Цена за метр реза: ${cutCount} толщин\n⚡ Прокол по толщине: ${pierceCount} толщин\n⏱️ Время: ${settings.pricePerHour} ₽/час`);
+                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n✂️ Цена за метр реза: ${cutCount} толщин\n⏱️ Время: ${settings.pricePerHour} ₽/час`);
             });
 
             document.body.appendChild(overlay);
