@@ -178,9 +178,9 @@ function exportSheetToDXF() {
     // ═══════════════════════════════════════════════════════════
     // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА
     // ═══════════════════════════════════════════════════════════
-    // Инвертируем Y для DXF
-    const cutY_DXF = currentSheetSize.height - currentSheet.cutRemnantLine.y;
     if (currentSheet && currentSheet.showCutRemnantLine && currentSheet.cutRemnantLine) {
+        // Инвертируем Y для DXF
+        const cutY_DXF = currentSheetSize.height - currentSheet.cutRemnantLine.y;
         console.log(`   ✂️ Экспорт линии обрезки: Y=${currentSheet.cutRemnantLine.y} мм -> DXF Y=${cutY_DXF} мм`);
         const cutX1 = 4;
         const cutX2 = currentSheetSize.width - 4;
@@ -421,9 +421,9 @@ function exportAllSheetsToDXF(allSheets) {
         // ═══════════════════════════════════════════════════════════
         // ЭКСПОРТ ЛИНИИ ОБРЕЗКИ ОСТАТКА (для каждого листа)
         // ═══════════════════════════════════════════════════════════
-        // Инвертируем Y для DXF
-        const cutY_DXF = localSheetSize.height - s.cutRemnantLine.y;
         if (s.showCutRemnantLine && s.cutRemnantLine) {
+            // Инвертируем Y для DXF
+            const cutY_DXF = localSheetSize.height - s.cutRemnantLine.y;
             const cutX1 = 4;
             const cutX2 = localSheetSize.width - 4;
             dxf.push("0","LINE","8","CUT_REMNANT","10",cutX1+margin,"20",cutY_DXF+margin,"11",cutX2+margin,"21",cutY_DXF+margin);
