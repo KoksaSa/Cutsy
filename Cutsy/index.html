@@ -4623,12 +4623,12 @@ return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}
             // ═══════════════════════════════════════════════════════
             // РАСЧЁТ ОСТАТКА
             // ═══════════════════════════════════════════════════════
-            const totalSheetArea = sheetsToReport.reduce((s, sh) => s + (sh.sheetSize?.width || sheetSize.width) * (sh.sheetSize?.height || sheetSize.height), 0);
+const totalSheetArea = sheetsToReport.reduce((s, sh) => s + (sh.sheetSize?.width || sheetSize.width) * (sh.sheetSize?.height || sheetSize.height), 0);
             const usedArea = sheetsToReport.reduce((s, sh) => s + sh.nestedParts.reduce((ss, n) => {
                 const p = parts.find(pp => pp.id === n.partId);
                 return ss + (p ? p.bounds.width * p.bounds.height : 0);
             }, 0), 0);
-            const remnantArea = totalSheetArea - usedArea;
+            const remnantArea = Math.max(0, totalSheetArea - usedArea); // Защита от отрицательного значения
             const avgTh = Object.values(reportByThickness).reduce((s, g) => s + g.thickness * g.sheets.length, 0) / sheetsToReport.length;
             const remnantWeight = remnantArea * avgTh * density / 1000000;
 
@@ -4809,12 +4809,12 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                 // ═══════════════════════════════════════════════════
                 // РАСЧЁТ ОСТАТКА ПО ТОЛЩИНЕ (после подсчёта веса)
                 // ═══════════════════════════════════════════════════
-                const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * sh.sheetSize.height, 0);
+const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * sh.sheetSize.height, 0);
                 const groupUsedArea = group.sheets.reduce((s, sh) => s + sh.nestedParts.reduce((ss, n) => {
                     const p = parts.find(pp => pp.id === n.partId);
                     return ss + (p ? p.bounds.width * p.bounds.height : 0);
                 }, 0), 0);
-                const groupRemnantArea = groupSheetArea - groupUsedArea;
+                const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea); // Защита от отрицательного значения
                 const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
                 const groupCost = group.totalWeight * getPricePerKg(th);
                 const groupPierceCount = group.totalPlaced; // 1 прокол на каждую размещённую деталь
@@ -4881,12 +4881,20 @@ let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" h
                 const sheetCost = sheetWeight * getPricePerKg(sheetTh);
                 const sheetPierceCost = sheetPartCount * pricingSettings.pricePerPierce;
                 const sheetTimeCost = ((sheet.nestingTime || 0) / 3600) * pricingSettings.pricePerHour;
-                const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
+const sheetTotalCost = sheetCost + sheetPierceCost + sheetTimeCost;
+                // ═══════════════════════════════════════════════════════
+                // ВАЖНО: Остаток считаем как площадь листа минус СУММА
+                // площадей bounding box всех размещённых деталей.
+                // Bounding box используется, так как это площадь, 
+                // которую деталь занимает на листе (включая отступы).
+                // Если детали перекрываются, остаток может быть отрицательным -
+                // это индикатор ошибки в раскладке.
+                // ═══════════════════════════════════════════════════════
                 const sheetUsedArea = sheet.nestedParts.reduce((s, n) => {
                     const p = parts.find(pp => pp.id === n.partId);
                     return s + (p ? p.bounds.width * p.bounds.height : 0);
                 }, 0);
-                const sheetRemnantArea = sw * sh - sheetUsedArea;
+                const sheetRemnantArea = Math.max(0, sw * sh - sheetUsedArea); // Защита от отрицательного значения
                 const sheetRemnantMm2 = sheetRemnantArea;
 
                 const sheetThumb = generateSheetThumbnail(sheet, 0); // index не важен, заголовок переопределим
