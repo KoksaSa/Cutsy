@@ -819,7 +819,7 @@ window.render = function render() {
             points.forEach((pt, idx) => {
                 ctx.fillStyle = 'rgba(255, 165, 0, 0.9)';
                 ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 5 / zoom, 0, Math.PI * 2);
+                ctx.arc(pt.x, pt.y, 2.5 / zoom, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#1e1e1e';
                 ctx.lineWidth = 1 / zoom;
@@ -832,7 +832,7 @@ window.render = function render() {
             for (const point of unconnectedPoints) {
                 ctx.fillStyle = 'rgba(255, 50, 50, 1)';
                 ctx.beginPath();
-                ctx.arc(point.x, point.y, 5 / zoom, 0, Math.PI * 2);
+                ctx.arc(point.x, point.y, 2.5 / zoom, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1 / zoom;
@@ -845,7 +845,7 @@ window.render = function render() {
     if (hoveredPoint && !draggedPoint) {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
         ctx.beginPath();
-        ctx.arc(hoveredPoint.point.x, hoveredPoint.point.y, 8 / zoom, 0, Math.PI * 2);
+        ctx.arc(hoveredPoint.point.x, hoveredPoint.point.y, 4 / zoom, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2 / zoom;
@@ -898,7 +898,7 @@ window.render = function render() {
         // Маркер привязки
         ctx.fillStyle = snapColor;
         ctx.beginPath();
-        ctx.arc(snapPoint.x, snapPoint.y, 6 / zoom, 0, Math.PI * 2);
+        ctx.arc(snapPoint.x, snapPoint.y, 3 / zoom, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#1e1e1e';
         ctx.lineWidth = 1 / zoom;
@@ -1032,19 +1032,19 @@ window.render = function render() {
                 // Вершина угла — красный кружок
                 ctx.fillStyle = '#ff4444';
                 ctx.beginPath();
-                ctx.arc(angleDim.x, angleDim.y, 4, 0, Math.PI * 2);
+                ctx.arc(angleDim.x, angleDim.y, 2, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Точка 1 — зелёный кружок
                 ctx.fillStyle = '#44ff44';
                 ctx.beginPath();
-                ctx.arc(angleDim.x1, angleDim.y1, 4, 0, Math.PI * 2);
+                ctx.arc(angleDim.x1, angleDim.y1, 2, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Точка 2 — синий кружок
                 ctx.fillStyle = '#4444ff';
                 ctx.beginPath();
-                ctx.arc(angleDim.x2, angleDim.y2, 4, 0, Math.PI * 2);
+                ctx.arc(angleDim.x2, angleDim.y2, 2, 0, Math.PI * 2);
                 ctx.fill();
             }
 
@@ -1108,7 +1108,7 @@ window.render = function render() {
         ctx.save();
         // Не сбрасываем трансформации - рисуем в мировых координатах
         
-        const pointRadius = 8 / zoom;
+        const pointRadius = 4 / zoom;
 
         // Точка 1 - синий крест
         if (calibratePoint1) {
@@ -1203,7 +1203,7 @@ window.render = function render() {
             ctx.beginPath();
             const screenSnapX = snap.x * zoom + canvas.width / 2 + panX;
             const screenSnapY = snap.y * zoom + canvas.height / 2 + panY;
-            ctx.arc(screenSnapX, screenSnapY, 6, 0, Math.PI * 2);
+            ctx.arc(screenSnapX, screenSnapY, 3, 0, Math.PI * 2);
             ctx.fill();
             
             // Контур

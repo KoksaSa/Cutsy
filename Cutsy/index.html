@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2D Моделирование - DXF Editor</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
     <div class="toolbar">
@@ -245,7 +246,7 @@
         <div class="canvas-container" id="canvasContainer">
             <canvas id="canvas"></canvas>
 
-            <!-- Баннер доната -->
+            <!-- Баннер доната 
             <div class="donate-banner" id="donateBanner">
                 <div class="donate-content">
                     <button class="donate-close" id="donateClose" title="Закрыть">×</button>
@@ -257,7 +258,7 @@
                         <a href="https://t.me/SilikinK" target="_blank" style="color:#4fc3f7;text-decoration:none;font-weight:bold;">📩 @SilikinK</a></span>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <div class="dimension-label" id="dimensionLabel" style="display: none;">0</div>
             <div class="snap-indicator" id="snapIndicator" style="display: none;">🧲 Привязка</div>
@@ -283,8 +284,8 @@
                 <span id="sheetInfo" style="color:#fff;font-size:13px;font-weight:bold;min-width:100px;text-align:center;" data-i18n="sheet_nav_info">Лист 1 из 1</span>
                 <button id="nextSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n-title="next_sheet" title="Следующий лист">⏭️</button>
                 <div style="width:1px;height:20px;background:#3c3c3c;margin:0 4px;"></div>
-                <button id="resizeSheet" style="background:#2d5a7a;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_resize_sheet" title="Изменить размер листа">📐</button>
-                <button id="deleteSheet" style="background:#7a2d2d;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_delete_sheet" title="Удалить лист">🗑️</button>
+                <button id="resizeSheet" style="background:#4792c8;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_resize_sheet" title="Изменить размер листа">📐</button>
+                <button id="deleteSheet" style="background:#ff5252;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_delete_sheet" title="Удалить лист">🗑️</button>
             </div>
         </div>
         <div class="status-bar">
@@ -413,8 +414,6 @@
     </div>
 
     <!-- Подключение алгоритма раскладки (Nesting) - ДО основного скрипта -->
-    <script src=".js"></script>
-    
     <script src="flip-nested.js"></script>
 
     <!-- Подключение экспорта SVG (раскладка на листе) -->
@@ -4721,6 +4720,7 @@ if (selectedObjects.length === 0) {
                             onclick="event.stopPropagation();"
                             onfocus="event.stopPropagation();"
                             oninput="event.stopPropagation();"
+                            onwheel="event.preventDefault(); event.stopPropagation();"
                             onchange="event.stopPropagation(); changePartThickness(${part.id}, this.value)">
                         <span style="color:#007acc;font-size:11px;">мм</span>
                     </div>
@@ -4862,16 +4862,7 @@ if (selectedObjects.length === 0) {
                     e.stopPropagation();
                     e.target.select();
                 });
-                input.addEventListener('wheel', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                    const newValue = parseFloat(e.target.value) + delta;
-                    if (newValue >= 0.1 && newValue <= 50) {
-                        e.target.value = Number(newValue.toFixed(1));
-                        e.target.dispatchEvent(new Event('change'));
-                    }
-                });
+                // Колёсико мыши только блокируется в onwheel атрибуте, изменение через JS отключено
             });
 
             // Обработчик для поля отступа между деталями
@@ -6110,14 +6101,12 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             overlay.id = 'pricingModal';
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
-                <div class="modal-window" style="max-width:600px;width:95%;">
+                <div class="modal-window" style="max-width:400px;width:95%;">
                     <div class="modal-header">
                         <h3>💰 Установить цены</h3>
                         <button class="modal-close" id="closePricingModal">×</button>
                     </div>
                     <div class="modal-content" style="max-height:60vh;overflow-y:auto;padding:12px 16px;">
-                        <h4 style="margin:0 0 8px 0;color:#007acc;font-size:12px;">🔩 Цены по толщине металла</h4>
-                        <p style="color:#888;font-size:11px;margin-bottom:8px;">💡 Введите цену за кг ИЛИ за м² (при вводе одной цены другая очистится)</p>
                         <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px;">
                             <thead>
                                 <tr style="background:#2a2a2a;">

@@ -321,8 +321,10 @@ const TRANSLATIONS = {
         btn_nesting_current: '📑 Раскладка (текущий)',
         btn_import_dxf: '📥 Импорт DXF',
         btn_export_dxf: '📁 Экспорт раскладки (DXF)',
-        btn_export_dxf_context: '📄 Экспорт в DXF',
-        btn_export_svg: '📄 Экспорт SVG',
+        btn_add_sheet: "📄 Добавить лист",
+        btn_clear_nesting: "🗑️ Очистить раскладку" ,
+        //btn_export_dxf_context: '📄 Экспорт в DXF',
+        //btn_export_svg: '📄 Экспорт SVG',//
         btn_export_pdf_drawing: '🖼️ Чертеж PDF',
         btn_export_pdf_report: '📊 Отчёт PDF',
         btn_create_remnant: '📸 Создать остаток',
@@ -565,7 +567,7 @@ const TRANSLATIONS = {
 // ТЕКУЩИЙ ЯЗЫК
 // ═══════════════════════════════════════════════════════════════
 
-let currentLanguage = localStorage.getItem('cutsy_language') || 'en';
+let currentLanguage = localStorage.getItem('cutsy_language') || 'ru';
 
 // ═══════════════════════════════════════════════════════════════
 // ФУНКЦИЯ ПОЛУЧЕНИЯ ПЕРЕВОДА
