@@ -330,7 +330,7 @@ function exportPdfReport() {
             // Расчёт стоимости металла: приоритет цене за м², если задана
             const partPricePerM2 = getPricePerM2(th);
             const partPricePerKg = getPricePerKg(th);
-            const partAreaM2 = totalW / (th * density);
+            const partAreaM2 = (part.bounds.width * part.bounds.height * count) / 1000000;  // м² из bounding box
             const partMetalCost = partPricePerM2 > 0 ? partAreaM2 * partPricePerM2 : totalW * partPricePerKg;
             const partTotalCost = partMetalCost + partCutCost;
 
@@ -357,7 +357,7 @@ function exportPdfReport() {
             // Расчёт стоимости металла: приоритет цене за м², если задана
             const singlePricePerM2 = getPricePerM2(th);
             const singlePricePerKg = getPricePerKg(th);
-            const singleAreaM2 = weight / (th * density);
+            const singleAreaM2 = (part.bounds.width * part.bounds.height) / 1000000;  // м² из размеров
             const singleMetalCostPart = singlePricePerM2 > 0 ? singleAreaM2 * singlePricePerM2 : weight * singlePricePerKg;
             const singleTotalCostPart = singleMetalCostPart + singleCutCostPart;
             const smallThumbSVG = generatePartThumbnail(part, 50, 40, parts);
@@ -368,7 +368,7 @@ function exportPdfReport() {
                     <td>${part.name || 'Деталь'}</td>
                     <td>${Math.round(part.bounds.width)} × ${Math.round(part.bounds.height)}</td>
                     <td>${th}</td>
-                    <td>${(singleAreaM2 * 1000000).toFixed(3)}</td>
+                    <td>${singleAreaM2.toFixed(6)}</td>
                     <td>${singleWeight}</td>
                     <td>${singleCutLength}</td>
                     <td>${singleCutCostPart.toFixed(2)}</td>

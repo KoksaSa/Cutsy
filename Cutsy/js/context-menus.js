@@ -132,8 +132,9 @@ function showContextInfo() {
     const weight = volume * density / 1000; // кг (одна деталь)
 
     // Формируем отчёт
-    let info = `<strong>📐 Размер:</strong> ${Math.round(bounds.width)} × ${Math.round(bounds.height)} мм<br>`;
-    info += `<strong>📊 Площадь:</strong> ${Math.round(area)} мм²<br>`;
+    const areaM2 = area / 1000000;  // м²
+    info += `<strong>📐 Размер:</strong> ${Math.round(bounds.width)} × ${Math.round(bounds.height)} мм<br>`;
+    info += `<strong>📊 Площадь:</strong> ${areaM2.toFixed(6)} м² (${Math.round(area)} мм²)<br>`;
     info += `<strong>🔩 Толщина:</strong> ${thickness} мм<br>`;
     info += `<strong>⚖️ Вес:</strong> ${weight.toFixed(3)} кг`;
 
