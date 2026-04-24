@@ -415,26 +415,6 @@
     <!-- Подключение алгоритма раскладки (Nesting) - ДО основного скрипта -->
     <script src=".js"></script>
     
-    <!-- Web Worker отключён - используется async/await версия -->
-    <!-- Для включения Worker: раскомментируйте код ниже и запускайте через http://localhost:8080 -->
-    <!--
-    <script>
-        let nestingWorker = null;
-        function initNestingWorker() {
-            if (window.Worker) {
-                try {
-                    nestingWorker = new Worker('nesting-worker.js');
-                    console.log('✅ Web Worker инициализирован');
-                } catch (e) {
-                    console.log('⚠️ Web Worker не поддерживается:', e);
-                    nestingWorker = null;
-                }
-            }
-        }
-        initNestingWorker();
-    </script>
-    -->
-
     <script src="flip-nested.js"></script>
 
     <!-- Подключение экспорта SVG (раскладка на листе) -->
@@ -502,96 +482,16 @@
     <!-- Подключение экспорта PDF отчёта -->
     <script src="pdf-report.js"></script>
 
+    <!-- Подключение взаимного исключения цен за кг и м² -->
+    <script src="pricing-mutual-exclusion.js"></script>
+
+    <!-- Подключение системы Undo/Redo -->
+    <script src="js/undo-redo.js"></script>
+
     <script>
         // ═══════════════════════════════════════════════════════════════
-        // ОБРАБОТЧИКИ СОБЫТИЙ И ФУНКЦИИ
+        // ОБРАБОТЧИКИ СОБВТИЙ И ФУНКЦИИ
         // ═══════════════════════════════════════════════════════════════
-
-        // ═══════════════════════════════════════════════════════════════
-        // UNDO/REDO
-        // ═══════════════════════════════════════════════════════════════
-        function saveState() {
-            const state = {
-                objects: JSON.stringify(objects.map(obj => {
-                    if (obj.type === 'line') return { type: 'line', id: obj.id, x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2 };
-                    if (obj.type === 'circle') return { type: 'circle', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius };
-                    if (obj.type === 'rect') return { type: 'rect', id: obj.id, x: obj.x, y: obj.y, width: obj.width, height: obj.height };
-                    if (obj.type === 'polygon') return { type: 'polygon', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius, sides: obj.sides };
-                })),
-                nestedParts: JSON.parse(JSON.stringify(nestedParts)),
-                parts: JSON.parse(JSON.stringify(parts))
-            };
-            undoStack.push(JSON.stringify(state));
-            if (undoStack.length > MAX_UNDO) undoStack.shift();
-            redoStack = [];
-            updateUndoButton();
-            updateStatusBar();
-        }
-
-        function undo() {
-            if (undoStack.length === 0) return;
-            const currentState = {
-                objects: JSON.stringify(objects.map(obj => {
-                    if (obj.type === 'line') return { type: 'line', id: obj.id, x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2 };
-                    if (obj.type === 'circle') return { type: 'circle', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius };
-                    if (obj.type === 'rect') return { type: 'rect', id: obj.id, x: obj.x, y: obj.y, width: obj.width, height: obj.height };
-                    if (obj.type === 'polygon') return { type: 'polygon', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius, sides: obj.sides };
-                })),
-                nestedParts: JSON.parse(JSON.stringify(nestedParts)),
-                parts: JSON.parse(JSON.stringify(parts))
-            };
-            redoStack.push(JSON.stringify(currentState));
-            const state = JSON.parse(undoStack.pop());
-            restoreState(state);
-        }
-
-        function redo() {
-            if (redoStack.length === 0) return;
-            const currentState = {
-                objects: JSON.stringify(objects.map(obj => {
-                    if (obj.type === 'line') return { type: 'line', id: obj.id, x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2 };
-                    if (obj.type === 'circle') return { type: 'circle', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius };
-                    if (obj.type === 'rect') return { type: 'rect', id: obj.id, x: obj.x, y: obj.y, width: obj.width, height: obj.height };
-                    if (obj.type === 'polygon') return { type: 'polygon', id: obj.id, cx: obj.cx, cy: obj.cy, radius: obj.radius, sides: obj.sides };
-                })),
-                nestedParts: JSON.parse(JSON.stringify(nestedParts)),
-                parts: JSON.parse(JSON.stringify(parts))
-            };
-            undoStack.push(JSON.stringify(currentState));
-            const state = JSON.parse(redoStack.pop());
-            restoreState(state);
-        }
-
-        function restoreState(state) {
-            const data = JSON.parse(state.objects);
-            objects = data.map(obj => {
-                if (obj.type === 'line') { const l = new Line(obj.x1, obj.y1, obj.x2, obj.y2); l.id = obj.id; return l; }
-                if (obj.type === 'circle') { const c = new Circle(obj.cx, obj.cy, obj.radius); c.id = obj.id; return c; }
-                if (obj.type === 'rect') { const r = new Rect(obj.x, obj.y, obj.width, obj.height); r.id = obj.id; return r; }
-                if (obj.type === 'polygon') { const p = new Polygon(obj.cx, obj.cy, obj.radius, obj.sides); p.id = obj.id; return p; }
-            });
-            
-            // Восстанавливаем nestedParts и parts
-            if (state.nestedParts) nestedParts = state.nestedParts;
-            if (state.parts) parts = state.parts;
-            
-            selectedObjects = [];
-            showProperties(null);
-            render();
-            updateUndoButton();
-            updateStatusBar();
-        }
-
-        // Делаем функции глобальными
-        window.undo = undo;
-        window.redo = redo;
-        window.saveState = saveState;
-        
-        function updateUndoButton() {
-            // Кнопка отмены удалена - функция больше не используется
-        }
-
-        // Обработчик отмены удалён вместе с кнопкой
 
         // ═══════════════════════════════════════════════════════════════
         // ПРОВЕРКА ПЕРЕСЕЧЕНИЯ ПРЯМОУГОЛЬНИКА С ДЕТАЛЯМИ
@@ -2890,35 +2790,6 @@ if (selectedObjects.length === 0) {
             render();
             showProperties(selectedObjects[0]); // Обновляем панель свойств
         }
-
-        // === Параллельность и перпендикулярность (новый режим без Ctrl)
-        // Кнопки удалены из левой панели, обработчики закомментированы
-        // document.getElementById('alignParallel').addEventListener('click', () => {
-        //     if (parallelMode === 'parallel') {
-        //         parallelMode = null;
-        //         parallelStep = 0;
-        //         referenceLineForParallel = null;
-        //     } else {
-        //         parallelMode = 'parallel';
-        //         parallelStep = 1;
-        //         referenceLineForParallel = null;
-        //     }
-        //     updateParallelButtons();
-        // });
-        //
-        // document.getElementById('alignPerpendicular').addEventListener('click', () => {
-        //     if (parallelMode === 'perpendicular') {
-        //         parallelMode = null;
-        //         parallelStep = 0;
-        //         referenceLineForParallel = null;
-        //     } else {
-        //         parallelMode = 'perpendicular';
-        //         parallelStep = 1;
-        //         referenceLineForParallel = null;
-        //     }
-        //     updateParallelButtons();
-        // });
-
         function updateParallelButtons() {
             // Функция больше не используется, кнопки удалены
         }
@@ -2935,10 +2806,6 @@ if (selectedObjects.length === 0) {
             line.y2 = center.y + Math.sin(refAngle) * length / 2;
             return true;
         }
-
-        // Обработчики выравнивания удалены - кнопки перемещены в правую панель
-        // document.getElementById('alignH').addEventListener('click', alignLinesHorizontal);
-        // document.getElementById('alignV').addEventListener('click', alignLinesVertical);
 
         document.getElementById('autoDimension').addEventListener('click', () => {
             console.log('\n🖱️ [UI] Клик по кнопке "📏 Авто-размеры"');
@@ -3108,10 +2975,7 @@ if (selectedObjects.length === 0) {
             updatePartsList();
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-        // Р’РЎРџРћРњРћР“РђРўР•Р›Р¬РќРђРЇ Р¤РЈРќРљР¦РРЇ: РџР РћР’Р•Р РљРђ РћР”РќРћР“Рћ РќРђРџР РђР’Р›Р•РќРРЇ
-        // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+       // ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: ПРОВЕРКА ОДНОГО НАПРАВЛЕНИЯ
         function checkDirection(direction, current, reference, currW, currH, refW, refH) {
             let x, y, overlap;
 
@@ -3172,32 +3036,24 @@ if (selectedObjects.length === 0) {
             return null;
         }
 
-        // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-        // РќРђР™РўР РџРћР—РР¦РР® Р”Р›РЇ Р’Р«Р РђР’РќРР’РђРќРРЇ (РЈРњРќР«Р™ РџР РРћР РРўР•Рў)
-        // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+        // НАЙТИ ПОЗИЦИЮ ДЛЯ ВЫРАВНИВАНИЯ (УМНЫЙ ПРИОРИТЕТ)
         function findAlignment(current, reference) {
             const currW = current.width || current.baseWidth;
             const currH = current.height || current.baseHeight;
             const refW = reference.width || reference.baseWidth;
             const refH = reference.height || reference.baseHeight;
 
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            // Р’Р«Р§РРЎР›РЇР•Рњ Р¦Р•РќРўР Р« Р”Р•РўРђР›Р•Р™
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+           // ВЫЧИСЛЯЕМ ЦЕНТРЫ ДЕТАЛЕЙ
             const currCenterX = current.x + currW / 2;
             const currCenterY = current.y + currH / 2;
             const refCenterX = reference.x + refW / 2;
             const refCenterY = reference.y + refH / 2;
 
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            // РћРџР Р•Р”Р•Р›РЇР•Рњ Р РђР—РќРР¦РЈ РџРћР—РР¦РР™ (dx, dy)
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            const dx = currCenterX - refCenterX;  // >0: РґРµС‚Р°Р»СЊ СЃРїСЂР°РІР°, <0: СЃР»РµРІР°
-            const dy = currCenterY - refCenterY;  // >0: РґРµС‚Р°Р»СЊ СЃРЅРёР·Сѓ, <0: СЃРІРµСЂС…Сѓ
+            // ОПРЕДЕЛЯЕМ РАЗНИЦУ ПОЗИЦИЙ (dx, dy)
+            const dx = currCenterX - refCenterX;  // >0: деталь справа, <0: слева
+            const dy = currCenterY - refCenterY;  // >0: деталь снизу, <0: сверху
 
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            // Р¤РћР РњРР РЈР•Рњ РџР РРћР РРўР•РўРќР«Р™ РЎРџРРЎРћРљ РќРђРџР РђР’Р›Р•РќРР™
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+            // ФОРМИРУЕМ ПРИОРИТЕТНЫЙ СПИСОК НАПРАВЛЕНИЙ
             let directions = [];
             
             if (dx > 0 && Math.abs(dx) >= Math.abs(dy)) {
@@ -3219,15 +3075,13 @@ if (selectedObjects.length === 0) {
 
             console.log(`рџЋЇ Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ: dx=${dx.toFixed(0)}РјРј, dy=${dy.toFixed(0)}РјРј в†’ РїСЂРёРѕСЂРёС‚РµС‚: ${directions.join(', ')}`);
 
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            // РџР РћР’Р•Р РЇР•Рњ Р’РЎР• РќРђРџР РђР’Р›Р•РќРРЇ Р РЎР§РРўРђР•Рњ Р РђРЎРЎРўРћРЇРќРР•
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+            // ПРОВЕРЯЕМ ВСЕ НАПРАВЛЕНИЯ И СЧИТАЕМ РАССТОЯНИЕ
             const candidates = [];
             
             for (const dir of directions) {
                 const pos = checkDirection(dir, current, reference, currW, currH, refW, refH);
                 if (pos) {
-                    // РЎС‡РёС‚Р°РµРј СЂР°СЃСЃС‚РѕСЏРЅРёРµ РїРµСЂРµРјРµС‰РµРЅРёСЏ
+                    // Считаем расстояние перемещения
                     const distance = Math.sqrt(
                         Math.pow(pos.x - current.x, 2) + 
                         Math.pow(pos.y - current.y, 2)
@@ -3236,11 +3090,9 @@ if (selectedObjects.length === 0) {
                 }
             }
 
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
-            // Р’Р«Р‘РР РђР•Рњ Р›РЈР§РЁР•Р• РќРђРџР РђР’Р›Р•РќРР• (РјРёРЅРёРјР°Р»СЊРЅРѕРµ РїРµСЂРµРјРµС‰РµРЅРёРµ)
-            // в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђ
+            // ВЫБИРАЕМ ЛУЧШЕЕ НАПРАВЛЕНИЕ (минимальное перемещение)
             if (candidates.length > 0) {
-                // РЎРѕСЂС‚РёСЂСѓРµРј РїРѕ РјРёРЅРёРјР°Р»СЊРЅРѕРјСѓ СЂР°СЃСЃС‚РѕСЏРЅРёСЋ
+                // Сортируем по минимальному расстоянию
                 candidates.sort((a, b) => a.distance - b.distance);
                 const best = candidates[0];
                 
@@ -6188,16 +6040,22 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             const saved = localStorage.getItem('cadPricingSettings');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                // Добавляем новые поля если их нет
+                // Миграция: если есть pricePerHour но нет pricePerMinute
+                if (parsed.pricePerHour !== undefined && parsed.pricePerMinute === undefined) {
+                    parsed.pricePerMinute = Math.round(parsed.pricePerHour / 60);
+                    delete parsed.pricePerHour;
+                }
                 return {
                     pricePerKg: parsed.pricePerKg || {},
-                    pricePerHour: parsed.pricePerHour !== undefined ? parsed.pricePerHour : 1,
+                    pricePerM2: parsed.pricePerM2 || {},  // Цена за м² по толщине
+                    pricePerMinute: parsed.pricePerMinute !== undefined ? parsed.pricePerMinute : 1,
                     pricePerMeterCut: parsed.pricePerMeterCut || {}  // Цена за метр реза по толщине
                 };
             }
             return {
                 pricePerKg: {},
-                pricePerHour: 1,
+                pricePerM2: {},
+                pricePerMinute: 1,
                 pricePerMeterCut: {}
             };
         }
@@ -6236,12 +6094,14 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             let thicknessRows = '';
             finalThicknesses.forEach(th => {
                 const priceKg = pricing.pricePerKg[th] || pricing.pricePerKg[parseFloat(th)] || '';
+                const priceM2 = pricing.pricePerM2[th] || pricing.pricePerM2[parseFloat(th)] || '';
                 const priceCut = pricing.pricePerMeterCut[th] || pricing.pricePerMeterCut[parseFloat(th)] || '';
                 thicknessRows += `
                     <tr>
                         <td style="padding:3px 10px;font-weight:600;font-size:12px;">${th} мм</td>
-                        <td style="padding:3px;"><input type="number" class="price-per-kg" data-thickness="${th}" value="${priceKg}" min="0" step="1" placeholder="₽/кг" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за кг"></td>
-                        <td style="padding:3px;"><input type="number" class="price-per-meter-cut" data-thickness="${th}" value="${priceCut}" min="0" step="0.5" placeholder="₽/м" style="width:80px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за метр реза"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-kg" data-thickness="${th}" value="${priceKg}" min="0" step="1" placeholder="₽/кг" style="width:75px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за кг"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-m2" data-thickness="${th}" value="${priceM2}" min="0" step="10" placeholder="₽/м²" style="width:75px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за м²"></td>
+                        <td style="padding:3px;"><input type="number" class="price-per-meter-cut" data-thickness="${th}" value="${priceCut}" min="0" step="0.5" placeholder="₽/м" style="width:75px;padding:4px 6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:3px;font-size:12px;" title="Цена за метр реза"></td>
                     </tr>
                 `;
             });
@@ -6250,18 +6110,20 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             overlay.id = 'pricingModal';
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
-                <div class="modal-window" style="max-width:520px;width:95%;">
+                <div class="modal-window" style="max-width:600px;width:95%;">
                     <div class="modal-header">
                         <h3>💰 Установить цены</h3>
                         <button class="modal-close" id="closePricingModal">×</button>
                     </div>
                     <div class="modal-content" style="max-height:60vh;overflow-y:auto;padding:12px 16px;">
                         <h4 style="margin:0 0 8px 0;color:#007acc;font-size:12px;">🔩 Цены по толщине металла</h4>
+                        <p style="color:#888;font-size:11px;margin-bottom:8px;">💡 Введите цену за кг ИЛИ за м² (при вводе одной цены другая очистится)</p>
                         <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px;">
                             <thead>
                                 <tr style="background:#2a2a2a;">
                                     <th style="padding:6px 10px;text-align:left;color:#fff;font-size:11px;">Толщина</th>
                                     <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">💰 Цена за кг</th>
+                                    <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">📐 Цена за м²</th>
                                     <th style="padding:6px 10px;text-align:left;color:#aaa;font-size:11px;">✂️ Рез (₽/м)</th>
                                 </tr>
                             </thead>
@@ -6269,8 +6131,8 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                         </table>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #333;">
                             <label style="color:#aaa;font-size:12px;white-space:nowrap;">⏱️ Время работы:</label>
-                            <input type="number" id="pricePerHourInput" value="${pricing.pricePerHour}" min="0" step="10" placeholder="₽/час" style="width:100px;padding:5px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
-                            <span style="color:#888;font-size:11px;">₽/час</span>
+                            <input type="number" id="pricePerMinuteInput" value="${pricing.pricePerMinute}" min="0" step="1" placeholder="₽/мин" style="width:100px;padding:5px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+                            <span style="color:#888;font-size:11px;">₽/мин</span>
                             <span style="color:#666;font-size:11px;margin-left:8px;">(для расчёта стоимости раскладки)</span>
                         </div>
                     </div>
@@ -6291,12 +6153,19 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             // Сохранение
             overlay.querySelector('#savePricing').addEventListener('click', () => {
                 const newPricePerKg = {};
+                const newPricePerM2 = {};
                 const newPricePerMeterCut = {};
                 
                 overlay.querySelectorAll('.price-per-kg').forEach(input => {
                     const th = input.dataset.thickness;
                     const val = parseFloat(input.value);
                     if (val > 0) newPricePerKg[th] = val;
+                });
+                
+                overlay.querySelectorAll('.price-per-m2').forEach(input => {
+                    const th = input.dataset.thickness;
+                    const val = parseFloat(input.value);
+                    if (val > 0) newPricePerM2[th] = val;
                 });
                 
                 overlay.querySelectorAll('.price-per-meter-cut').forEach(input => {
@@ -6307,8 +6176,9 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                 
                 const settings = {
                     pricePerKg: newPricePerKg,
+                    pricePerM2: newPricePerM2,
                     pricePerMeterCut: newPricePerMeterCut,
-                    pricePerHour: parseFloat(document.getElementById('pricePerHourInput').value) || 0
+                    pricePerMinute: parseFloat(document.getElementById('pricePerMinuteInput').value) || 0
                 };
 
                 savePricingSettings(settings);
@@ -6316,11 +6186,17 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
 
                 // Уведомление
                 const thCount = Object.keys(newPricePerKg).length;
+                const m2Count = Object.keys(newPricePerM2).length;
                 const cutCount = Object.keys(newPricePerMeterCut).length;
-                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n✂️ Цена за метр реза: ${cutCount} толщин\n⏱️ Время: ${settings.pricePerHour} ₽/час`);
+                alert(`✅ Цены сохранены!\n\n🔩 Цена за кг: ${thCount} толщин\n📐 Цена за м²: ${m2Count} толщин\n✂️ Цена за метр реза: ${cutCount} толщин\n⏱️ Время: ${settings.pricePerMinute} ₽/мин`);
             });
 
             document.body.appendChild(overlay);
+
+            // Обработчики для взаимного исключения цен за кг и м²
+            if (typeof window.initPricingMutualExclusion === 'function') {
+                window.initPricingMutualExclusion(overlay);
+            }
         });
 
         // ═══════════════════════════════════════════════════════════════

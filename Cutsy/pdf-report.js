@@ -214,6 +214,11 @@ function exportPdfReport() {
         return pricingSettings.pricePerKg[thKey] || pricingSettings.pricePerKg[thickness] || 0;
     };
 
+    const getPricePerM2 = (thickness) => {
+        const thKey = thickness.toFixed(1);
+        return pricingSettings.pricePerM2[thKey] || pricingSettings.pricePerM2[thickness] || 0;
+    };
+
     const density = 7.85;
     const reportByThickness = {};
 
@@ -264,6 +269,29 @@ function exportPdfReport() {
     const avgTh = Object.values(reportByThickness).reduce((s, g) => s + g.thickness * g.sheets.length, 0) / sheetsToReport.length;
     const remnantWeight = remnantArea * avgTh * density / 1000000;
 
+    // ПОЛУЧАЕМ ВРЕМЯ СЕКУНДОМЕРА И РАСПРЕДЕЛЯЕМ ЕГО
+    const stopwatchTime = (typeof window.getStopwatchTime === 'function') ? window.getStopwatchTime() : 0;
+    const useStopwatch = stopwatchTime > 0;
+    
+    // Считаем общее время раскладки из листов (резерв)
+    let grandTotalNestingTimeReserve = 0;
+    Object.values(reportByThickness).forEach(g => {
+        grandTotalNestingTimeReserve += g.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
+    });
+    
+    const workTimeSeconds = useStopwatch ? stopwatchTime : grandTotalNestingTimeReserve;
+    
+    // Распределяем время секундомера пропорционально по группам толщин
+    let timeDistribution = {};
+    if (useStopwatch) {
+        const totalPlacedAll = Object.values(reportByThickness).reduce((s, g) => s + g.totalPlaced, 0);
+        Object.keys(reportByThickness).forEach(key => {
+            const g = reportByThickness[key];
+            const ratio = totalPlacedAll > 0 ? g.totalPlaced / totalPlacedAll : 0;
+            timeDistribution[key] = Math.round(workTimeSeconds * ratio);
+        });
+    }
+
     // ФОРМИРОВАНИЕ HTML
     let grandTotalWeight = 0;
     let grandTotalLength = 0;
@@ -299,7 +327,11 @@ function exportPdfReport() {
             const thumbSVG = generatePartThumbnail(part, 80, 60, parts);
             const pricePerMeterCut = getPricePerMeterCut(th);
             const partCutCost = (totalL / 1000) * pricePerMeterCut;
-            const partMetalCost = totalW * getPricePerKg(th);
+            // Расчёт стоимости металла: приоритет цене за м², если задана
+            const partPricePerM2 = getPricePerM2(th);
+            const partPricePerKg = getPricePerKg(th);
+            const partAreaM2 = totalW / (th * density);
+            const partMetalCost = partPricePerM2 > 0 ? partAreaM2 * partPricePerM2 : totalW * partPricePerKg;
             const partTotalCost = partMetalCost + partCutCost;
 
             groupTableRows += `
@@ -322,7 +354,11 @@ function exportPdfReport() {
             const singlePerimeter = perimeter;
             const singleCutLength = (singlePerimeter / 1000).toFixed(3);
             const singleCutCostPart = (singlePerimeter / 1000 * pricePerMeterCut);
-            const singleMetalCostPart = weight * getPricePerKg(th);
+            // Расчёт стоимости металла: приоритет цене за м², если задана
+            const singlePricePerM2 = getPricePerM2(th);
+            const singlePricePerKg = getPricePerKg(th);
+            const singleAreaM2 = weight / (th * density);
+            const singleMetalCostPart = singlePricePerM2 > 0 ? singleAreaM2 * singlePricePerM2 : weight * singlePricePerKg;
             const singleTotalCostPart = singleMetalCostPart + singleCutCostPart;
             const smallThumbSVG = generatePartThumbnail(part, 50, 40, parts);
 
@@ -332,6 +368,7 @@ function exportPdfReport() {
                     <td>${part.name || 'Деталь'}</td>
                     <td>${Math.round(part.bounds.width)} × ${Math.round(part.bounds.height)}</td>
                     <td>${th}</td>
+                    <td>${(singleAreaM2 * 1000000).toFixed(3)}</td>
                     <td>${singleWeight}</td>
                     <td>${singleCutLength}</td>
                     <td>${singleCutCostPart.toFixed(2)}</td>
@@ -349,11 +386,20 @@ function exportPdfReport() {
         }, 0), 0);
         const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea);
         const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
-        const groupCost = group.totalWeight * getPricePerKg(th);
+        
+        // Расчёт стоимости металла: приоритет цене за м², если задана
+        const pricePerM2 = getPricePerM2(th);
+        const pricePerKg = getPricePerKg(th);
+        const groupAreaM2 = group.totalWeight / (th * density);  // м²
+        const groupCost = pricePerM2 > 0 ? groupAreaM2 * pricePerM2 : group.totalWeight * pricePerKg;
+        
         const pricePerMeterCut = getPricePerMeterCut(th);
         const groupCutCost = (group.totalLength / 1000) * pricePerMeterCut;
-        const groupNestingTime = group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
-        const groupTimeCost = (groupNestingTime / 3600) * pricingSettings.pricePerHour;
+        // Используем распределённое время секундомера или время раскладки из листов
+        const groupNestingTime = useStopwatch 
+            ? (timeDistribution[key] || 0)
+            : group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
+        const groupTimeCost = (groupNestingTime / 60) * pricingSettings.pricePerMinute;
         const groupTotalCost = groupCost + groupCutCost + groupTimeCost;
         const groupEfficiency = group.totalWeight + groupRemnantWeight > 0
             ? (group.totalWeight / (group.totalWeight + groupRemnantWeight) * 100).toFixed(1) : '0.0';
@@ -365,7 +411,7 @@ function exportPdfReport() {
                     <div class="summary-item"><div class="label">Листов</div><div class="value">${group.sheets.length}</div></div>
                     <div class="summary-item"><div class="label">Размещено</div><div class="value">${group.totalPlaced} шт</div></div>
                     <div class="summary-item"><div class="label">Вес деталей</div><div class="value">${group.totalWeight.toFixed(3)} кг</div></div>
-                    <div class="summary-item"><div class="label">Цена металла</div><div class="value">${getPricePerKg(th).toFixed(2)} ₽/кг</div></div>
+                    <div class="summary-item"><div class="label">Цена металла</div><div class="value">${pricePerM2 > 0 ? pricePerM2.toFixed(2) + ' ₽/м²' : pricePerKg.toFixed(2) + ' ₽/кг'}</div></div>
                     <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(group.totalLength / 1000).toFixed(2)} м</div></div>
                     <div class="summary-item"><div class="label">Цена реза</div><div class="value">${pricePerMeterCut.toFixed(2)} ₽/м</div></div>
                     <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${groupCost.toFixed(2)} ₽</div></div>
@@ -405,11 +451,18 @@ function exportPdfReport() {
             sheetWeight += w;
         });
 
-        const sheetCost = sheetWeight * getPricePerKg(sheetTh);
+        const sheetPricePerM2 = getPricePerM2(sheetTh);
+        const sheetPricePerKg = getPricePerKg(sheetTh);
+        const sheetAreaM2 = sheetWeight / (sheetTh * density);
+        const sheetMetalCost = sheetPricePerM2 > 0 ? sheetAreaM2 * sheetPricePerM2 : sheetWeight * sheetPricePerKg;
         const pricePerMeterCut = getPricePerMeterCut(sheetTh);
         const sheetCutCost = (sheetCuttingLength / 1000) * pricePerMeterCut;
-        const sheetTimeCost = ((sheet.nestingTime || 0) / 3600) * pricingSettings.pricePerHour;
-        const sheetTotalCost = sheetCost + sheetCutCost + sheetTimeCost;
+        // Используем время секундомера (распределённое) или время раскладки из листа
+        const sheetTimeSeconds = useStopwatch 
+            ? Math.round(workTimeSeconds / sheetsToReport.length)
+            : (sheet.nestingTime || 0);
+        const sheetTimeCost = (sheetTimeSeconds / 60) * pricingSettings.pricePerMinute;
+        const sheetTotalCost = sheetMetalCost + sheetCutCost + sheetTimeCost;
         const sheetUsedArea = sheet.nestedParts.reduce((s, n) => {
             const p = parts.find(pp => pp.id === n.partId);
             return s + (p ? p.bounds.width * p.bounds.height : 0);
@@ -428,8 +481,8 @@ function exportPdfReport() {
                             <div class="stat"><span class="stat-label">Деталей</span><span class="stat-value">${sheetPartCount} шт</span></div>
                             <div class="stat"><span class="stat-label">Длина реза</span><span class="stat-value">${(sheetCuttingLength / 1000).toFixed(3)} м</span></div>
                             <div class="stat"><span class="stat-label">Рез</span><span class="stat-value">${sheetCutCost.toFixed(2)} ₽</span></div>
-                            <div class="stat"><span class="stat-label">Металл</span><span class="stat-value">${sheetCost.toFixed(2)} ₽</span></div>
-                            <div class="stat"><span class="stat-label">Время</span><span class="stat-value">${sheet.nestingTime ? sheet.nestingTime.toFixed(0) + ' сек' : '—'}</span></div>
+                            <div class="stat"><span class="stat-label">Металл</span><span class="stat-value">${sheetMetalCost.toFixed(2)} ₽</span></div>
+                            <div class="stat"><span class="stat-label">Время</span><span class="stat-value">${sheetTimeSeconds > 0 ? sheetTimeSeconds.toFixed(0) + ' сек' : '—'}</span></div>
                             <div class="stat"><span class="stat-label">Итого</span><span class="stat-value" style="color:#2d7a5a;">${sheetTotalCost.toFixed(2)} ₽</span></div>
                             <div class="stat"><span class="stat-label">Остаток</span><span class="stat-value">${(sheetRemnantArea / 1000000).toFixed(3)} м²</span></div>
                         </div>
@@ -443,18 +496,17 @@ function exportPdfReport() {
     // ИТОГОВАЯ СТОИМОСТЬ
     let grandTotalMetalCost = 0;
     let grandTotalCutCost = 0;
-    let grandTotalNestingTime = 0;
     Object.keys(reportByThickness).forEach(key => {
         const g = reportByThickness[key];
-        grandTotalMetalCost += g.totalWeight * getPricePerKg(g.thickness);
+        const pricePerM2 = getPricePerM2(g.thickness);
+        const pricePerKg = getPricePerKg(g.thickness);
+        const areaM2 = g.totalWeight / (g.thickness * density);
+        grandTotalMetalCost += pricePerM2 > 0 ? areaM2 * pricePerM2 : g.totalWeight * pricePerKg;
         const pricePerMeterCut = getPricePerMeterCut(g.thickness);
         grandTotalCutCost += (g.totalLength / 1000) * pricePerMeterCut;
-        grandTotalNestingTime += g.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
     });
 
-    const stopwatchTime = (typeof window.getStopwatchTime === 'function') ? window.getStopwatchTime() : 0;
-    const workTimeSeconds = stopwatchTime > 0 ? stopwatchTime : grandTotalNestingTime;
-    const grandTotalTimeCost = (workTimeSeconds / 3600) * pricingSettings.pricePerHour;
+    const grandTotalTimeCost = (workTimeSeconds / 60) * pricingSettings.pricePerMinute;
     const grandTotalCost = grandTotalMetalCost + grandTotalCutCost + grandTotalTimeCost;
 
     const formatTime = (totalSec) => {
@@ -542,6 +594,7 @@ ${partDetailRows ? `
                 <th>Название</th>
                 <th>Размер (мм)</th>
                 <th>Толщ. (мм)</th>
+                <th>Площадь (м²)</th>
                 <th>Вес (кг)</th>
                 <th>Рез (м)</th>
                 <th>Рез (₽)</th>
