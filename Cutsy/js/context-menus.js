@@ -1,3 +1,4 @@
+
 // ═══════════════════════════════════════════════════════════════
 // КОНТЕКСТНЫЕ МЕНЮ И ОБРАБОТЧИКИ DOM
 // ═══════════════════════════════════════════════════════════════
@@ -133,6 +134,7 @@ function showContextInfo() {
 
     // Формируем отчёт
     const areaM2 = area / 1000000;  // м²
+    let info = '';
     info += `<strong>📐 Размер:</strong> ${Math.round(bounds.width)} × ${Math.round(bounds.height)} мм<br>`;
     info += `<strong>📊 Площадь:</strong> ${areaM2.toFixed(6)} м² (${Math.round(area)} мм²)<br>`;
     info += `<strong>🔩 Толщина:</strong> ${thickness} мм<br>`;
