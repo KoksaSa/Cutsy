@@ -1650,6 +1650,7 @@ if (selectedObjects.length === 0) {
                 visible: false,  // По умолчанию скрыта на холсте
                 rotationMode: 'auto',  // Режим вращения: 'fast' (0° и 90°), 'full' (19 углов), 'auto' (авто)
                 oneCutEnabled: false,  // "В один рез": false = обычная раскладка, true = с общими гранями
+                noRotate: false,  // "Не вращать": false = можно вращать, true = только 0°
                 spacing: spacing  // Зазор между деталями (мм), может быть отрицательным для наложения
             };
 
@@ -4683,6 +4684,7 @@ if (selectedObjects.length === 0) {
                 const isVisible = part.visible === true;  // Видима ли деталь на холсте
                 const rotationMode = part.rotationMode || 'auto';  // Режим вращения: 'fast', 'full', 'auto'
                 const oneCutEnabled = part.oneCutEnabled === true;  // "В один рез"
+                const noRotate = part.noRotate === true;  // "Не вращать"
 
                 return `
                 <div class="part-card" data-part-id="${part.id}" style="padding:8px;margin-bottom:6px;background:${isSelected ? '#1a3a52' : '#252526'};border-radius:4px;border:2px solid ${isSelected ? '#00aaff' : '#3c3c3c'};cursor:pointer;">
@@ -4725,6 +4727,21 @@ if (selectedObjects.length === 0) {
                             onwheel="event.preventDefault(); event.stopPropagation();"
                             onchange="event.stopPropagation(); changePartThickness(${part.id}, this.value)">
                         <span style="color:#007acc;font-size:11px;">мм</span>
+                    </div>
+                    
+                    <!-- Чекбокс "Не вращать" -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px;background:#1e1e1e;border-radius:4px;">
+                        <input type="checkbox"
+                            id="norotate-${part.id}"
+                            ${noRotate ? 'checked' : ''}
+                            onclick="toggleNoRotate(${part.id}); event.stopPropagation();"
+                            style="width:16px;height:16px;cursor:pointer;">
+                        <label for="norotate-${part.id}" 
+                            style="color:#aaa;font-size:11px;cursor:pointer;"
+                            onclick="event.stopPropagation();"
+                            title="Если включено: деталь не будет вращаться при раскладке (только 0°)">
+                            🔒 Не вращать
+                        </label>
                     </div>
                     
                     <!-- Чекбокс "В один рез" -->
@@ -5045,6 +5062,20 @@ if (selectedObjects.length === 0) {
             part.oneCutEnabled = !part.oneCutEnabled;
 
             console.log(`🔗 [toggleOneCut] Деталь "${part.name || `#${part.id}`}" → В один рез: ${part.oneCutEnabled ? 'ВКЛ' : 'ВЫКЛ'}`);
+
+            // Обновляем список деталей
+            updatePartsList();
+        };
+
+        // Глобальная функция для переключения режима "Не вращать"
+        window.toggleNoRotate = function(partId) {
+            const part = parts.find(p => p.id === partId);
+            if (!part) return;
+
+            // Переключаем режим
+            part.noRotate = !part.noRotate;
+
+            console.log(`🔒 [toggleNoRotate] Деталь "${part.name || `#${part.id}`}" → Не вращать: ${part.noRotate ? 'ВКЛ' : 'ВЫКЛ'}`);
 
             // Обновляем список деталей
             updatePartsList();

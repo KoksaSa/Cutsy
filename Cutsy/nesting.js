@@ -1031,18 +1031,32 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
     const centerX = bbox.width / 2;
     const centerY = bbox.height / 2;
 
+    // ═══════════════════════════════════════════════════════════
+    // ПРОВЕРКА: "НЕ ВРАЩАТЬ"
+    // Если noRotate = true, пробуем только 0°
+    // ═══════════════════════════════════════════════════════════
+    const noRotate = newPart.noRotate === true;
+    
+    console.log(`🔍 [noRotate CHECK] Деталь #${newPart.id} "${newPart.name}" → noRotate=${noRotate} (value: ${newPart.noRotate})`);
+
     // Углы поворота: 'fast' = 0° и 90°, 'full' = 19 углов, 'auto' = прямоугольные=2, сложные=4
-    const rotationMode = newPart.rotationMode || 'auto';
+    // Если noRotate = true, только 0°
     let rotationAngles;
-    if (rotationMode === 'fast') {
-        rotationAngles = [0, 90];  // Только 0° и 90°
-    } else if (rotationMode === 'full') {
-        rotationAngles = [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];  // 19 углов
+    if (noRotate) {
+        rotationAngles = [0];  // Только 0°
+        console.log(`🔒 [noRotate] Деталь #${newPart.id} - вращение отключено, пробуем только 0°`);
     } else {
-        // 'auto' - автоматический выбор
-        rotationAngles = isRectangular
-            ? [0, 90]  // Только 0° и 90° для прямоугольных деталей
-            : [0, 45, 90, 135];  // balanced по умолчанию для сложных деталей
+        const rotationMode = newPart.rotationMode || 'auto';
+        if (rotationMode === 'fast') {
+            rotationAngles = [0, 90];  // Только 0° и 90°
+        } else if (rotationMode === 'full') {
+            rotationAngles = [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];  // 19 углов
+        } else {
+            // 'auto' - автоматический выбор
+            rotationAngles = isRectangular
+                ? [0, 90]  // Только 0° и 90° для прямоугольных деталей
+                : [0, 45, 90, 135];  // balanced по умолчанию для сложных деталей
+        }
     }
 
     for (let i = 0; i < rotationAngles.length; i++) {
