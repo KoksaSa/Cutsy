@@ -822,10 +822,9 @@ function isPolygonInsideSheet(polygon, sheetWidth, sheetHeight, minGap, edgeGap 
     // ═══════════════════════════════════════════════════════════
     // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: внутри контура остатка?
     // ═══════════════════════════════════════════════════════════
-    // sheetRemnant объявлена в sheet-remnant.js, безопасный доступ через window
     const remnant = (typeof sheetRemnant !== 'undefined') ? sheetRemnant : (window.sheetRemnant || null);
     if (typeof isRectInsideRemnant === 'function' && remnant && remnant.outerContour && remnant.outerContour.length > 0) {
-        // Вычисляем bounding box полигона
+        // Вычисляем bounding box полигона (координаты уже в системе листа)
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const p of polygon) {
             minX = Math.min(minX, p.x);
@@ -843,9 +842,9 @@ function isPolygonInsideSheet(polygon, sheetWidth, sheetHeight, minGap, edgeGap 
     return true;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // BOTTOM-LEFT — Генерация кандидатных позиций для размещения
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
 // Генерирует кандидатные позиции на основе размещённых деталей
 // (вместо перебора всей сетки проверяем только позиции у граней)
@@ -1217,31 +1216,31 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
         // Для не-круглых деталей или если шахматная не нашла позицию
         if (!isCircular) {
             // ═══════════════════════════════════════════════════════
-            // ДЛЯ ПРЯМОУГОЛЬНЫХ ДЕТАЛЕЙ: генерируем ровные столбцы
+            // ДЛЯ ПРЯМОУГОЛЬНЫХ ДЕТАЛЕЙ: генерируем ровные ГОРИЗОНТАЛЬНЫЕ строки
             // ═══════════════════════════════════════════════════════
             const candidates = [];
             
             if (isRectangular) {
-                // Находим все уникальные X-позиции где уже есть детали
-                const usedX = new Set();
-                usedX.add(edgeGap); // Первый столбец всегда начинается с edgeGap
+                // Находим все уникальные Y-позиции где уже есть детали
+                const usedY = new Set();
+                usedY.add(edgeGap); // Первая строка всегда начинается с edgeGap
                 
                 for (const placed of placedParts) {
-                    const placedX = placed.x;
-                    const placedWidth = placed.width || placed.bboxWidth || 0;
-                    // Добавляем позицию справа от каждой детали
-                    const nextX = placedX + placedWidth + minGap;
-                    if (nextX + rotatedBbox.width <= sheetWidth - edgeGap) {
-                        usedX.add(nextX);
+                    const placedY = placed.y;
+                    const placedHeight = placed.height || placed.bboxHeight || 0;
+                    // Добавляем позицию ниже каждой детали
+                    const nextY = placedY + placedHeight + minGap;
+                    if (nextY + rotatedBbox.height <= sheetHeight - edgeGap) {
+                        usedY.add(nextY);
                     }
                 }
-                
-                // Для каждой X-позиции генерируем ровный столбец
-                for (const startX of usedX) {
-                    // Ровный столбец: шаг = высота детали + minGap
-                    const colStep = rotatedBbox.height + minGap;
-                    for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += colStep) {
-                        candidates.push({ x: startX, y });
+                    
+                // Для каждой Y-позиции генерируем ровную строку
+                for (const startY of usedY) {
+                    // Ровная строка: шаг = ширина детали + minGap
+                    const rowStep = rotatedBbox.width + minGap;
+                    for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += rowStep) {
+                        candidates.push({ x, y: startY });
                     }
                 }
             } else {
