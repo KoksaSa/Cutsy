@@ -685,10 +685,21 @@
                                 sheetSelectStart = { x: clickSheetX, y: clickSheetY };
                                 sheetSelectEnd = { x: clickSheetX, y: clickSheetY };
                                 selectedRectIndex = -1;
+                                
+                                // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                                document.getElementById('markupRectTools').style.display = 'block';
+                                document.getElementById('cutRemnantTools').style.display = 'block';
+                                document.getElementById('overlapTools').style.display = 'block';
+                                
                                 render();
                             } else {
                                 // Сбрасываем флаг после использования
                                 window.justFinishedCutLineDrag = false;
+                                
+                                // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                                document.getElementById('markupRectTools').style.display = 'block';
+                                document.getElementById('cutRemnantTools').style.display = 'block';
+                                document.getElementById('overlapTools').style.display = 'block';
                             }
                             return;
                         }
