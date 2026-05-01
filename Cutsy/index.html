@@ -73,7 +73,7 @@
         </div>
 
         <h3 style="margin-top: 20px;" data-i18n="parts_title">📋 Детали</h3>
-        <button class="align-btn" id="nestMultiParts" style="margin-top:8px;background:#5a4a7a;" data-i18n="btn_nesting_all">📑 Раскладка (все листы)</button>
+        <button class="align-btn" id="nestMultiParts" style="margin-top:8px;background:#5a4a7a;" data-i18n="btn_nesting_all">📑 Разложить</button>
         <button class="align-btn" id="setPricesBtn" style="margin-top:6px;background:#2d5a7a;">💰 Установить цены</button>
         <button class="align-btn" id="exportPdf" style="margin-top:6px;background:#7a5a2d;" data-i18n="btn_export_pdf_report">📊 Отчёт PDF</button>
         <div id="partsList"></div>
@@ -295,6 +295,7 @@
             <div class="status-item"><span>🔧</span><span id="currentTool">Инструмент: Выбрать</span></div>
             <div class="status-item"><span>📐</span><span id="objectCount">Объектов: 0</span></div>
             <div class="status-item"><span>🔲</span><span id="selectedCount">Выбрано: 0</span></div>
+            <div class="status-item" id="editingPartIndicator" style="display:none;"><span>✏️</span><span id="editingPartName"></span></div>
             <div class="status-item"><span>↩️</span><span id="undoStack">История: 0</span></div>
             <div class="status-item" id="nestedSelectInfo" style="display:none;background:#007acc;padding:2px 8px;border-radius:4px;"><span>🔲</span><span id="nestedSelectedCount">Выделено деталей: 0</span></div>
         </div>
@@ -617,6 +618,11 @@
                         // Показываем кнопки отражения детали
                         document.getElementById('nestedPartTools').style.display = 'block';
 
+                        // Скрываем кнопки разметки и обрезки (они только для пустого места листа)
+                        document.getElementById('markupRectTools').style.display = 'none';
+                        document.getElementById('cutRemnantTools').style.display = 'none';
+                        document.getElementById('overlapTools').style.display = 'none';
+
                         // Подготовка к перетаскиванию - сохраняем начальные позиции всех выделенных деталей
                         const draggedNested = nestedParts[foundIndex];
                         // Смещение мыши относительно детали, за которую держим
@@ -691,10 +697,13 @@
                         selectedNestedParts = [];
                         isDraggingNested = false;
 
-                        // Скрываем кнопки отражения детали (только если лист скрыт)
-                        if (!showSheetView) {
-                            document.getElementById('nestedPartTools').style.display = 'none';
-                        }
+                        // Скрываем кнопки отражения детали
+                        document.getElementById('nestedPartTools').style.display = 'none';
+                        
+                        // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                        document.getElementById('markupRectTools').style.display = 'block';
+                        document.getElementById('cutRemnantTools').style.display = 'block';
+                        document.getElementById('overlapTools').style.display = 'block';
 
                         // Проверяем, кликнули ли по прямоугольнику разметки
                         let rectFound = -1;
@@ -722,12 +731,9 @@
                 }
             }
 
-            // Средняя кнопка мыши - панорамирование
-            if (e.button === 1 || (e.button === 0 && e.altKey)) {
-                isPanning = true;
-                panStart = { x: e.clientX - panX, y: e.clientY - panY };
-                canvas.style.cursor = 'grabbing';
-                return;
+            // Средняя кнопка мыши - обработана в mouse-events.js (панорамирование листа/холста)
+            if (e.button === 1) {
+                return;  // Средняя кнопка уже обработана
             }
 
             if (currentTool === 'select') {
@@ -845,8 +851,57 @@
             
             // ═══════════════════════════════════════════════════════════
             // ЛАСТИК - умное стирание объектов
-            // ═══════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════
             if (currentTool === 'eraser' && e.button === 0) {
+                // ═══════════════════════════════════════════════════════
+                // В РЕЖИМЕ РЕДАКТИРОВАНИЯ: сразу удаляем объекты под курсором
+                // ═══════════════════════════════════════════════════════
+                if (isEditingPart && editingPartId !== null) {
+                    const part = parts.find(p => p.id === editingPartId);
+                    if (part) {
+                        for (let i = objects.length - 1; i >= 0; i--) {
+                            const obj = objects[i];
+                            
+                            // Проверяем клик по объекту
+                            let hit = false;
+                            if (obj.type === 'line') {
+                                hit = pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2) < 10;
+                            } else if (obj.type === 'circle') {
+                                hit = Math.abs(Math.sqrt(Math.pow(x - obj.cx, 2) + Math.pow(y - obj.cy, 2)) - obj.radius) < 4;
+                            } else if (obj.type === 'rect') {
+                                hit = x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height;
+                            } else if (obj.type === 'polygon') {
+                                hit = obj.contains(x, y);
+                            } else if (obj.type === 'text') {
+                                hit = obj.contains(x, y);
+                            }
+                            
+                            if (hit) {
+                                saveState();
+                                console.log(`🗑️ [Ластик-Edit] Удаление объекта ${obj.type} из детали #${part.id}`);
+                                
+                                // Удаляем из part.objects
+                                const idx = part.objects.indexOf(obj);
+                                if (idx > -1) {
+                                    part.objects.splice(idx, 1);
+                                }
+                                
+                                // Удаляем из objects на холсте
+                                objects.splice(i, 1);
+                                
+                                // Обновляем границы детали
+                                if (part.objects.length > 0) {
+                                    updatePartBounds(part);
+                                }
+                                
+                                render();
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Обычный режим (не редактирование детали)
                 for (let i = objects.length - 1; i >= 0; i--) {
                     const obj = objects[i];
 
@@ -1404,22 +1459,36 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
             const partWidth = newPart.bounds.width;
             const partHeight = newPart.bounds.height;
 
+            // ═══════════════════════════════════════════════════════
+            // ПРОВЕРКА: "НЕ ВРАЩАТЬ"
+            // Если noRotate = true, пробуем только 0°
+            // ═══════════════════════════════════════════════════════
+            const noRotate = newPart.noRotate === true;
+            
+            console.log(`🔍 [noRotate CHECK] Деталь #${newPart.id} "${newPart.name}" → noRotate=${noRotate} (value: ${newPart.noRotate})`);
+
             // Углы поворота: проверяем режим вращения детали
             // rotationMode: 'fast' = 0° и 90°, 'full' = 19 углов, по умолчанию = 19 углов
-            const rotationMode = newPart.rotationMode || 'auto';
+            // Если noRotate = true, только 0°
             let rotationAngles;
-            if (rotationMode === 'fast') {
-                rotationAngles = [0, 90];  // Только 0° и 90°
-            } else if (rotationMode === 'full') {
-                rotationAngles = [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];  // 19 углов
+            if (noRotate) {
+                rotationAngles = [0];  // Только 0°
+                console.log(`🔒 [noRotate] Деталь #${newPart.id} - вращение отключено, пробуем только 0°`);
             } else {
-                // 'auto' - автоматический выбор (прямоугольные=2 угла, сложные=19)
-                const isRectangular = newPart.objects && newPart.objects.every(obj => 
-                    obj.type === 'rect' || obj.type === 'line'
-                );
-                rotationAngles = isRectangular 
-                    ? [0, 90]
-                    : [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];
+                const rotationMode = newPart.rotationMode || 'auto';
+                if (rotationMode === 'fast') {
+                    rotationAngles = [0, 90];  // Только 0° и 90°
+                } else if (rotationMode === 'full') {
+                    rotationAngles = [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];  // 19 углов
+                } else {
+                    // 'auto' - автоматический выбор (прямоугольные=2 угла, сложные=19)
+                    const isRectangular = newPart.objects && newPart.objects.every(obj => 
+                        obj.type === 'rect' || obj.type === 'line'
+                    );
+                    rotationAngles = isRectangular 
+                        ? [0, 90]
+                        : [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];
+                }
             }
 
             for (let i = 0; i < rotationAngles.length; i++) {
@@ -1433,7 +1502,7 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
                     { x: partWidth, y: partHeight },
                     { x: 0, y: partHeight }
                 ];
-
+                
                 // Центр детали для вращения
                 const centerX = partWidth / 2;
                 const centerY = partHeight / 2;
@@ -1655,6 +1724,15 @@ if (selectedObjects.length === 0) {
             };
 
             console.log(`✅ [createPartFromSelection] Создана деталь #${part.id} "${part.name}" с spacing=${part.spacing} мм`);
+
+            // Проверка на дубликаты ID
+            const duplicate = parts.find(p => p.id === part.id);
+            if (duplicate) {
+                console.error(`❌ КРИТИЧЕСКАЯ ОШИБКА: Дубликат ID ${part.id}!`);
+                console.error(`   Новая деталь:`, part);
+                console.error(`   Уже существует:`, duplicate);
+                console.error(`   parts массив:`, parts.map(p => ({ id: p.id, name: p.name })));
+            }
 
             // Валидация созданной детали
             const partValid = validatePart(part);
@@ -2642,6 +2720,21 @@ if (selectedObjects.length === 0) {
                     saveState();
                     objects.push(currentShape);
                     selectedObjects = [currentShape];
+                    
+                    // ═══════════════════════════════════════════════════════
+                    // АВТОСОХРАНЕНИЕ В РЕДАКТИРУЕМУЮ ДЕТАЛЬ
+                    // ═══════════════════════════════════════════════════════
+                    if (isEditingPart && editingPartId !== null) {
+                        const part = parts.find(p => p.id === editingPartId);
+                        if (part) {
+                            part.objects.push(currentShape);
+                            console.log(`💾 [AutoSave] Объект ${currentShape.type} сохранён в деталь #${part.id}`);
+                            console.log(`   Объектов в детали: ${part.objects.length}`);
+                            // Обновляем границы детали
+                            updatePartBounds(part);
+                        }
+                    }
+                    
                     showProperties(selectedObjects[0]);
                 }
                 isDrawing = false; currentShape = null; snapPoint = null;
@@ -2709,6 +2802,15 @@ if (selectedObjects.length === 0) {
             btn.addEventListener('click', () => {
                 console.log('🔧 Клик по кнопке:', btn.dataset.tool);
                 
+                // ═══════════════════════════════════════════════════════
+                // ПРОВЕРКА: если показаны 2+ детали — запрещаем рисовать
+                // ═══════════════════════════════════════════════════════
+                const visiblePartsCount = parts.filter(p => p.visible === true).length;
+                if (visiblePartsCount >= 2 && btn.dataset.tool !== 'select') {
+                    alert('⚠️ Нельзя редактировать!\n\nПоказано более 1 детали.\n\nСначала скройте лишние детали (нажмите "✓"), затем редактируйте.');
+                    return;  // Блокируем переключение инструмента
+                }
+                
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentTool = btn.dataset.tool;
@@ -2723,11 +2825,24 @@ if (selectedObjects.length === 0) {
                     text: 'Текст'
                 };
                 document.getElementById('currentTool').textContent = `Инструмент: ${toolNames[currentTool]}`;
+                
+                // Обновляем индикатор режима редактирования
+                const editingIndicator = document.getElementById('editingPartIndicator');
+                if (isEditingPart && editingPartId !== null) {
+                    const part = parts.find(p => p.id === editingPartId);
+                    if (part) {
+                        editingIndicator.style.display = 'block';
+                        document.getElementById('editingPartName').textContent = `Редактирование: ${part.name || `#${part.id}`}`;
+                    }
+                } else {
+                    editingIndicator.style.display = 'none';
+                }
+                
                 if (currentTool !== 'select') { selectedObjects = []; showProperties(null); }
 
-                // ═══════════════════════════════════════════════════════════
+                // ═══════════════════════════════════════════════════════
                 // ПОКАЗАТЬ/СКРЫТЬ привязки и ортогональность (только для линии)
-                // ═══════════════════════════════════════════════════════════
+                // ═══════════════════════════════════════════════════════
                 const snapOrthoTools = document.getElementById('snapOrthoTools');
                 if (snapOrthoTools) {
                     snapOrthoTools.style.display = (currentTool === 'line') ? 'block' : 'none';
@@ -2752,6 +2867,7 @@ if (selectedObjects.length === 0) {
                 render();
             });
         });
+    
     
         
         // === Выравнивание ===
@@ -2813,7 +2929,7 @@ if (selectedObjects.length === 0) {
             console.log('\n🖱️ [UI] Клик по кнопке "📏 Авто-размеры"');
             autoDimension();
         });
-        
+
         document.getElementById('clearDimensions').addEventListener('click', () => {
             console.log('🖱️ [UI] Клик по кнопке "🗑️ Скрыть размеры"');
             clearDimensions();
@@ -2826,7 +2942,7 @@ if (selectedObjects.length === 0) {
             btn.textContent = snapEnabled ? '🧲 Привязки: ВКЛ' : '🧲 Привязки: ВЫКЛ';
             render();
         });
-
+        
         // Ортогональность (рисование под углами 0°, 45°, 90°...)
         document.getElementById('toggleOrtho').addEventListener('click', () => {
             console.log('📐 [toggleOrtho] Клик по кнопке ортогональности');
@@ -4926,51 +5042,80 @@ if (selectedObjects.length === 0) {
         // Просмотр детали (вкл/выкл видимость на холсте)
         window.viewPart = function(partId) {
             const part = parts.find(p => p.id === partId);
-            if (!part) return;
+            if (!part) {
+                console.error(`❌ [viewPart] Деталь #${partId} НЕ НАЙДЕНА!`);
+                console.error(`   parts массив:`, parts.map(p => ({ id: p.id, name: p.name })));
+                return;
+            }
 
-            // Переключаем видимость
-            part.visible = !part.visible;
-
+            // Если выключаем видимость детали
             if (part.visible) {
+                console.log(`\n👁️ [viewPart] Скрываем деталь #${partId} "${part.name}"`);
+                console.log(`   Объектов в детали: ${part.objects.length}`);
+                console.log(`   Объектов на холсте: ${objects.length}`);
+                
+                // Сохраняем ссылку на объекты детали ПЕРЕД удалением
+                const partObjectsCopy = [...part.objects];
+                const removedCount = partObjectsCopy.length;
+                
+                console.log(`   🔇 Скрываем деталь #${partId}`);
+                console.log(`   part.objects:`, part.objects.map((o, i) => `${o.type}#${i}`));
+                
+                // Скрываем объекты детали с холста
+                const objectsToRemove = new Set(partObjectsCopy);
+                const beforeCount = objects.length;
+                objects = objects.filter(obj => !objectsToRemove.has(obj));
+                selectedObjects = selectedObjects.filter(obj => !objectsToRemove.has(obj));
+                const afterCount = objects.length;
+                
+                console.log(`   Удалено объектов: ${beforeCount} → ${afterCount} (удалено: ${beforeCount - afterCount})`);
+                console.log(`   objects на холсте после: ${objects.length}`);
+                
+                // Выключаем режим редактирования
+                isEditingPart = false;
+                editingPartId = null;
+                window.isEditingPart = isEditingPart;
+                window.editingPartId = editingPartId;
+                console.log(`   ❌ Режим редактирования: ВЫКЛ`);
+            }
+            // Если включаем видимость детали
+            else {
+                // Проверяем: сколько деталей сейчас видно
+                const visibleParts = parts.filter(p => p.visible === true);
+                console.log(`\n👁️ [viewPart] Показываем деталь #${partId} "${part.name}"`);
+                console.log(`   Сейчас видно деталей: ${visibleParts.length} (${visibleParts.map(p => `#${p.id}`).join(', ')})`);
+
+                // Если уже есть видимая деталь — предупреждаем
+                if (visibleParts.length > 0) {
+                    console.warn(`⚠️ Внимание: уже есть видимые детали! Редактирование будет недоступно.`);
+                    alert(`⚠️ Внимание!\n\nУже показана деталь #${visibleParts[0].id} "${visibleParts[0].name}".\n\nРедактирование доступно только для ОДНОЙ детали.\n\nСначала скройте другую деталь (нажмите "✓"), затем показывайте эту.`);
+                    return;  // Не показываем эту деталь
+                }
+                
                 // Показываем объекты детали на холсте
+                const addedCount = part.objects.length;
                 part.objects.forEach(obj => {
                     objects.push(obj);
                 });
-            } else {
-                // ПЕРЕД скрытием сохраняем ВСЕ объекты с холста, которые принадлежат детали
-                const newPartObjects = [];
-                const bounds = part.bounds;
-
-                // Собираем ВСЕ объекты на холсте, которые находятся в границах детали
-                for (const holstObj of objects) {
-                    const points = holstObj.getPoints();
-                    let inside = false;
-
-                    // Проверяем, находится ли хотя бы одна точка объекта внутри границ детали
-                    for (const pt of points) {
-                        if (pt.x >= bounds.minX - 1 && pt.x <= bounds.maxX + 1 &&
-                            pt.y >= bounds.minY - 1 && pt.y <= bounds.maxY + 1) {
-                            inside = true;
-                            break;
-                        }
-                    }
-
-                    if (inside) {
-                        newPartObjects.push(holstObj);
-                    }
-                }
-
-                // Заменяем part.objects на объекты с холста
-                part.objects = newPartObjects;
-
-                // Обновляем границы детали после синхронизации
-                updatePartBounds(part);
-
-                // Скрываем объекты детали с холста
-                const objectsToRemove = new Set(part.objects);
-                objects = objects.filter(obj => !objectsToRemove.has(obj));
-                selectedObjects = selectedObjects.filter(obj => !objectsToRemove.has(obj));
+                console.log(`   ✅ Показана деталь #${partId}, добавлено объектов: ${addedCount}`);
+                console.log(`   objects на холсте после: ${objects.length}`);
+                
+                // Включаем режим редактирования
+                isEditingPart = true;
+                editingPartId = partId;
+                window.isEditingPart = isEditingPart;
+                window.editingPartId = editingPartId;
+                console.log(`   ✅ Режим редактирования: ВКЛ (деталь #${partId})`);
+                
+                // Показываем уведомление
+                console.log(`📝 Теперь можно редактировать деталь: добавлять/удалять объекты`);
+                console.log(`   Новые объекты автоматически сохранятся в деталь`);
             }
+
+            part.visible = !part.visible;
+
+            console.log(`   Итоговые детали:`, parts.map(p => ({ id: p.id, name: p.name, visible: p.visible, objects: p.objects.length })));
+            console.log('');
 
             // Обновляем UI
             updatePartsList();
@@ -5012,7 +5157,7 @@ if (selectedObjects.length === 0) {
             }
             const spacing = parseFloat(value);
             console.log(`📏 [changePartSpacing] Деталь #${partId} "${part.name}" → значение: ${spacing} (type: ${typeof spacing})`);
-            
+
             if (isNaN(spacing) || spacing < -500 || spacing > 500) {
                 // Возвращаем предыдущее значение
                 const prevValue = (typeof part.spacing === 'number') ? part.spacing : 3;
@@ -5258,6 +5403,12 @@ if (selectedObjects.length === 0) {
                 if (typeof hideRemnantSheetItem === 'function') {
                     hideRemnantSheetItem();
                 }
+
+                // ═══════════════════════════════════════════════════════
+                // УДАЛЕНИЕ ОСТАТКА ИЗ КЭША
+                // ═══════════════════════════════════════════════════════
+                localStorage.removeItem('cadSheetRemnant');
+                console.log('🗑️ Остаток листа удалён из кэша');
 
                 // Переключаемся на стандартный лист
                 sheetSize = { width: 1250, height: 2500 };
@@ -5718,9 +5869,9 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                         await new Promise(resolve => setTimeout(resolve, 100));
 
                         // Копируем детали для раскладки этой толщины
-                        // ═══════════════════════════════════════════════════
-                        // ВАЖНО: Копируем oneCutEnabled для раскладки "В один рез"
-                        // ═══════════════════════════════════════════════════
+                        // ═══════════════════════════════════════════════
+                        // ВАЖНО: Копируем oneCutEnabled и noRotate для раскладки
+                        // ═══════════════════════════════════════════════
                         // remainingParts будет хранить ОСТАВШЕЕСЯ количество для каждой детали
                         let remainingParts = partsForThickness.map(p => {
                             const originalPart = parts.find(orig => orig.id === p.id);
@@ -5732,6 +5883,7 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                                 objects: p.objects,
                                 thickness: p.thickness,
                                 oneCutEnabled: p.oneCutEnabled === true,
+                                noRotate: originalPart ? originalPart.noRotate === true : false,  // Копируем noRotate!
                                 spacing: (typeof originalPart?.spacing === 'number') 
                                     ? originalPart.spacing  // Копируем spacing из оригинальной детали (включая отрицательные!)
                                     : 3
@@ -5741,7 +5893,8 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                         console.log(`🔗 [КОПИРОВАНИЕ] Детали для раскладки:`, remainingParts.map(p => ({
                             id: p.id,
                             quantity: p.quantity,
-                            oneCutEnabled: p.oneCutEnabled
+                            oneCutEnabled: p.oneCutEnabled,
+                            noRotate: p.noRotate
                         })));
 
                         // Раскладка на листы пока есть детали
@@ -5925,6 +6078,7 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                                         objects: rp.objects,
                                         thickness: rp.thickness,
                                         oneCutEnabled: rp.oneCutEnabled,
+                                        noRotate: rp.noRotate,  // Сохраняем noRotate!
                                         spacing: rp.spacing  // Сохраняем spacing!
                                     });
                                 }
@@ -6541,6 +6695,32 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                 }));
                 localStorage.setItem('cadParts', JSON.stringify(partsData));
                 localStorage.setItem('cadNestedParts', JSON.stringify(nestedParts));
+                
+                // ═══════════════════════════════════════════════════════
+                // СОХРАНЕНИЕ ОСТАТКА ЛИСТА В КЭШ
+                // ═══════════════════════════════════════════════════════
+                if (typeof sheetRemnant !== 'undefined' && sheetRemnant) {
+                    const remnantData = {
+                        outerContour: sheetRemnant.outerContour.map(obj => ({
+                            type: obj.type,
+                            x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2
+                        })),
+                        innerContours: sheetRemnant.innerContours.map(contour => 
+                            contour.map(obj => ({
+                                type: obj.type,
+                                x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2
+                            }))
+                        ),
+                        size: sheetRemnant.size,
+                        bounds: sheetRemnant.bounds,
+                        scale: sheetRemnant.scale
+                    };
+                    localStorage.setItem('cadSheetRemnant', JSON.stringify(remnantData));
+                    console.log('💾 Остаток листа сохранён в кэш');
+                } else {
+                    // Если остатка нет - удаляем из кэша
+                    localStorage.removeItem('cadSheetRemnant');
+                }
             } catch (e) {
                 console.warn('Ошибка сохранения в кэш:', e);
             }
@@ -6552,8 +6732,9 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             try {
                 const cachedParts = localStorage.getItem('cadParts');
                 const cachedNested = localStorage.getItem('cadNestedParts');
+                const cachedRemnant = localStorage.getItem('cadSheetRemnant');
 
-                if (!cachedParts && !cachedNested) {
+                if (!cachedParts && !cachedNested && !cachedRemnant) {
                     console.log('📭 Кэш пуст');
                     return false;
                 }
@@ -6603,11 +6784,56 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                     console.log(`✅ Восстановлено ${nestedParts.length} размещённых`);
                 }
 
+                // ═══════════════════════════════════════════════════════
+                // ЗАГРУЗКА ОСТАТКА ЛИСТА ИЗ КЭША
+                // ═══════════════════════════════════════════════════════
+                if (cachedRemnant) {
+                    try {
+                        const remnantData = JSON.parse(cachedRemnant);
+                        
+                        sheetRemnant = {
+                            outerContour: remnantData.outerContour.map(obj => new Line(obj.x1, obj.y1, obj.x2, obj.y2)),
+                            innerContours: remnantData.innerContours.map(contour => 
+                                contour.map(obj => new Line(obj.x1, obj.y1, obj.x2, obj.y2))
+                            ),
+                            contourObjects: [],
+                            size: remnantData.size,
+                            bounds: remnantData.bounds,
+                            scale: remnantData.scale || 1,
+                            image: null
+                        };
+                        
+                        // Собираем все объекты контура в один массив
+                        sheetRemnant.contourObjects = [
+                            ...sheetRemnant.outerContour,
+                            ...sheetRemnant.innerContours.flat()
+                        ];
+                        
+                        window.sheetRemnant = sheetRemnant;
+                        
+                        console.log(`✅ Остаток листа загружен из кэша: ${sheetRemnant.size.width}×${sheetRemnant.size.height} мм`);
+                        
+                        // Показываем элемент остатка в панели
+                        if (typeof showRemnantSheetItem === 'function') {
+                            showRemnantSheetItem();
+                        }
+                        
+                        // Показываем кнопку удаления
+                        const deleteBtn = document.getElementById('deleteRemnant');
+                        if (deleteBtn) {
+                            deleteBtn.style.display = 'block';
+                        }
+                    } catch (err) {
+                        console.error('Ошибка загрузки остатка листа:', err);
+                    }
+                }
+
                 return parts.length > 0;
             } catch (e) {
                 console.warn('❌ Ошибка загрузки:', e.message);
                 localStorage.removeItem('cadParts');
                 localStorage.removeItem('cadNestedParts');
+                localStorage.removeItem('cadSheetRemnant');
                 return false;
             }
         }
