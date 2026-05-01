@@ -91,7 +91,7 @@ canvas.addEventListener('contextmenu', (e) => {
                 return;
             }
 
-            // Клик в пустое место на листе - показываем меню добавления деталей
+            // Клик в пустое место на листе - показываем меню добавления деталей (с раскладкой)
             showAddPartToSheetMenu(e.clientX, e.clientY);
             return;
         }
@@ -124,7 +124,9 @@ canvas.addEventListener('contextmenu', (e) => {
 // Показать информацию о выделенных объектах в контекстном меню
 function showContextInfo() {
     const bounds = getGroupBounds(selectedObjects);
-    const thickness = 0.8; // Толщина задаётся в списке деталей
+    // Берём толщину из селекта в контекстном меню
+    const thicknessSelect = document.getElementById('contextPartThickness');
+    const thickness = thicknessSelect ? parseFloat(thicknessSelect.value) : 0.8;
     const density = 7.85; // Плотность стали, г/см³
 
     // Расчёт веса
@@ -136,11 +138,21 @@ function showContextInfo() {
     const areaM2 = area / 1000000;  // м²
     let info = '';
     info += `<strong>📐 Размер:</strong> ${Math.round(bounds.width)} × ${Math.round(bounds.height)} мм<br>`;
-    info += `<strong>📊 Площадь:</strong> ${areaM2.toFixed(6)} м² (${Math.round(area)} мм²)<br>`;
+    info += `<strong>📊 Площадь:</strong> ${areaM2.toFixed(6)} м²<br>`;
     info += `<strong>🔩 Толщина:</strong> ${thickness} мм<br>`;
     info += `<strong>⚖️ Вес:</strong> ${weight.toFixed(3)} кг`;
 
     document.getElementById('contextInfoContent').innerHTML = info;
+}
+
+// Обработчик изменения толщины в контекстном меню
+const contextPartThickness = document.getElementById('contextPartThickness');
+if (contextPartThickness) {
+    contextPartThickness.addEventListener('change', () => {
+        if (selectedObjects.length > 0) {
+            showContextInfo();  // Пересчитываем вес при изменении толщины
+        }
+    });
 }
 
 // Показать информацию о детали на листе
@@ -275,8 +287,17 @@ function showAddPartToSheetMenu(clientX, clientY) {
     });
 
     if (addPartList.children.length === 0) {
-        addPartList.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;padding:10px;">ℹ️ Все детали размещены</div>';
+        addPartList.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;padding:10px;">ℹ️ Все детали размещены или не влезают</div>';
     }
+
+    // Добавляем информацию о режиме
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'padding:8px;margin-bottom:8px;background:#2a2a2a;border-radius:4px;border-left:3px solid #007acc;';
+    infoDiv.innerHTML = `
+        <div style="color:#aaa;font-size:11px;margin-bottom:4px;">ℹ️ <strong>Режим автоматической раскладки:</strong></div>
+        <div style="color:#888;font-size:10px;">Детали будут автоматически размещены в свободном месте с использованием алгоритма NFP (учёт поворотов и зазоров)</div>
+    `;
+    addPartList.insertBefore(infoDiv, addPartList.firstChild);
 
     addPartToSheetMenu.style.display = 'block';
     addPartToSheetMenu.style.left = (clientX + 10) + 'px';
@@ -288,7 +309,7 @@ document.getElementById('addPartMenuCancel').addEventListener('click', () => {
     addPartToSheetMenu.style.display = 'none';
 });
 
-document.getElementById('addPartMenuOk').addEventListener('click', () => {
+document.getElementById('addPartMenuOk').addEventListener('click', async () => {
     // Собираем данные из полей ввода
     const partsToAdd = [];
     parts.forEach(part => {
@@ -306,128 +327,79 @@ document.getElementById('addPartMenuOk').addEventListener('click', () => {
         return;
     }
 
-    // Добавляем детали на лист с использованием NFP (поворот + отражение + проверка пересечений)
+    // Добавляем детали на лист с использованием NFP (как при основной раскладке)
     saveState();
+
+    // Проверяем, доступна ли функция findPositionWithNFP
+    if (typeof findPositionWithNFP !== 'function') {
+        alert('❌ Функция раскладки не найдена');
+        addPartToSheetMenu.style.display = 'none';
+        return;
+    }
 
     const minGap = 3;  // Минимальный зазор между деталями
 
-    partsToAdd.forEach(({ part, qty }) => {
-        // Определяем углы поворота для детали
-        const rotationMode = part.rotationMode || 'auto';
-        let rotationAngles;
-        if (rotationMode === 'fast') {
-            rotationAngles = [0, 90];  // Только 0° и 90°
-        } else if (rotationMode === 'full') {
-            rotationAngles = [0, 20, 40, 60, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340];  // 19 углов
-        } else {
-            // 'auto' - автоматический выбор (прямоугольные=4 угла, сложные=4 угла для простоты)
-            rotationAngles = [0, 90, 180, 270];
-        }
+    // Создаём временный массив для проверки пересечений
+    const placedPolygons = nestedParts.map(n => ({
+        positionedHull: n.polygon || [],
+        x: n.x,
+        y: n.y,
+        width: n.width,
+        height: n.height
+    }));
+
+    // Размещаем каждую деталь
+    for (const { part, qty } of partsToAdd) {
         for (let i = 0; i < qty; i++) {
-            let placed = false;
+            // Ищем позицию с использованием NFP
+            const position = await findPositionWithNFP(
+                placedPolygons,
+                part,
+                sheetSize.width,
+                sheetSize.height,
+                null,  // cancelCallback
+                null   // spatialGrid
+            );
 
-            // Пробуем разные углы поворота
-            for (let angleIdx = 0; angleIdx < rotationAngles.length && !placed; angleIdx++) {
-                const angle = rotationAngles[angleIdx];
-                const angleRad = (angle * Math.PI) / 180;
+            if (position) {
+                const outline = getPartPolygons(part);
+                const positionedHull = position.positionedHull || (outline.length > 0 ? outline[0] : []);
 
-                // Пробуем без отражения и с отражением по X/Y
-                for (let flip = 0; flip < 3 && !placed; flip++) {
-                    const flipX = flip === 1;
-                    const flipY = flip === 2;
+                const nested = {
+                    partId: part.id,
+                    x: position.x,
+                    y: position.y,
+                    width: position.bboxWidth || part.bounds.width,
+                    height: position.bboxHeight || part.bounds.height,
+                    baseWidth: part.bounds.width,
+                    baseHeight: part.bounds.height,
+                    rotation: position.rotation || 0,
+                    angle: position.angle || 0,
+                    polygon: positionedHull,
+                    outline: outline
+                };
 
-                    // Вычисляем размеры детали с учётом поворота и отражения
-                    let partWidth = part.bounds.width;
-                    let partHeight = part.bounds.height;
+                nestedParts.push(nested);
+                placedPolygons.push({
+                    positionedHull: positionedHull,
+                    x: position.x,
+                    y: position.y,
+                    width: nested.width,
+                    height: nested.height
+                });
 
-                    // Применяем поворот
-                    if (angle === 90 || angle === 270) {
-                        const temp = partWidth;
-                        partWidth = partHeight;
-                        partHeight = temp;
-                    }
-
-                    // Проверяем, влезает ли в лист
-                    if (partWidth + minGap * 2 > sheetSize.width ||
-                        partHeight + minGap * 2 > sheetSize.height) {
-                        continue;  // Не влезает, пробуем следующий вариант
-                    }
-
-                    // Ищем позицию сеткой
-                    const step = 20;  // Шаг сетки
-                    for (let y = minGap; y <= sheetSize.height - partHeight - minGap && !placed; y += step) {
-                        for (let x = minGap; x <= sheetSize.width - partWidth - minGap && !placed; x += step) {
-                            // Проверяем пересечения с другими деталями
-                            let canPlace = true;
-
-                            for (const other of nestedParts) {
-                                // Создаём bounding box для новой детали
-                                const newBbox = {
-                                    x: x,
-                                    y: y,
-                                    width: partWidth,
-                                    height: partHeight
-                                };
-
-                                // Создаём bounding box для существующей детали
-                                const otherBbox = {
-                                    x: other.x,
-                                    y: other.y,
-                                    width: other.width,
-                                    height: other.height
-                                };
-
-                                // Быстрая проверка по bounding box с зазором
-                                if (newBbox.x + newBbox.width + minGap < otherBbox.x ||
-                                    otherBbox.x + otherBbox.width + minGap < newBbox.x ||
-                                    newBbox.y + newBbox.height + minGap < otherBbox.y ||
-                                    otherBbox.y + otherBbox.height + minGap < newBbox.y) {
-                                    // Нет пересечения
-                                } else {
-                                    canPlace = false;
-                                    break;
-                                }
-                            }
-
-                            if (canPlace) {
-                                // Нашли позицию - размещаем деталь
-                                const outline = getPartPolygons(part);
-                                const positionedHull = outline.length > 0 ? outline[0] : [];
-
-                                const nested = {
-                                    partId: part.id,
-                                    x: x,
-                                    y: y,
-                                    width: partWidth,
-                                    height: partHeight,
-                                    baseWidth: part.bounds.width,
-                                    baseHeight: part.bounds.height,
-                                    rotation: angle,
-                                    angle: angleRad,
-                                    flippedX: flipX,
-                                    flippedY: flipY,
-                                    polygon: positionedHull,
-                                    outline: outline
-                                };
-
-                                nestedParts.push(nested);
-                                placed = true;
-                                console.log(`✅ Деталь "${part.name}" размещена на (${x}, ${y}) с поворотом ${angle}°${flipX || flipY ? ' и отражением' : ''}`);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!placed) {
-                console.log(`⚠️ Не удалось разместить деталь "${part.name}"`);
+                console.log(`✅ Деталь "${part.name}" размещена на (${Math.round(position.x)}, ${Math.round(position.y)}) с поворотом ${Math.round((position.angle * 180 / Math.PI) % 360)}°`);
+            } else {
+                console.log(`⚠️ Не удалось разместить деталь "${part.name}" - нет свободного места`);
+                break;  // Прерываем цикл, если не удалось разместить одну деталь
             }
         }
-    });
+    }
 
     addPartToSheetMenu.style.display = 'none';
     render();
     updatePartsList();
+    saveState();
 });
 
 console.log('✅ Контекстные меню загружены');
