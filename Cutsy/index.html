@@ -621,7 +621,9 @@
                         // Скрываем кнопки разметки и обрезки (они только для пустого места листа)
                         document.getElementById('markupRectTools').style.display = 'none';
                         document.getElementById('cutRemnantTools').style.display = 'none';
-                        document.getElementById('overlapTools').style.display = 'none';
+                        
+                        // Кнопка наложения деталей показывается всегда
+                        document.getElementById('overlapTools').style.display = 'block';
 
                         // Подготовка к перетаскиванию - сохраняем начальные позиции всех выделенных деталей
                         const draggedNested = nestedParts[foundIndex];
@@ -668,7 +670,7 @@
                                     break;
                                 }
                             }
-
+                            
                             if (rectFound >= 0) {
                                 // Клик по прямоугольнику разметки — выделяем его
                                 selectedRectIndex = rectFound;
@@ -686,9 +688,14 @@
                                 sheetSelectEnd = { x: clickSheetX, y: clickSheetY };
                                 selectedRectIndex = -1;
                                 
-                                // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                                // Скрываем кнопки отражения детали
+                                document.getElementById('nestedPartTools').style.display = 'none';
+                                
+                                // Показываем кнопки разметки остатка и обрезки (для пустого места листа)
                                 document.getElementById('markupRectTools').style.display = 'block';
                                 document.getElementById('cutRemnantTools').style.display = 'block';
+                                
+                                // Кнопка наложения деталей показывается всегда
                                 document.getElementById('overlapTools').style.display = 'block';
                                 
                                 render();
@@ -696,9 +703,14 @@
                                 // Сбрасываем флаг после использования
                                 window.justFinishedCutLineDrag = false;
                                 
-                                // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                                // Скрываем кнопки отражения детали
+                                document.getElementById('nestedPartTools').style.display = 'none';
+                                
+                                // Показываем кнопки разметки остатка и обрезки (для пустого места листа)
                                 document.getElementById('markupRectTools').style.display = 'block';
                                 document.getElementById('cutRemnantTools').style.display = 'block';
+                                
+                                // Кнопка наложения деталей показывается всегда
                                 document.getElementById('overlapTools').style.display = 'block';
                             }
                             return;
@@ -711,9 +723,11 @@
                         // Скрываем кнопки отражения детали
                         document.getElementById('nestedPartTools').style.display = 'none';
                         
-                        // Показываем кнопки разметки остатка, обрезки и наложения (для пустого места листа)
+                        // Показываем кнопки разметки остатка и обрезки (для пустого места листа)
                         document.getElementById('markupRectTools').style.display = 'block';
                         document.getElementById('cutRemnantTools').style.display = 'block';
+                        
+                        // Кнопка наложения деталей показывается всегда
                         document.getElementById('overlapTools').style.display = 'block';
 
                         // Проверяем, кликнули ли по прямоугольнику разметки
