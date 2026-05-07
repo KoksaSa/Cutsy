@@ -997,31 +997,64 @@
                         }
                     }
 
-                    // 2. Удаляем грани прямоугольников
+                    // 2. Умное стирание граней прямоугольников
                     if (obj.type === 'rect') {
                         const edges = getObjectEdges(obj);
                         for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
                             const edge = edges[edgeIndex];
                             const dist = pointToLineDistance(x, y, edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
                             if (dist < 2) {
+                                // Создаём временную линию из грани
+                                const edgeLine = new Line(edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
+                                
+                                // Используем ту же логику умного стирания что и для линий
                                 saveState();
-                                const newLines = [];
-                                for (let j = 0; j < edges.length; j++) {
-                                    if (j !== edgeIndex) {
-                                        const e = edges[j];
-                                        newLines.push(new Line(e.p1.x, e.p1.y, e.p2.x, e.p2.y));
+                                const erased = eraseLineSmart(edgeLine, x, y);
+                                
+                                if (erased) {
+                                    // Если удалось стереть часть грани - удаляем прямоугольник
+                                    // и заменяем его на оставшиеся линии + новые сегменты
+                                    const remainingEdges = [];
+                                    for (let j = 0; j < edges.length; j++) {
+                                        if (j !== edgeIndex) {
+                                            remainingEdges.push(new Line(edges[j].p1.x, edges[j].p1.y, edges[j].p2.x, edges[j].p2.y));
+                                        }
                                     }
+                                    
+                                    // objects уже обновлён внутри eraseLineSmart
+                                    // Добавляем оставшиеся грани
+                                    objects.push(...remainingEdges);
+                                    
+                                    const part = findPartForObject(obj);
+                                    if (part) {
+                                        part.objects = part.objects.filter(o => o !== obj);
+                                        part.objects.push(...remainingEdges);
+                                        updatePartBounds(part);
+                                    }
+                                    
+                                    objects.splice(i, 1); // Удаляем прямоугольник
+                                    render();
+                                    return;
+                                } else {
+                                    // Если нет пересечений - удаляем всю грань
+                                    const newLines = [];
+                                    for (let j = 0; j < edges.length; j++) {
+                                        if (j !== edgeIndex) {
+                                            const e = edges[j];
+                                            newLines.push(new Line(e.p1.x, e.p1.y, e.p2.x, e.p2.y));
+                                        }
+                                    }
+                                    const part = findPartForObject(obj);
+                                    if (part) {
+                                        part.objects = part.objects.filter(o => o !== obj);
+                                        part.objects.push(...newLines);
+                                        updatePartBounds(part);
+                                    }
+                                    objects.splice(i, 1);
+                                    objects.push(...newLines);
+                                    render();
+                                    return;
                                 }
-                                const part = findPartForObject(obj);
-                                if (part) {
-                                    part.objects = part.objects.filter(o => o !== obj);
-                                    part.objects.push(...newLines);
-                                    updatePartBounds(part);
-                                }
-                                objects.splice(i, 1);
-                                objects.push(...newLines);
-                                render();
-                                return;
                             }
                         }
                     }
@@ -1232,7 +1265,7 @@
                 }
                 return;
             }
-
+            
             // Остальные инструменты рисования
             if (currentTool !== 'select' && currentTool !== 'eraser' && currentTool !== 'dimension' && e.button === 0) {
                 isDrawing = true;
