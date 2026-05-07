@@ -997,69 +997,129 @@
                         }
                     }
 
-                    // 2. Умное стирание граней прямоугольников
+                    // 2. Умное стирание граней прямоугольников (до пересечений)
                     if (obj.type === 'rect') {
                         const edges = getObjectEdges(obj);
                         for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
                             const edge = edges[edgeIndex];
                             const dist = pointToLineDistance(x, y, edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
                             if (dist < 2) {
-                                // Создаём временную линию из грани
+                                saveState();
+                                
+                                // Создаём линию из грани
                                 const edgeLine = new Line(edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
                                 
-                                // Используем ту же логику умного стирания что и для линий
-                                saveState();
-                                const erased = eraseLineSmart(edgeLine, x, y);
+                                // Находим все пересечения этой грани с другими объектами
+                                const intersections = [];
+                                intersections.push({ x: edge.p1.x, y: edge.p1.y, t: 0 });
+                                intersections.push({ x: edge.p2.x, y: edge.p2.y, t: 1 });
                                 
-                                if (erased) {
-                                    // Если удалось стереть часть грани - удаляем прямоугольник
-                                    // и заменяем его на оставшиеся линии + новые сегменты
-                                    const remainingEdges = [];
-                                    for (let j = 0; j < edges.length; j++) {
-                                        if (j !== edgeIndex) {
-                                            remainingEdges.push(new Line(edges[j].p1.x, edges[j].p1.y, edges[j].p2.x, edges[j].p2.y));
+                                const dx = edge.p2.x - edge.p1.x;
+                                const dy = edge.p2.y - edge.p1.y;
+                                const len = Math.sqrt(dx * dx + dy * dy);
+                                
+                                // Ищем пересечения со всеми другими объектами
+                                for (const other of objects) {
+                                    if (other === obj) continue; // Пропускаем сам прямоугольник
+                                    
+                                    if (other.type === 'line') {
+                                        const pt = findLineIntersection(edgeLine, other);
+                                        if (pt) {
+                                            const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                            if (t > 0.001 && t < 0.999) {
+                                                intersections.push({ x: pt.x, y: pt.y, t });
+                                            }
+                                        }
+                                    } else if (other.type === 'rect') {
+                                        const otherEdges = getObjectEdges(other);
+                                        for (const otherEdge of otherEdges) {
+                                            const otherLine = new Line(otherEdge.p1.x, otherEdge.p1.y, otherEdge.p2.x, otherEdge.p2.y);
+                                            const pt = findLineIntersection(edgeLine, otherLine);
+                                            if (pt) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
+                                        }
+                                    } else if (other.type === 'polygon') {
+                                        const vertices = other.getVertices();
+                                        for (let v = 0; v < vertices.length; v++) {
+                                            const nextV = (v + 1) % vertices.length;
+                                            const edgeLine2 = new Line(vertices[v].x, vertices[v].y, vertices[nextV].x, vertices[nextV].y);
+                                            const pt = findLineIntersection(edgeLine, edgeLine2);
+                                            if (pt) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
+                                        }
+                                    } else if (other.type === 'circle') {
+                                        const pts = findLineCircleIntersection(edgeLine, other);
+                                        if (pts) {
+                                            for (const pt of pts) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
                                         }
                                     }
-                                    
-                                    // objects уже обновлён внутри eraseLineSmart
-                                    // Добавляем оставшиеся грани
-                                    objects.push(...remainingEdges);
-                                    
-                                    const part = findPartForObject(obj);
-                                    if (part) {
-                                        part.objects = part.objects.filter(o => o !== obj);
-                                        part.objects.push(...remainingEdges);
-                                        updatePartBounds(part);
-                                    }
-                                    
-                                    objects.splice(i, 1); // Удаляем прямоугольник
-                                    render();
-                                    return;
-                                } else {
-                                    // Если нет пересечений - удаляем всю грань
-                                    const newLines = [];
-                                    for (let j = 0; j < edges.length; j++) {
-                                        if (j !== edgeIndex) {
-                                            const e = edges[j];
-                                            newLines.push(new Line(e.p1.x, e.p1.y, e.p2.x, e.p2.y));
-                                        }
-                                    }
-                                    const part = findPartForObject(obj);
-                                    if (part) {
-                                        part.objects = part.objects.filter(o => o !== obj);
-                                        part.objects.push(...newLines);
-                                        updatePartBounds(part);
-                                    }
-                                    objects.splice(i, 1);
-                                    objects.push(...newLines);
-                                    render();
-                                    return;
                                 }
+                                
+                                // Сортируем пересечения по t
+                                intersections.sort((a, b) => a.t - b.t);
+                                
+                                // Находим параметр t места клика
+                                const clickT = ((x - edge.p1.x) * dx + (y - edge.p1.y) * dy) / (len * len);
+                                
+                                // Находим сегмент между пересечениями где был клик
+                                let segStart = null, segEnd = null;
+                                for (let s = 0; s < intersections.length - 1; s++) {
+                                    if (clickT >= intersections[s].t && clickT <= intersections[s + 1].t) {
+                                        segStart = intersections[s];
+                                        segEnd = intersections[s + 1];
+                                        break;
+                                    }
+                                }
+                                
+                                // Создаём новые линии из оставшихся сегментов
+                                const newLines = [];
+                                
+                                // Добавляем оставшиеся грани прямоугольника (кроме редактируемой)
+                                for (let j = 0; j < edges.length; j++) {
+                                    if (j !== edgeIndex) {
+                                        newLines.push(new Line(edges[j].p1.x, edges[j].p1.y, edges[j].p2.x, edges[j].p2.y));
+                                    }
+                                }
+                                
+                                // Добавляем сегменты до удаляемого участка
+                                if (segStart && segStart.t > 0.001) {
+                                    newLines.push(new Line(edge.p1.x, edge.p1.y, segStart.x, segStart.y));
+                                }
+                                
+                                // Добавляем сегменты после удаляемого участка
+                                if (segEnd && segEnd.t < 0.999) {
+                                    newLines.push(new Line(segEnd.x, segEnd.y, edge.p2.x, edge.p2.y));
+                                }
+                                
+                                const part = findPartForObject(obj);
+                                if (part) {
+                                    part.objects = part.objects.filter(o => o !== obj);
+                                    part.objects.push(...newLines);
+                                    updatePartBounds(part);
+                                }
+                                
+                                objects.splice(i, 1);
+                                objects.push(...newLines);
+                                render();
+                                return;
                             }
                         }
                     }
 
-                    // 3. Удаляем грани многоугольников
+                    // 3. Умное стирание граней многоугольников (до пересечений)
                     if (obj.type === 'polygon') {
                         const edges = getObjectEdges(obj);
                         for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
@@ -1067,19 +1127,112 @@
                             const dist = pointToLineDistance(x, y, edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
                             if (dist < 2) {
                                 saveState();
-                                const newLines = [];
-                                for (let j = 0; j < edges.length; j++) {
-                                    if (j !== edgeIndex) {
-                                        const e = edges[j];
-                                        newLines.push(new Line(e.p1.x, e.p1.y, e.p2.x, e.p2.y));
+                                
+                                // Создаём линию из грани
+                                const edgeLine = new Line(edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
+                                
+                                // Находим все пересечения этой грани с другими объектами
+                                const intersections = [];
+                                intersections.push({ x: edge.p1.x, y: edge.p1.y, t: 0 });
+                                intersections.push({ x: edge.p2.x, y: edge.p2.y, t: 1 });
+                                
+                                const dx = edge.p2.x - edge.p1.x;
+                                const dy = edge.p2.y - edge.p1.y;
+                                const len = Math.sqrt(dx * dx + dy * dy);
+                                
+                                // Ищем пересечения со всеми другими объектами
+                                for (const other of objects) {
+                                    if (other === obj) continue;
+                                    
+                                    if (other.type === 'line') {
+                                        const pt = findLineIntersection(edgeLine, other);
+                                        if (pt) {
+                                            const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                            if (t > 0.001 && t < 0.999) {
+                                                intersections.push({ x: pt.x, y: pt.y, t });
+                                            }
+                                        }
+                                    } else if (other.type === 'rect') {
+                                        const otherEdges = getObjectEdges(other);
+                                        for (const otherEdge of otherEdges) {
+                                            const otherLine = new Line(otherEdge.p1.x, otherEdge.p1.y, otherEdge.p2.x, otherEdge.p2.y);
+                                            const pt = findLineIntersection(edgeLine, otherLine);
+                                            if (pt) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
+                                        }
+                                    } else if (other.type === 'polygon') {
+                                        const vertices = other.getVertices();
+                                        for (let v = 0; v < vertices.length; v++) {
+                                            const nextV = (v + 1) % vertices.length;
+                                            const edgeLine2 = new Line(vertices[v].x, vertices[v].y, vertices[nextV].x, vertices[nextV].y);
+                                            const pt = findLineIntersection(edgeLine, edgeLine2);
+                                            if (pt) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
+                                        }
+                                    } else if (other.type === 'circle') {
+                                        const pts = findLineCircleIntersection(edgeLine, other);
+                                        if (pts) {
+                                            for (const pt of pts) {
+                                                const t = ((pt.x - edge.p1.x) * dx + (pt.y - edge.p1.y) * dy) / (len * len);
+                                                if (t > 0.001 && t < 0.999) {
+                                                    intersections.push({ x: pt.x, y: pt.y, t });
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                
+                                // Сортируем пересечения по t
+                                intersections.sort((a, b) => a.t - b.t);
+                                
+                                // Находим параметр t места клика
+                                const clickT = ((x - edge.p1.x) * dx + (y - edge.p1.y) * dy) / (len * len);
+                                
+                                // Находим сегмент между пересечениями где был клик
+                                let segStart = null, segEnd = null;
+                                for (let s = 0; s < intersections.length - 1; s++) {
+                                    if (clickT >= intersections[s].t && clickT <= intersections[s + 1].t) {
+                                        segStart = intersections[s];
+                                        segEnd = intersections[s + 1];
+                                        break;
+                                    }
+                                }
+                                
+                                // Создаём новые линии из оставшихся сегментов
+                                const newLines = [];
+                                
+                                // Добавляем оставшиеся грани многоугольника (кроме редактируемой)
+                                for (let j = 0; j < edges.length; j++) {
+                                    if (j !== edgeIndex) {
+                                        newLines.push(new Line(edges[j].p1.x, edges[j].p1.y, edges[j].p2.x, edges[j].p2.y));
+                                    }
+                                }
+                                
+                                // Добавляем сегменты до удаляемого участка
+                                if (segStart && segStart.t > 0.001) {
+                                    newLines.push(new Line(edge.p1.x, edge.p1.y, segStart.x, segStart.y));
+                                }
+                                
+                                // Добавляем сегменты после удаляемого участка
+                                if (segEnd && segEnd.t < 0.999) {
+                                    newLines.push(new Line(segEnd.x, segEnd.y, edge.p2.x, edge.p2.y));
+                                }
+                                
                                 const part = findPartForObject(obj);
                                 if (part) {
                                     part.objects = part.objects.filter(o => o !== obj);
                                     part.objects.push(...newLines);
                                     updatePartBounds(part);
                                 }
+                                
                                 objects.splice(i, 1);
                                 objects.push(...newLines);
                                 render();
