@@ -1,4 +1,3 @@
-
 // l: SilikinK Project
 // Кэш для выпуклых оболочек деталей (part.id → hull)
 const partHullCache = new Map();
@@ -93,16 +92,24 @@ function addToSpatialGrid(spatialGrid, part, cellSize = SPATIAL_CELL_SIZE) {
 function isCircularPart(part) {
     if (!part || !part.objects || part.objects.length === 0) return false;
     
-    // Проверяем, есть ли круги или многоугольники с большим количеством сторон
+    // Проверяем наличие кругов или многоугольников с большим количеством сторон
     const hasCircles = part.objects.some(obj => obj.type === 'circle');
     const hasManySidedPolygons = part.objects.some(obj => 
         obj.type === 'polygon' && obj.sides >= 16
     );
     
-    // Деталь считается круглой, если есть хотя бы один круг или многоугольник ≥16 сторон
-    const isCircular = hasCircles || hasManySidedPolygons;
-
-    return isCircular;
+    // Если нет кругов и нет многоугольников с большим количеством сторон — не круглая
+    if (!hasCircles && !hasManySidedPolygons) return false;
+    
+    // Если есть только круги и/или многоугольники с большим количеством сторон — круглая
+    // Игнорируем text как не влияющий на форму
+    const hasOnlyCircularElements = part.objects.every(obj => 
+        obj.type === 'circle' || 
+        (obj.type === 'polygon' && obj.sides >= 16) ||
+        obj.type === 'text'
+    );
+    
+    return hasOnlyCircularElements;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -121,8 +128,9 @@ function findPositionWithCommonEdge(placedParts, newPart, sheetWidth, sheetHeigh
     // Пробуем найти позицию с общей гранью к каждой размещённой детали
     for (let i = 0; i < placedParts.length; i++) {
         const placed = placedParts[i];
-        const placedWidth = placed.width || placed.bboxWidth;
-        const placedHeight = placed.height || placed.bboxHeight;
+        // ✅ Округляем размеры размещённой детали для консистентности с кандидатами
+const placedWidth = Math.round((placed.width || placed.bboxWidth || 0) * 100) / 100;
+const placedHeight = Math.round((placed.height || placed.bboxHeight || 0) * 100) / 100
         const placedX = placed.x;
         const placedY = placed.y;
 
@@ -691,9 +699,22 @@ function polygonsIntersect(poly1, poly2, minGap = 3) {
     // Быстрая проверка по bounding box с зазором
     const bbox1 = getBoundingBox(poly1);
     const bbox2 = getBoundingBox(poly2);
-    if (bbox1.maxX + gap <= bbox2.minX || bbox2.maxX + gap <= bbox1.minX ||
-        bbox1.maxY + gap <= bbox2.minY || bbox2.maxY + gap <= bbox1.minY) {
-        return false;
+    
+    // ═══════════════════════════════════════════════════════════
+    // КОРРЕКЦИЯ: при minGap < 0 (overlap mode) нельзя добавлять
+    // отрицательный зазор — иначе bbox в одной точке считаются непересекающимися
+    // ═══════════════════════════════════════════════════════════
+    if (minGap >= 0) {
+        if (bbox1.maxX + gap <= bbox2.minX || bbox2.maxX + gap <= bbox1.minX ||
+            bbox1.maxY + gap <= bbox2.minY || bbox2.maxY + gap <= bbox1.minY) {
+            return false;
+        }
+    } else {
+        // Overlap mode: проверяем пересечение bbox без зазора
+        if (bbox1.maxX <= bbox2.minX || bbox2.maxX <= bbox1.minX ||
+            bbox1.maxY <= bbox2.minY || bbox2.maxY <= bbox1.minY) {
+            return false;
+        }
     }
 
     // Проверка пересечения рёбер
@@ -849,8 +870,6 @@ function isPolygonInsideSheet(polygon, sheetWidth, sheetHeight, minGap, edgeGap 
 // Генерирует кандидатные позиции на основе размещённых деталей
 // (вместо перебора всей сетки проверяем только позиции у граней)
 function generateCandidatePositions(placedParts, partWidth, partHeight, sheetWidth, sheetHeight, minGap, edgeGap, step) {
-    console.log(`🎯 [GENERATE CANDIDATES] Генерация позиций для детали ${partWidth}×${partHeight}, размещено: ${placedParts.length}`);
-    
     const candidates = new Set();
     const key = (x, y) => `${Math.round(x)},${Math.round(y)}`;
 
@@ -913,17 +932,8 @@ function generateCandidatePositions(placedParts, partWidth, partHeight, sheetWid
         if (x >= edgeGap && x + partWidth <= sheetWidth - edgeGap &&
             y >= edgeGap && y + partHeight <= sheetHeight - edgeGap) {
             
-            // ═══════════════════════════════════════════════════════
-            // УБРАЛИ проверку isOccupied — её делает основной цикл!
-            // Просто добавляем все позиции в пределах листа
-            // ═══════════════════════════════════════════════════════
             positions.push({ x, y });
         }
-    }
-
-    console.log(`      📍 generateCandidatePositions: ${candidates.size} кандидатов → ${positions.length} валидных (после фильтрации занятых)`);
-    if (positions.length > 0 && positions.length <= 5) {
-        positions.forEach((p, i) => console.log(`         #${i+1}: (${p.x.toFixed(0)}, ${p.y.toFixed(0)})`));
     }
 
     // Сортировка: сначала левые (меньший X), потом нижние (меньший Y)
@@ -946,31 +956,61 @@ function getReferencePoint(polygon) {
 // Найти позицию для размещения детали с использованием точной геометрии
 // spatialGrid — опциональная пространственная сетка для ускорения проверки пересечений
 async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight, cancelCallback = null, spatialGrid = null) {
+    if (placedParts.length === 0 && newPart.bounds.width === 700 && newPart.bounds.height === 500) {
+        console.group('🔧 Конфигурация раскладки для 700×500');
+        console.log('allowOverlap:', window.allowOverlap);
+        console.log('contextPartSpacing:', document.getElementById('contextPartSpacing')?.value);
+        console.log('edgeGap:', document.getElementById('edgeGap')?.value);
+        console.log('rotationMode:', newPart.rotationMode || 'auto');
+        console.log('noRotate:', newPart.noRotate);
+        console.log('oneCutEnabled:', newPart.oneCutEnabled);
+        console.groupEnd();
+    }
     console.log(`🔍 [NFP] Поиск позиции для детали "${newPart.name || newPart.id}" (${newPart.bounds.width.toFixed(1)}×${newPart.bounds.height.toFixed(1)}), размещено: ${placedParts.length}`);
     
-    // ═══════════════════════════════════════════════════════════
+    // ═══ ОТЛАДКА: проверяем тип детали ═══
+    const isDebugCircular = newPart.objects?.some(obj => obj.type === 'circle' || (obj.type === 'polygon' && obj.sides >= 16));
+    
+    // ═══════════════════════════════════════════════════════
     // ОПРЕДЕЛЯЕМ ЗАЗОР: приоритет "В один рез" > PartSpacing > настройки UI
-    // ═══════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════
     let minGap, edgeGap;
 
     if (newPart.oneCutEnabled === true && placedParts.length > 0) {
         // "В один рез" — зазор 0 (детали вплотную)
         minGap = 0;
-        edgeGap = parseInt(document.getElementById('edgeGap')?.value) || 3;
+        edgeGap = parseFloat(document.getElementById('edgeGap')?.value) || 3;
     } else if (window.allowOverlap === true) {
         // Наложение разрешено
         minGap = -100;
         edgeGap = 0;
     } else {
-        // Обычный режим — используем PartSpacing детали (по умолчанию 3 мм)
-        minGap = (typeof newPart.spacing === 'number') ? newPart.spacing : 3;
+        // Обычный режим — приоритет: PartSpacing детали > общее поле UI > 3 мм
+        const uiSpacing = parseFloat(document.getElementById('contextPartSpacing')?.value);
+        if (typeof newPart.spacing === 'number') {
+            // У детали установлен свой зазор
+            minGap = newPart.spacing;
+        } else if (!isNaN(uiSpacing)) {
+            // Иначе используем зазор из UI
+            minGap = uiSpacing;
+        } else {
+            // По умолчанию 3 мм
+            minGap = 3;
+        }
         edgeGap = parseFloat(document.getElementById('edgeGap')?.value) || 3;
     }
 
     // ═══════════════════════════════════════════════════════
+    // ПРОВЕРКА: является ли деталь круглой (для шахматной раскладки)
+    // Работает при ЛЮБОМ minGap (включая negative/overlap)
+    // ═══════════════════════════════════════════════════════
+    const isCircular = isCircularPart(newPart);
+    console.log(`   🔍 [DEBUG] isCircularPart=${isCircular}, hasCircle=${isDebugCircular}`);
+
+    // ═══════════════════════════════════════════════════════
     // ЛОГИРОВАНИЕ ЗАЗОРА
     // ═══════════════════════════════════════════════════════
-    console.log(`   🔧 [ZAPOR] minGap=${minGap}, edgeGap=${edgeGap}, newPart.spacing=${newPart.spacing}`);
+    // console.log(`   🔧 [ZAPOR] minGap=${minGap}, edgeGap=${edgeGap}, newPart.spacing=${newPart.spacing}`);
 
     // ═══════════════════════════════════════════════════════════
     // ПРОВЕРЯЕМ: ВКЛЮЧЕН ЛИ РЕЖИМ "В ОДИН РЕЗ"
@@ -993,39 +1033,31 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
         }
     }
 
-    // Проверяем, является ли деталь прямоугольной (только линии и прямоугольники)
-    const isRectangular = newPart.objects && newPart.objects.every(obj =>
-        obj.type === 'rect' || obj.type === 'line'
-    );
+    // Получаем выпуклую оболочку новой детали (с кэшированием)
+    const partHull = getPartConvexHull(newPart);
+    if (partHull.length < 3) return null;  // Не удалось построить оболочку
 
-    // ═══════════════════════════════════════════════════════════
+    // Проверяем, является ли деталь прямоугольной по количеству вершин
+    const isRectangular = partHull.length === 4;
+
+    // ═══════════════════════════════════════════════════════
     // СПЕЦИАЛЬНЫЙ ОБРАБОТЧИК ДЛЯ БОЛЬШИХ ПРЯМОУГОЛЬНЫХ ДЕТАЛЕЙ
-    // ═══════════════════════════════════════════════════════════
-    // Для деталей >= 400 мм по любой стороне используем упрощённую стратегию:
-    // - Столбец 1: детали 0° поворот, stacked vertically
-    // - Столбец 2: детали 90° поворот, stacked vertically
+    // ═══════════════════════════════════════════════════════
     const bboxArea = newPart.bounds.width * newPart.bounds.height;
     const maxSide = Math.max(newPart.bounds.width, newPart.bounds.height);
-    const minSide = Math.min(newPart.bounds.width, newPart.bounds.height);
     
     // Критерий: любая сторона >= 400 мм И площадь >= 100,000 мм²
     const isLargeRect = isRectangular && maxSide >= 400 && bboxArea >= 100000;
 
-    // TEMP: Убираем special case для больших деталей, используем только общий алгоритм
-    // if (isLargeRect) { ... }
-
     // Проверяем, является ли деталь круглой (для шахматной раскладки)
-    const isCircular = isCircularPart(newPart);
+    // При отрицательном зазоре (overlap mode) используем обычный алгоритм —
+    // иначе step = diameter + minGap становится отрицательным и цикл for зависает
 
     // Динамический шаг сетки: больше для больших деталей
     const minDimension = Math.min(newPart.bounds.width, newPart.bounds.height);
     const step = Math.max(20, Math.min(50, minDimension / 3));
 
-    // Получаем выпуклую оболочку новой детали (с кэшированием)
-    const partHull = getPartConvexHull(newPart);
-    if (partHull.length < 3) return null;  // Не удалось построить оболочку
-
-    // Центр детали для вращения
+    // Центр детали для вращения (partHull уже получен выше)
     const bbox = newPart.bounds;
     const centerX = bbox.width / 2;
     const centerY = bbox.height / 2;
@@ -1036,14 +1068,11 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
     // ═══════════════════════════════════════════════════════════
     const noRotate = newPart.noRotate === true;
     
-    console.log(`🔍 [noRotate CHECK] Деталь #${newPart.id} "${newPart.name}" → noRotate=${noRotate} (value: ${newPart.noRotate})`);
-
     // Углы поворота: 'fast' = 0° и 90°, 'full' = 19 углов, 'auto' = прямоугольные=2, сложные=4
     // Если noRotate = true, только 0°
     let rotationAngles;
     if (noRotate) {
         rotationAngles = [0];  // Только 0°
-        console.log(`🔒 [noRotate] Деталь #${newPart.id} - вращение отключено, пробуем только 0°`);
     } else {
         const rotationMode = newPart.rotationMode || 'auto';
         if (rotationMode === 'fast') {
@@ -1058,7 +1087,25 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
         }
     }
 
-    for (let i = 0; i < rotationAngles.length; i++) {
+    // ═══════════════════════════════════════════════════════
+    // ПРИОРИТЕТ ГОРИЗОНТАЛЬНОЙ ОРИЕНТАЦИИ ДЛЯ ПЕРВОЙ ДЕТАЛИ
+    // ═══════════════════════════════════════════════════════
+    // Если это первая деталь на листе — пробуем горизонтальную ориентацию (0°) первой
+    // Это позволяет сохранить больше места снизу для последующих деталей
+    const isFirstPartOnSheet = placedParts.length === 0;
+    
+    let preferredRotationAngles = rotationAngles;
+    if (isFirstPartOnSheet && !noRotate) {
+        // Для первой детали приоритет: 0° (горизонтальная) > 90° (вертикальная)
+        preferredRotationAngles = rotationAngles.sort((a, b) => {
+            // 0° всегда первый
+            if (a === 0) return -1;
+            if (b === 0) return 1;
+            return a - b;
+        });
+    }
+
+    for (let i = 0; i < preferredRotationAngles.length; i++) {
         // Проверка отмены
         if (cancelCallback && cancelCallback()) {
             return null;  // Прерываем поиск
@@ -1069,8 +1116,6 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
         // Это нужно для совместимости с логикой больших прямоугольных деталей
         const angleDeg = rotationAngles[i] % 360;
         const rotation = (angleDeg >= 45 && angleDeg <= 135) || (angleDeg >= 225 && angleDeg <= 315) ? 1 : 0;
-
-        console.log(`   🔄 Пробуем поворот ${rotationAngles[i]}° для детали #${newPart.id}`);
 
         // Поворачиваем оболочку детали
         const rotatedHull = rotatePolygon(partHull, angle, centerX, centerY);
@@ -1102,14 +1147,21 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
         const rotatedBbox = { width: tempBbox.width, height: tempBbox.height };
 
         // Быстрая проверка: влезает ли в лист
-        if (rotatedBbox.width + minGap * 2 > sheetWidth ||
-            rotatedBbox.height + minGap * 2 > sheetHeight) {
+        // При minGap < 0 (overlap) отрицательный зазор искажает проверку — используем чистые размеры
+        const reqWidth = minGap >= 0 ? rotatedBbox.width + minGap * 2 : rotatedBbox.width;
+        const reqHeight = minGap >= 0 ? rotatedBbox.height + minGap * 2 : rotatedBbox.height;
+        if (reqWidth > sheetWidth || reqHeight > sheetHeight) {
             continue;
         }
 
         // ═══════════════════════════════════════════════════════
         // ШАХМАТНАЯ РАСКЛАДКА ДЛЯ КРУГЛЫХ ДЕТАЛЕЙ
         // ═══════════════════════════════════════════════════════
+        console.log(`   🔍 [CIRCULAR CHECK] isCircular=${isCircular}, placedParts.length=${placedParts.length}`);
+        
+        // Инициализируем placedInChess для всех деталей (для не-круглых = false)
+        let placedInChess = false;
+        
         if (isCircular) {
             
             // Для круглых деталей используем гексагональную упаковку
@@ -1141,12 +1193,17 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
             // - Смещение чётных рядов = diameter / 2 (для шахматного порядка)
             // Это даёт зазор ~3мм между всеми кругами
 
-            const step = diameter + minGap;
-            const rowSpacing = step;
+            // ═══════════════════════════════════════════════════════
+            // ШАХМАТНАЯ РАСКЛАДКА ДЛЯ КРУГЛЫХ ДЕТАЛЕЙ
+            // Работает при ЛЮБОМ minGap (включая negative/overlap)
+            // ═══════════════════════════════════════════════════════
+            const step = Math.max(1, diameter + minGap);  // min 1 мм чтобы избежать бесконечного цикла
+            const rowSpacing = Math.max(1, diameter + minGap);
             const rowOffset = diameter / 2;  // Смещение = радиус (половина диаметра)
 
             let rowNum = 0;
             let placedInChess = false;
+
             for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += rowSpacing) {
                 // Проверка отмены
                 if (cancelCallback && cancelCallback()) {
@@ -1204,84 +1261,206 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
                 }
                 rowNum++;
             }
-            
+
             if (!placedInChess) {
-                // Не удалось разместить в шахматном порядке, продолжаем обычную раскладку
+                console.log(`   ⚠️ [ШАХМАТНАЯ] Не найдена позиция для круга, пробуем обычную раскладку`);
+                // Не удалось разместить в шахматном порядке — используем обычную Bottom-Left раскладку
+                // Это нужно для случаев когда minGap > 0 и места не хватает
             }
         }
+            
+        // ═══════════════════════════════════════════════════════
+        // ОБЫЧНАЯ РАСКЛАДКА — ДЛЯ ВСЕХ ДЕТАЛЕЙ (не-круглые или fallback для круглых)
+        // ═══════════════════════════════════════════════════════
+        const useRegularNesting = !isCircular || !placedInChess;
         
-        // ═══════════════════════════════════════════════════════
-        // ОБЫЧНАЯ РАСКЛАДКА — BOTTOM-LEFT
-        // ═══════════════════════════════════════════════════════
-        // Для не-круглых деталей или если шахматная не нашла позицию
-        if (!isCircular) {
+        if (useRegularNesting) {
+            console.log(`   🔧 [FALLBACK] Обычная раскладка для детали #${newPart.id}, isCircular=${isCircular}, placedInChess=${placedInChess}`);
             // ═══════════════════════════════════════════════════════
-            // ДЛЯ ПРЯМОУГОЛЬНЫХ ДЕТАЛЕЙ: генерируем ровные ГОРИЗОНТАЛЬНЫЕ строки
+            // ДЛЯ ПРЯМОУГОЛЬНЫХ ДЕТАЛЕЙ: генерируем позиции
             // ═══════════════════════════════════════════════════════
             const candidates = [];
             
             if (isRectangular) {
-                // Находим все уникальные Y-позиции где уже есть детали
+                if (isLargeRect) {
+                    // ═══════════════════════════════════════════════════════
+                    // БОЛЬШИЕ ДЕТАЛИ (>=400 мм): ВЕРТИКАЛЬНЫЕ СТОЛБЦЫ
+                    // ═══════════════════════════════════════════════════════
+                    // Находим все уникальные X-позиции где уже есть детали
+                    const usedX = new Set();
+                    usedX.add(edgeGap); // Первый столбец всегда начинается с edgeGap
+                    
+                    for (const placed of placedParts) {
+                        const placedX = placed.x;
+                        const placedWidth = placed.width || placed.bboxWidth || 0;
+                        // Добавляем позицию справа от каждой детали
+                        const nextX = placedX + placedWidth + minGap;
+                        if (nextX + rotatedBbox.width <= sheetWidth - edgeGap) {
+                            usedX.add(nextX);
+                        }
+                    }
+                    
+                    // Для каждой X-позиции генерируем ровный столбец (сверху вниз)
+                    for (const startX of usedX) {
+                        // Ровный столбец: шаг = высота детали + minGap
+                        const colStep = rotatedBbox.height + minGap;
+                        if (colStep > 0) {
+                            for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += colStep) {
+                                candidates.push({ x: startX, y });
+                            }
+                        } else {
+                            candidates.push({ x: startX, y: edgeGap });
+                        }
+                    }
+                } else {
+                    // Обычные прямоугольные детали — адаптивная раскладка
+                    // ═══════════════════════════════════════════════════════
+                    // ПРИОРИТЕТ ГОРИЗОНТАЛЬНЫХ СТРОК ДЛЯ ПЕРВОЙ ДЕТАЛИ
+                    // Если это первая деталь на листе — всегда используем горизонтальные строки
+                    // чтобы сохранить больше места снизу для последующих деталей
+                    // ═══════════════════════════════════════════════════════
+                    const isFirstPartOnSheet = placedParts.length === 0;
+                    const isHorizontal = isFirstPartOnSheet || rotatedBbox.width >= rotatedBbox.height;
+                    
+                    if (isHorizontal) {
+                        // ═══════════════════════════════════════════
+                        // ГОРИЗОНТАЛЬНЫЕ ДЕТАЛИ: ГОРИЗОНТАЛЬНЫЕ СТРОКИ
+                        // ═══════════════════════════════════════════
+                        const usedY = new Set();
+                        usedY.add(edgeGap);
+                        
+                        for (const placed of placedParts) {
+                            const placedY = placed.y;
+                            const placedHeight = placed.height || placed.bboxHeight || 0;
+                            const nextY = placedY + placedHeight + minGap;
+                            if (nextY + rotatedBbox.height <= sheetHeight - edgeGap) {
+                                usedY.add(nextY);
+                            }
+                        }
+                            
+                        for (const startY of usedY) {
+                            const rowStep = rotatedBbox.width + minGap;
+                            if (rowStep > 0) {
+                                for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += rowStep) {
+                                    candidates.push({ x, y: startY });
+                                }
+                            } else {
+                                candidates.push({ x: edgeGap, y: startY });
+                            }
+                        }
+                    } else {
+                        // Вертикальные детали — вертикальные столбцы
+                        const usedX = new Set();
+                        usedX.add(edgeGap);
+                        
+                        for (const placed of placedParts) {
+                            const placedX = placed.x;
+                            const placedWidth = placed.width || placed.bboxWidth || 0;
+                            const nextX = placedX + placedWidth + minGap;
+                            if (nextX + rotatedBbox.width <= sheetWidth - edgeGap) {
+                                usedX.add(nextX);
+                            }
+                        }
+                            
+                        for (const startX of usedX) {
+                            const colStep = rotatedBbox.height + minGap;
+                            if (colStep > 0) {
+                                for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += colStep) {
+                                    candidates.push({ x: startX, y });
+                                }
+                            } else {
+                                candidates.push({ x: startX, y: edgeGap });
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ═══════════════════════════════════════════════════════
+                // НЕ-ПРЯМОУГОЛЬНЫЕ ДЕТАЛИ (уголки, сложные формы)
+                // И КРУГЛЫЕ ДЕТАЛИ (в fallback режиме)
+                // Всегда используем горизонтальные строки для лучшей укладки
+                // ═══════════════════════════════════════════════════════
                 const usedY = new Set();
-                usedY.add(edgeGap); // Первая строка всегда начинается с edgeGap
+                usedY.add(edgeGap);
                 
                 for (const placed of placedParts) {
                     const placedY = placed.y;
                     const placedHeight = placed.height || placed.bboxHeight || 0;
-                    // Добавляем позицию ниже каждой детали
                     const nextY = placedY + placedHeight + minGap;
                     if (nextY + rotatedBbox.height <= sheetHeight - edgeGap) {
                         usedY.add(nextY);
                     }
                 }
                     
-                // Для каждой Y-позиции генерируем ровную строку
                 for (const startY of usedY) {
-                    // Ровная строка: шаг = ширина детали + minGap
                     const rowStep = rotatedBbox.width + minGap;
-                    for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += rowStep) {
-                        candidates.push({ x, y: startY });
+                    if (rowStep > 0) {
+                        for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += rowStep) {
+                            candidates.push({ x, y: startY });
+                        }
+                    } else {
+                        candidates.push({ x: edgeGap, y: startY });
                     }
                 }
-            } else {
-                // Для не-прямоугольных деталей используем обычный генератор
-                const genCandidates = generateCandidatePositions(placedParts, rotatedBbox.width, rotatedBbox.height, sheetWidth, sheetHeight, minGap, edgeGap, step);
-                candidates.push(...genCandidates);
             }
-
-            // Fallback: dense grid для покрытия пустых зон
+                
+            // Fallback: dense grid для покрытия пустых зон (только для прямоугольных деталей)
             // ═══════════════════════════════════════════════════════
             // Создаём плотную сетку по ВСЕМУ листу, но пропускаем занятые зоны
             // ═══════════════════════════════════════════════════════
-            const denseGrid = [];
-            const denseStep = step; // Плотный шаг = step (не step*3!)
+            let allCandidates = [];  // ═══ Объявляем вне блока
             
-            // Проходим по всему листу с плотным шагом
-            for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += denseStep) {
-                for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += denseStep) {
-                    // Проверяем: не слишком ли близко к уже размещённым деталям
-                    let tooClose = false;
-                    for (const placed of placedParts) {
-                        const placedWidth = placed.width || placed.bboxWidth || 0;
-                        const placedHeight = placed.height || placed.bboxHeight || 0;
+            if (isRectangular) {  // ═══ ВАЖНО: denseGrid ТОЛЬКО для прямоугольных деталей
+                const denseGrid = [];
+                // Плотный шаг: учитываем minGap, но не менее 20 мм
+                // При overlap (minGap < 0) используем только step без учёта minGap
+                const denseStep = minGap >= 0 
+                    ? Math.max(20, Math.min(50, minDimension / 3))
+                    : Math.max(20, Math.min(50, minDimension / 3));
+                
+                // Проходим по всему листу с плотным шагом
+                for (let y = edgeGap; y <= sheetHeight - rotatedBbox.height - edgeGap; y += denseStep) {
+                    for (let x = edgeGap; x <= sheetWidth - rotatedBbox.width - edgeGap; x += denseStep) {
+                        // Проверяем: не слишком ли близко к уже размещённым деталям
+                        let tooClose = false;
+                        for (const placed of placedParts) {
+                            const placedWidth = placed.width || placed.bboxWidth || 0;
+                            const placedHeight = placed.height || placed.bboxHeight || 0;
+                            
+                            // ═══════════════════════════════════════════════════════
+                            // КОРРЕКЦИЯ: при minGap < 0 (overlap) старая формула ломается
+                            // ═══════════════════════════════════════════════════════
+                            if (minGap >= 0) {
+                                if (x < placed.x + placedWidth + minGap &&
+                                    x + rotatedBbox.width + minGap > placed.x &&
+                                    y < placed.y + placedHeight + minGap &&
+                                    y + rotatedBbox.height + minGap > placed.y) {
+                                    tooClose = true;
+                                    break;
+                                }
+                            } else {
+                                // Overlap mode: считаем "tooClose" только если bbox НЕ пересекаются вообще
+                                // (т.е. позиция далеко от детали — неэффективная)
+                                // Но при overlap мы хотим все позиции, так что не отфильтровываем
+                                // Оставляем tooClose = false
+                            }
+                        }
                         
-                        // Если позиция слишком близко к любой размещённой детали - пропускаем
-                        if (x < placed.x + placedWidth + minGap &&
-                            x + rotatedBbox.width + minGap > placed.x &&
-                            y < placed.y + placedHeight + minGap &&
-                            y + rotatedBbox.height + minGap > placed.y) {
-                            tooClose = true;
-                            break;
+                        if (!tooClose) {
+                            denseGrid.push({ x, y });
                         }
                     }
-                    
-                    if (!tooClose) {
-                        denseGrid.push({ x, y });
-                    }
                 }
+                // Сначала candidates у граней, потом dense grid
+                allCandidates = [...candidates, ...denseGrid];
+                // ═══ ВАЖНО: сортируем allCandidates по X, потом по Y
+                allCandidates.sort((a, b) => a.x - b.x || a.y - b.y);
+            } else {
+                // Для не-прямоугольных деталей — только candidates
+                allCandidates = candidates;
+                // ═══ ВАЖНО: сортируем candidates по X, потом по Y для горизонтальной раскладки
+                allCandidates.sort((a, b) => a.x - b.x || a.y - b.y);
             }
-            // Сначала candidates у граней, потом dense grid
-            const allCandidates = [...candidates, ...denseGrid];
             
             // Проверяем каждую позицию
             let checkedCount = 0;
@@ -1338,14 +1517,34 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
                     const placedWidth = placed.width || placed.bboxWidth || 0;
                     const placedHeight = placed.height || placed.bboxHeight || 0;
                     
-                    // Если bounding box не пересекается даже с зазором — нет пересечения
-                    if (x + rotatedBbox.width + minGap <= placed.x ||
-                        placed.x + placedWidth + minGap <= x ||
-                        y + rotatedBbox.height + minGap <= placed.y ||
-                        placed.y + placedHeight + minGap <= y) {
+                    // ═══════════════════════════════════════════════════════
+                    // КОРРЕКЦИЯ: при minGap < 0 (overlap mode) нельзя использовать
+                    // старую формулу — она считает, что детали в одной точке НЕ пересекаются!
+                    // ═══════════════════════════════════════════════════════
+                    let noBboxOverlap;
+                    if (minGap >= 0) {
+                        // Обычный режим: зазор увеличивает "запретную зону"
+                        noBboxOverlap = (
+                            x + rotatedBbox.width + minGap <= placed.x ||
+                            placed.x + placedWidth + minGap <= x ||
+                            y + rotatedBbox.height + minGap <= placed.y ||
+                            placed.y + placedHeight + minGap <= y
+                        );
+                    } else {
+                        // Overlap mode: проверяем, не пересекаются ли bbox вообще (без зазора)
+                        // Если не пересекаются — точно нет проблемы
+                        noBboxOverlap = (
+                            x + rotatedBbox.width <= placed.x ||
+                            placed.x + placedWidth <= x ||
+                            y + rotatedBbox.height <= placed.y ||
+                            placed.y + placedHeight <= y
+                        );
+                    }
+                    
+                    if (noBboxOverlap) {
                         // Нет пересечения по bbox — продолжаем
                     } else {
-                        // Bbox пересекается — проверяем точную геометрию
+                        // Bbox пересекаются — проверяем точную геометрию
                         if (placed.positionedHull && Array.isArray(placed.positionedHull)) {
                             if (polygonsIntersect(positionedHull, placed.positionedHull, minGap)) {
                                 hasIntersection = true;
@@ -1365,15 +1564,6 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
                         canPlace = false;
                         rejectedByIntersection++;
                         
-                        // ═══════════════════════════════════════════════════════
-                        // ОТЛАДКА: Выводим информацию о первом пересечении
-                        // ═══════════════════════════════════════════════════════
-                        if (rejectedByIntersection === 1 && checkedCount <= 3) {
-                            console.log(`         🔍 Пересекается с деталью на (${placed.x.toFixed(0)}, ${placed.y.toFixed(0)})`);
-                            console.log(`            bbox1: [${x.toFixed(0)}, ${y.toFixed(0)}] - [${(x + rotatedBbox.width).toFixed(0)}, ${(y + rotatedBbox.height).toFixed(0)}]`);
-                            console.log(`            bbox2: [${placed.x.toFixed(0)}, ${placed.y.toFixed(0)}] - [${(placed.x + placedWidth).toFixed(0)}, ${(placed.y + placedHeight).toFixed(0)}]`);
-                        }
-                        
                         break;
                     }
                 }
@@ -1385,7 +1575,7 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
                         rotation,
                         angle,
                         positionedHull,
-                        refPoint,  // ═══════════════════ ВАЖНО: refPoint для корректной отрисовки
+                        refPoint,
                         bboxWidth: rotatedBbox.width,
                         bboxHeight: rotatedBbox.height
                     };
@@ -1407,10 +1597,12 @@ async function findPositionWithNFP(placedParts, newPart, sheetWidth, sheetHeight
             
             // Если ни candidates ни sparseGrid не подошли - тоже null
             if (checkedCount === 0) {
-                console.log(`   ⛔ Нет кандидатов для поворота ${rotationAngles[i]}°`);
+                console.log(`   ⛔ Нет кандидатов для поворота ${rotationAngles[i]}° (isCircular=${isCircular})`);
                 continue;
             }
-        }
+        } // end if (useRegularNesting)
+        
+        console.log(`   ⚠️ [FALLBACK] Не удалось разместить деталь #${newPart.id} обычным способом`);
     }
 
     console.log(`   ❌ Не найдена позиция для детали #${newPart.id} ни с одним поворотом`);
@@ -1753,8 +1945,9 @@ function rotateNestedPart(nested, rotationDegrees, sheetWidth, sheetHeight, allN
     // Новый угол
     let newAngleDeg = currentAngleDeg + rotationDegrees;
 
-    // Привязка к углам
-    const snappedAngleDeg = snapAngle(newAngleDeg);
+    // Привязка к углам (округление до ближайшего кратного 10°)
+    // Для малых углов (< 5°) не применяем привязку
+    const snappedAngleDeg = Math.abs(rotationDegrees) < 5 ? newAngleDeg : snapAngle(newAngleDeg);
 
     // Преобразуем в радианы
     const newAngle = (snappedAngleDeg * Math.PI) / 180;
@@ -1848,4 +2041,3 @@ function rotateNestedPart(nested, rotationDegrees, sheetWidth, sheetHeight, allN
 
     return true; // Поворот успешен
 }
-

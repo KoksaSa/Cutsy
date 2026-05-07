@@ -19,8 +19,10 @@ canvas.addEventListener('wheel', (e) => {
         const sheetY = sheetMargin + sheetPanY;
 
         // Глобальные координаты мыши для render.js
-        window.mouseX = e.clientX - rect.left;
-        window.mouseY = e.clientY - rect.top;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        window.mouseX = mouseX;
+        window.mouseY = mouseY;
 
         if (mouseX >= sheetX && mouseX <= sheetX + sheetW &&
             mouseY >= sheetY && mouseY <= sheetY + sheetH) {
@@ -28,8 +30,7 @@ canvas.addEventListener('wheel', (e) => {
             // Зум листа относительно позиции курсора
             // ═══════════════════════════════════════════════════
             const oldZoom = sheetZoom;
-            const delta = e.deltaY > 0 ? -0.1 : 0.1;
-            const newZoom = Math.max(0.5, Math.min(5, oldZoom + delta));
+            const newZoom = Math.max(0.5, Math.min(15, oldZoom + delta));
 
             // Текущее положение мыши относительно левого верхнего угла листа
             const offsetX = mouseX - sheetX;
@@ -59,19 +60,119 @@ canvas.addEventListener('wheel', (e) => {
         }
     }
 
-    // Обычный зум холста
-    zoom = Math.max(0.1, Math.min(30, zoom + delta));
+    // ═══════════════════════════════════════════════════════
+    // ЗУМ ОСТАТКА ЛИСТА (через drawSheet)
+    // ═══════════════════════════════════════════════════════
+    if (showSheetView && typeof sheetRemnant !== 'undefined' && sheetRemnant) {
+        const sheetMargin = 50;
+        const baseSheetW = Math.min(sheetSize.width / 3, 400);
+        const baseSheetH = baseSheetW * sheetSize.height / sheetSize.width;
+        const sheetW = baseSheetW * sheetZoom;
+        const sheetH = baseSheetH * sheetZoom;
+        const sheetX = canvas.width - sheetW - sheetMargin + sheetPanX;
+        const sheetY = sheetMargin + sheetPanY;
+
+        // Глобальные координаты мыши для render.js
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        window.mouseX = mouseX;
+        window.mouseY = mouseY;
+
+        // Проверяем: курсор над остатком листа?
+        if (mouseX >= sheetX && mouseX <= sheetX + sheetW &&
+            mouseY >= sheetY && mouseY <= sheetY + sheetH) {
+            
+            const oldZoom = sheetZoom;
+            const newZoom = Math.max(0.5, Math.min(5, oldZoom + delta));
+
+            // Текущее положение мыши относительно левого верхнего угла листа
+            const offsetX = mouseX - sheetX;
+            const offsetY = mouseY - sheetY;
+            const ratioX = offsetX / sheetW;
+            const ratioY = offsetY / sheetH;
+
+            // Новые размеры листа
+            const baseSheetW = Math.min(sheetSize.width / 3, 400);
+            const baseSheetH = baseSheetW * sheetSize.height / sheetSize.width;
+            const newSheetW = baseSheetW * newZoom;
+            const newSheetH = baseSheetH * newZoom;
+
+            // Вычисляем новую позицию левого верхнего угла, чтобы точка под курсором осталась на месте
+            const newSheetX = mouseX - ratioX * newSheetW;
+            const newSheetY = mouseY - ratioY * newSheetH;
+
+            // Пересчитываем смещение (pan) относительно целевой позиции без зума
+            sheetPanX = newSheetX - (canvas.width - newSheetW - sheetMargin);
+            sheetPanY = newSheetY - sheetMargin;
+
+            // Применяем зум
+            sheetZoom = newZoom;
+            
+            render();
+            return;
+        }
+    }
+    // ═══════════════════════════════════════════════════════
+    // ЗУМ ХОЛСТА ОТНОСИТЕЛЬНО КУРСОРА
+    // ═══════════════════════════════════════════════════════
+    const oldZoom = zoom;
+    const newZoom = Math.max(0.1, Math.min(40, zoom + delta));
+        
+    // Координаты мыши относительно центра холста
+    const mouseX = e.clientX - rect.left - canvas.width / 2;
+    const mouseY = e.clientY - rect.top - canvas.height / 2;
+    
+    // Преобразуем в мировые координаты (до зума)
+    const worldX = mouseX / oldZoom - panX / oldZoom;
+    const worldY = mouseY / oldZoom - panY / oldZoom;
+    
+    // Вычисляем новый панорамирующий сдвиг, чтобы точка под курсором осталась на месте
+    panX = mouseX - worldX * newZoom;
+    panY = mouseY - worldY * newZoom;
+    
+    // Применяем зум
+    zoom = newZoom;
+    
     render();
 });
 
 // Панорамирование листа колесиком мыши (зажатым)
 canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 1 && showSheetView && window.allSheets && window.allSheets.length > 0) {
+    if (e.button === 1) {  // Средняя кнопка мыши
         e.preventDefault();
         e.stopImmediatePropagation();
-        isSheetPanning = true;
-        sheetPanStart = { x: e.clientX, y: e.clientY };
-        canvas.style.cursor = 'move';
+        
+        const rect = canvas.getBoundingClientRect();
+        
+        // Проверяем: курсор над листом?
+        if (showSheetView && window.allSheets && window.allSheets.length > 0) {
+            const sheetMargin = 50;
+            const baseSheetW = Math.min(sheetSize.width / 3, 400);
+            const baseSheetH = baseSheetW * sheetSize.height / sheetSize.width;
+            const sheetW = baseSheetW * sheetZoom;
+            const sheetH = baseSheetH * sheetZoom;
+            const sheetX = canvas.width - sheetW - sheetMargin + sheetPanX;
+            const sheetY = sheetMargin + sheetPanY;
+            
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (mouseX >= sheetX && mouseX <= sheetX + sheetW &&
+                mouseY >= sheetY && mouseY <= sheetY + sheetH) {
+                // Курсор над листом — панорамируем лист
+                isSheetPanning = true;
+                sheetPanStart = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'move';
+                console.log('🖐️ Режим: перетаскивание листа');
+                return;
+            }
+        }
+
+        // Курсор над холстом (вне листа) — панорамируем холст
+        isPanning = true;
+        panStart = { x: e.clientX - panX, y: e.clientY - panY };
+        canvas.style.cursor = 'grabbing';
+        console.log('🖐️ Режим: перетаскивание холста');
     }
 });
 
@@ -446,12 +547,10 @@ canvas.addEventListener('mousedown', (e) => {
         }
     }
 
-    // Средняя кнопка мыши - панорамирование
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        isPanning = true;
-        panStart = { x: e.clientX - panX, y: e.clientY - panY };
-        canvas.style.cursor = 'grabbing';
-        return;
+    // Средняя кнопка мыши - обработана выше (панорамирование листа/холста)
+    // Если мы здесь, значит курсор был вне листа - но мы уже обработали это выше
+    if (e.button === 1) {
+        return;  // Средняя кнопка уже обработана
     }
 
     if (currentTool === 'select') {
@@ -503,29 +602,8 @@ canvas.addEventListener('mousedown', (e) => {
         }
 
         // Режим параллельности/перпендикулярности (ПРИОРИТЕТ для линий)
-        if (parallelMode && parallelStep >= 1) {
-            for (let i = objects.length - 1; i >= 0; i--) {
-                if (objects[i].contains(x, y) && objects[i].type === 'line') {
-                    if (parallelStep === 1) {
-                        referenceLineForParallel = objects[i];
-                        selectedObjects = [objects[i]];
-                        parallelStep = 2;
-                        updateParallelButtons();
-                    } else if (parallelStep === 2) {
-                        if (objects[i] !== referenceLineForParallel) {
-                            applyParallelToLine(objects[i]);
-                            parallelMode = null;
-                            parallelStep = 0;
-                            referenceLineForParallel = null;
-                            selectedObjects = [objects[i]];
-                            updateParallelButtons();
-                        }
-                    }
-                    render();
-                    return;
-                }
-            }
-        }
+        // УПРОЩЁННАЯ ВЕРСИЯ: работает только если параллельность запущена из index.html
+        // (обработчик находится в index.html, строки 799-831)
 
         let clickedObject = null;
         for (let i = objects.length - 1; i >= 0; i--) {

@@ -30,7 +30,7 @@ let isCtrlPressed = false;
 
 // Привязки
 let snapEnabled = true;
-const SNAP_DISTANCE = 15;
+const SNAP_DISTANCE = 3;
 let snapPoint = null;
 
 // Ортогональность (рисование под углами 0°, 45°, 90°, 135°...)
@@ -116,8 +116,9 @@ let referenceLine = null;
 
 // Для перетаскивания конечных точек
 let draggedPoint = null;
-let hoveredPoint = null;  // Точка, на которую наведены (для подсветки)
-const POINT_SNAP_DISTANCE = 15;
+let hoveredPoint = null;  // Точка, на которую наведены (для подсветки в режиме Select)
+let angleHoveredPoint = null;  // Точка, на которую наведены (для подсветки в режиме Угол)
+const POINT_SNAP_DISTANCE = 1;
 
 // Для автоматических размеров
 let dimensionLines = [];
@@ -149,6 +150,12 @@ let parts = [];           // Массив деталей: { id, objects: [], qua
 window.parts = parts;     // Делаем глобальной для доступа из других файлов
 let currentPartId = 0;
 window.currentPartId = currentPartId;  // Делаем глобальной
+
+// ═══════════════════════════════════════════════════════
+// РЕДАКТИРОВАНИЕ ДЕТАЛИ (Part Editing Mode)
+// ═══════════════════════════════════════════════════════
+let isEditingPart = false;        // Флаг: редактируется ли деталь сейчас
+let editingPartId = null;         // ID детали, которая сейчас редактируется
 
 // Стандартные размеры листов (для отчёта)
 const STANDARD_SHEETS = [

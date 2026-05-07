@@ -1,11 +1,523 @@
-// n: SilikinK Project
 // ═══════════════════════════════════════════════════════════════
-// ИМПОРТ ДЕТАЛЕЙ ИЗ DXF
+// ИМПОРТ ДЕТАЛЕЙ ИЗ DXF — С ПОДДЕРЖКОЙ БЛОКОВ ("макро" файлы)
 // ═══════════════════════════════════════════════════════════════
 
 let importedObjects = [];
 let dxfBounds = {};
 let dxfFileName = '';
+
+// ═══════════════════════════════════════════════════════════════
+// PREPROCESS DXF ENTITIES
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Универсальный preprocess перед convertDXFEntity
+ */
+function preprocessDXFEntities(dxf) {
+    const originalCount = dxf.entities?.length || 0;
+    
+    let entities = expandDXFBlocks(dxf);
+    const afterBlocksCount = entities.length;
+    
+    entities = explodeCompositeEntities(entities);
+    const afterExplodeCount = entities.length;
+    
+    entities = filterUnsupportedEntities(entities);
+    const afterFilterCount = entities.length;
+    
+    // Отчёт по этапам preprocess
+    console.log("📊 DXF FLATTEN REPORT", {
+        original: originalCount,
+        afterBlocks: afterBlocksCount,
+        afterExplode: afterExplodeCount,
+        afterFilter: afterFilterCount
+    });
+    
+    return entities;
+}
+
+/**
+ * Разбиение составных сущностей (DIMENSION, HATCH, LEADER)
+ */
+function explodeCompositeEntities(entities) {
+    const result = [];
+    
+    for (const entity of entities) {
+        if (!entity || !entity.type) {
+            result.push(entity);
+            continue;
+        }
+
+        switch (entity.type) {
+            case 'DIMENSION':
+                if (entity.block) {
+                    console.log('📐 Exploding DIMENSION block:', entity.block);
+                    result.push(...explodeAnonymousBlock(entity.block));
+                } else {
+                    // Если нет блока, разбиваем на линии по точкам
+                    console.log('📐 DIMENSION без блока — пропуск');
+                }
+                break;
+                
+            case 'HATCH':
+                console.log('🪓 Exploding HATCH boundary');
+                result.push(...explodeHatch(entity));
+                break;
+                
+            case 'MLEADER':
+            case 'LEADER':
+                console.log('🪓 Exploding LEADER');
+                result.push(...explodeLeader(entity));
+                break;
+                
+            default:
+                result.push(entity);
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * Взрыв анонимных блоков (*U###)
+ */
+function explodeAnonymousBlock(blockName) {
+    const result = [];
+    console.log(`🔍 Exploding anonymous block: ${blockName}`);
+    
+    // Ищем блок в global blocks (если есть доступ)
+    // В текущей реализации блоки хранятся внутри expandDXFBlocks
+    // Это заглушка для будущей доработки
+    return result;
+}
+
+/**
+ * Взрыв HATCH на контуры
+ */
+function explodeHatch(hatch) {
+    const result = [];
+    
+    if (hatch.loops && Array.isArray(hatch.loops)) {
+        hatch.loops.forEach((loop, loopIdx) => {
+            if (loop.edges && Array.isArray(loop.edges)) {
+                // Разбиваем каждый контур HATCH на линии/дуги
+                console.log(`   HATCH loop ${loopIdx}: ${loop.edges.length} edges`);
+                // TODO: реализовать полную поддержку edges HATCH
+            }
+        });
+    }
+    
+    // Если нет петель — возвращаем пустой массив
+    return result;
+}
+
+/**
+ * Взрыв LEADER на линии
+ */
+function explodeLeader(leader) {
+    const result = [];
+    
+    if (leader.vertices && Array.isArray(leader.vertices)) {
+        for (let i = 0; i < leader.vertices.length - 1; i++) {
+            const v1 = leader.vertices[i];
+            const v2 = leader.vertices[i + 1];
+            result.push({
+                type: 'LINE',
+                start: { x: v1.x, y: v1.y },
+                end: { x: v2.x, y: v2.y }
+            });
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * Фильтрация мусорных сущностей
+ */
+function filterUnsupportedEntities(entities) {
+    const unsupportedTypes = [
+        'TEXT',
+        'MTEXT',
+        'DIMENSION',
+        'HATCH',
+        'SOLID',
+        'WIPEOUT',
+        'IMAGE',
+        'ATTDEF',
+        'ATTRIB'
+    ];
+    
+    const filtered = entities.filter(e => {
+        const isSupported = !unsupportedTypes.includes(e?.type);
+        if (!isSupported) {
+            console.log(`⏭️ Filtered out ${e?.type}: unsupported type`);
+        }
+        return isSupported;
+    });
+    
+    console.log(`📊 Filtered entities: ${entities.length} → ${filtered.length}`);
+    return filtered;
+}
+
+/**
+ * Раскрывает блоки и обрабатывает бинарные данные в импортированных объектах
+ * @param {Object} dxf - Распарсенный DXF объект от DxfParser
+ * @returns {Array} - Массив объектов с раскрытыми блоками
+ */
+function expandDXFBlocks(dxf) {
+    if (!dxf || !dxf.entities) return [];
+    
+    // 🔍 ПОЛНАЯ ОТЛАДКА: выводим структуру dxf
+    console.log('🔍 === DEBUG: DXF STRUCTURE ===');
+    console.log('dxf.blocks type:', typeof dxf.blocks);
+    console.log('dxf.blocks:', dxf.blocks);
+    
+    // Проверяем все возможные места, где могут быть блоки
+    if (dxf.blocks) {
+        if (Array.isArray(dxf.blocks)) {
+            console.log('📦 Blocks as array:', dxf.blocks.map(b => b?.name).filter(Boolean));
+        } else if (typeof dxf.blocks === 'object') {
+            console.log('📦 Blocks as object keys:', Object.keys(dxf.blocks));
+            Object.entries(dxf.blocks).forEach(([key, block]) => {
+                console.log(`   Block "${key}": entities=${block?.entities?.length || 0}, objects=${block?.objects?.length || 0}`);
+            });
+        }
+    }
+    
+    // 🔧 Проверяем другие возможные места хранения блоков
+    if (dxf.tables?.blocks) {
+        console.log('🔍 FOUND blocks in dxf.tables.blocks!');
+        console.log('dxf.tables.blocks type:', typeof dxf.tables.blocks);
+        if (Array.isArray(dxf.tables.blocks)) {
+            console.log('📦 Blocks array count:', dxf.tables.blocks.length);
+            dxf.tables.blocks.forEach((b, i) => {
+                console.log(`   Block[${i}]: name=${b?.name}, entities=${b?.entities?.length || 0}`);
+            });
+        } else if (typeof dxf.tables.blocks === 'object') {
+            console.log('📦 Blocks object keys:', Object.keys(dxf.tables.blocks));
+        }
+    }
+    
+    if (dxf._blocks) {
+        console.log('🔍 FOUND blocks in dxf._blocks!');
+        console.log('dxf._blocks:', dxf._blocks);
+    }
+    
+    if (dxf.sections) {
+        const blocksSection = dxf.sections.find(s => s.name === 'BLOCKS' || s.name === 'block');
+        if (blocksSection) {
+            console.log('🔍 FOUND BLOCKS section:', blocksSection);
+        }
+    }
+    
+    // 🔧 Нормализуем blocks в единый объект
+    const blocks = {};
+    const collectBlocks = (source, sourceName) => {
+        if (!source) return;
+        let count = 0;
+        if (Array.isArray(source)) {
+            source.forEach(b => {
+                if (b?.name) {
+                    const name = b.name.toString().trim();
+                    blocks[name] = b;
+                    blocks[name.toUpperCase()] = b;
+                    blocks[name.toLowerCase()] = b;
+                    count++;
+                }
+            });
+        } else if (typeof source === 'object') {
+            Object.entries(source).forEach(([key, block]) => {
+                if (block) {
+                    const name = key.toString().trim();
+                    blocks[name] = block;
+                    blocks[name.toUpperCase()] = block;
+                    blocks[name.toLowerCase()] = block;
+                    if (block.name) {
+                        const bname = block.name.toString().trim();
+                        blocks[bname] = block;
+                        blocks[bname.toUpperCase()] = block;
+                        blocks[bname.toLowerCase()] = block;
+                    }
+                    count++;
+                }
+            });
+        }
+        if (count > 0) console.log(`📦 Collected ${count} blocks from ${sourceName}`);
+    };
+    
+    // Собираем блоки из всех возможных источников
+    collectBlocks(dxf.blocks, 'dxf.blocks');
+    collectBlocks(dxf._blocks, 'dxf._blocks');
+    collectBlocks(dxf.tables?.blocks, 'dxf.tables.blocks');
+    
+    const result = [];
+    console.log(`🔍 Entities: ${dxf.entities?.length || 0}, Blocks loaded: ${Object.keys(blocks).length}`);
+    console.log('📋 Available block names:', [...new Set(Object.keys(blocks).slice(0, 30))]);
+    
+    (dxf.entities || []).forEach((entity, idx) => {
+        if (entity.type === 'INSERT' && entity.name) {
+            const blockName = entity.name.toString().trim();
+            console.log(`\n🔍 [INSERT #${idx}] Ищем блок: "${blockName}"`);
+            console.log('   entity:', { name: entity.name, position: entity.position, angle: entity.angle });
+            
+            // 🔧 Пробуем найти блок всеми способами
+            let block = blocks[blockName] 
+                || blocks[blockName.toUpperCase()] 
+                || blocks[blockName.toLowerCase()]
+                || Object.values(blocks).find(b => 
+                    b?.name?.toString().trim() === blockName ||
+                    b?.name?.toString().trim().toUpperCase() === blockName.toUpperCase() ||
+                    b?.name?.toString().trim().toLowerCase() === blockName.toLowerCase()
+                );
+            
+            if (block) {
+                console.log(`📦 ✅ Нашли блок "${blockName}"`);
+                console.log('   Block data:', { entities: block.entities?.length, objects: block.objects?.length });
+                const insertX = entity.position?.x || entity.x || 0;
+                const insertY = entity.position?.y || entity.y || 0;
+                const scaleX = entity.xScale || entity.scaleX || 1;
+                const scaleY = entity.yScale || entity.scaleY || 1;
+                const rotation = (entity.angle || 0) * Math.PI / 180;
+                
+                // 🔧 Блок может быть в разных полях
+                const blockEntities = block.entities || block.objects || block.geometry || [];
+                console.log(`   📋 В блоке ${blockEntities.length} объектов`);
+                
+                if (blockEntities.length === 0) {
+                    console.warn('⚠️ Блок пустой! Проверьте структуру блока:');
+                    console.log('   Block keys:', Object.keys(block));
+                }
+                
+                // Рекурсивно раскрываем вложенные блоки
+                blockEntities.forEach((blockEnt, bIdx) => {
+                    // Если это вложенный INSERT - раскрываем рекурсивно
+                    if (blockEnt.type === 'INSERT' && blockEnt.name) {
+                        console.log(`      🔁 Вложенный INSERT "${blockEnt.name}" - рекурсивное раскрытие`);
+                        const nestedExpanded = expandDXFBlocksForEntity(blockEnt, insertX, insertY, scaleX, scaleY, rotation, blocks, new Set());
+                        if (nestedExpanded) {
+                            result.push(...nestedExpanded);
+                            console.log(`      + Добавлено ${nestedExpanded.length} объектов из вложенного блока`);
+                        }
+                    } else {
+                        const expanded = transformEntity(blockEnt, insertX, insertY, scaleX, scaleY, rotation);
+                        if (expanded) {
+                            result.push(expanded);
+                            console.log(`      + Добавлен ${expanded.type} #${bIdx}`);
+                        }
+                    }
+                });
+                return;
+            } else {
+                console.warn(`⚠️ [INSERT #${idx}] Блок "${blockName}" НЕ НАЙДЕН!`);
+                console.log('   🔎 Доступные имена блоков:', [...new Set(Object.keys(blocks).slice(0, 20))]);
+                
+                // 💡 Подсказка: возможно, файл экспортирован без BLOCKS
+                if (Object.keys(blocks).length === 0) {
+                    console.error('❌ Секция BLOCKS пуста! Откройте файл в текстовом редакторе и проверьте наличие:');
+                    console.error('   0\\nBLOCK\\n...\\n2\\nU1\\n...\\n0\\nENDBLK');
+                }
+            }
+        }
+        // 🔧 Обработка DIMENSION с анонимным блоком
+        else if (entity.type === 'DIMENSION' && entity.block) {
+            console.log(`📐 DIMENSION с блоком: ${entity.block}`);
+            const anonBlock = blocks[entity.block];
+            if (anonBlock?.entities) {
+                const exploded = anonBlock.entities.map(e =>
+                    transformEntity(e, 0, 0, 1, 1, 0)
+                );
+                result.push(...exploded);
+                console.log(`   + Exploded ${exploded.length} объектов из DIMENSION`);
+                return; // заменил continue
+            }
+            result.push(entity);
+        }
+        // Пропускаем бинарные данные
+        else if (entity.binaryData || entity.code === 310 || entity.value?.startsWith?.('1E')) {
+            console.log('⏭️ Пропущена бинарная сущность (код 310)');
+        }
+        // Обычные объекты
+        else {
+            result.push(entity);
+        }
+    });
+            
+    console.log(`\n✅ Итог: ${result.length} объектов после раскрытия блоков`);
+    return result;
+}
+
+/**
+ * Применяет трансформацию к объекту (сдвиг, масштаб, поворот)
+ */
+function transformEntity(entity, offsetX, offsetY, scaleX, scaleY, rotation) {
+    if (!entity || !entity.type) return null;
+    
+    // Клонирование объекта
+    const cloned = JSON.parse(JSON.stringify(entity));
+    
+    // Вспомогательная функция для трансформации точки
+    const transformPoint = (x, y) => {
+        let nx = x * scaleX;
+        let ny = y * scaleY;
+        
+        // Поворот
+        if (rotation !== 0) {
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+            const rx = nx * cos - ny * sin;
+            const ry = nx * sin + ny * cos;
+            nx = rx; ny = ry;
+        }
+        
+        // Сдвиг
+        return { x: nx + offsetX, y: ny + offsetY };
+    };
+
+    // Применяем трансформацию в зависимости от типа объекта
+    switch (cloned.type) {
+        case 'LINE':
+            if (cloned.start) {
+                const s = transformPoint(cloned.start.x || 0, cloned.start.y || 0);
+                const e = transformPoint(cloned.end?.x || 0, cloned.end?.y || 0);
+                cloned.start = { x: s.x, y: s.y };
+                cloned.end = { x: e.x, y: e.y };
+            }
+            break;
+            
+        case 'CIRCLE':
+            if (cloned.center) {
+                // Проверка на неравномерный масштаб
+                if (Math.abs(scaleX - scaleY) > 0.0001) {
+                    console.warn(`⚠️ Non-uniform scale on CIRCLE: scaleX=${scaleX}, scaleY=${scaleY}. Конвертирую в ELLIPSE`);
+                    // Конвертация CIRCLE → ELLIGSE
+                    cloned.type = 'ELLIPSE';
+                    cloned.majorAxisEndPoint = {
+                        x: cloned.radius * scaleX,
+                        y: 0
+                    };
+                    cloned.axisRatio = Math.min(scaleX, scaleY) / Math.max(scaleX, scaleY);
+                    // Сохраняем центр
+                    const c = transformPoint(cloned.center.x, cloned.center.y);
+                    cloned.center = { x: c.x, y: c.y };
+                } else {
+                    // Равномерный масштаб — просто масштабируем радиус
+                    cloned.radius = cloned.radius * scaleX;
+                    const c = transformPoint(cloned.center.x, cloned.center.y);
+                    cloned.center = { x: c.x, y: c.y };
+                }
+            }
+            break;
+
+        case 'ARC':
+            if (cloned.center) {
+                if (scaleX !== 1 || scaleY !== 1) {
+                    cloned.radius = cloned.radius * Math.sqrt(scaleX * scaleY);
+                }
+                const c = transformPoint(cloned.center.x, cloned.center.y);
+                cloned.center = { x: c.x, y: c.y };
+                // Поворот углов дуги
+                if (rotation !== 0) {
+                    cloned.startAngle = (cloned.startAngle || 0) + rotation;
+                    cloned.endAngle = (cloned.endAngle || 0) + rotation;
+                }
+            }
+            break;
+
+        case 'LWPOLYLINE':
+        case 'POLYLINE':
+            if (cloned.vertices && Array.isArray(cloned.vertices)) {
+                cloned.vertices = cloned.vertices.map(v => {
+                    if (v && typeof v === 'object') {
+                        const p = transformPoint(v.x || 0, v.y || 0);
+                        return { ...v, x: p.x, y: p.y };
+                    }
+                    return v;
+                });
+            }
+            break;
+
+        case 'POINT':
+            if (cloned.position) {
+                const p = transformPoint(cloned.position.x || 0, cloned.position.y || 0);
+                cloned.position = { x: p.x, y: p.y };
+            }
+            break;
+
+        // Для остальных типов — базовая трансформация координат
+        default:
+            ['x', 'y', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2'].forEach(key => {
+                if (cloned[key] !== undefined && typeof cloned[key] === 'number') {
+                    const isX = key.includes('x');
+                    const isY = key.includes('y');
+                    let val = cloned[key];
+                    
+                    if (isX) val *= scaleX;
+                    if (isY) val *= scaleY;
+                    if (rotation !== 0 && (isX || isY)) {
+                        const angle = isX ? 0 : Math.PI/2;
+                        val = val * Math.cos(rotation + angle);
+                    }
+                    val += isX ? offsetX : offsetY;
+                    cloned[key] = val;
+                }
+            });
+    }
+    
+    return cloned;
+}
+
+/**
+ * Рекурсивно раскрывает вложенный INSERT с трансформацией
+ */
+function expandDXFBlocksForEntity(insertEntity, parentX, parentY, parentScaleX, parentScaleY, parentRotation, blocks, visited = new Set()) {
+    const blockName = insertEntity.name.toString().trim();
+    
+    // 🔒 Защита от циклических ссылок
+    if (visited.has(blockName)) {
+        console.warn(`⚠️ Циклическая ссылка блока: ${blockName}`);
+        return [];
+    }
+    
+    // Создаём новый Set с добавленным блоком
+    const newVisited = new Set(visited);
+    newVisited.add(blockName);
+    
+    const block = blocks[blockName] 
+        || blocks[blockName.toUpperCase()] 
+        || blocks[blockName.toLowerCase()]
+        || Object.values(blocks).find(b => 
+            b?.name?.toString().trim() === blockName ||
+            b?.name?.toString().trim().toUpperCase() === blockName.toUpperCase()
+        );
+    
+    if (!block) {
+        console.warn(`⚠️ Вложенный блок "${blockName}" не найден!`);
+        return [];
+    }
+    
+    const insertX = parentX + (insertEntity.position?.x || insertEntity.x || 0) * parentScaleX;
+    const insertY = parentY + (insertEntity.position?.y || insertEntity.y || 0) * parentScaleY;
+    const scaleX = (insertEntity.xScale || insertEntity.scaleX || 1) * parentScaleX;
+    const scaleY = (insertEntity.yScale || insertEntity.scaleY || 1) * parentScaleY;
+    const rotation = ((insertEntity.angle || 0) * Math.PI / 180) + parentRotation;
+    
+    const blockEntities = block.entities || block.objects || block.geometry || [];
+    const result = [];
+    
+    blockEntities.forEach(blockEnt => {
+        if (blockEnt.type === 'INSERT' && blockEnt.name) {
+            // Ещё один уровень вложенности - рекурсия с новым visited
+            const nestedExpanded = expandDXFBlocksForEntity(blockEnt, insertX, insertY, scaleX, scaleY, rotation, blocks, newVisited);
+            result.push(...nestedExpanded);
+        } else {
+            const expanded = transformEntity(blockEnt, insertX, insertY, scaleX, scaleY, rotation);
+            if (expanded) result.push(expanded);
+        }
+    });
+
+    return result;
+}
 
 async function importDXF(file) {
     if (!file) return null;
@@ -24,11 +536,44 @@ async function importDXF(file) {
             alert('❌ Ошибка: библиотека dxf-parser не подключена');
             return null;
         }
+        
+        // ═══════════════════════════════════════════════════════
+        // ПОЛНАЯ ОТЛАДКА СТРУКТУРЫ DXF
+        // ═══════════════════════════════════════════════════════
+        console.log('🔍 === ПОЛНАЯ СТРУКТУРА DXF ===');
+        console.log('Top-level keys:', Object.keys(dxf));
+        
+        if (dxf.tables) {
+            console.log('dxf.tables keys:', Object.keys(dxf.tables));
+            if (dxf.tables.blocks) {
+                console.log('dxf.tables.blocks type:', typeof dxf.tables.blocks);
+                console.log('dxf.tables.blocks:', dxf.tables.blocks);
+            }
+        }
+        
+        if (dxf.blocks) {
+            console.log('dxf.blocks type:', typeof dxf.blocks);
+            console.log('dxf.blocks:', dxf.blocks);
+        }
+        
+        if (dxf._blocks) {
+            console.log('dxf._blocks:', dxf._blocks);
+        }
+        
+        // Проверяем секции
+        if (dxf.sections) {
+            console.log('dxf.sections:', dxf.sections);
+        }
 
-        console.log('DXF Entities:', dxf.entities);
+        // ═══════════════════════════════════════════════════════
+        // PREPROCESS DXF ENTITIES
+        // ═══════════════════════════════════════════════════════
+        const preprocessedEntities = preprocessDXFEntities(dxf);
+
+        console.log('DXF Entities (после preprocess):', preprocessedEntities.length);
 
         importedObjects = [];
-        dxf.entities.forEach(entity => {
+        preprocessedEntities.forEach(entity => {
             convertDXFEntity(entity);
         });
 
@@ -37,14 +582,25 @@ async function importDXF(file) {
             return null;
         }
 
+        // ═══════════════════════════════════════════════════════
+        // ИНВЕРСИЯ Y: DXF (Y-up) → Canvas (Y-down)
+        // ═══════════════════════════════════════════════════════
+        // Без инверсии вся фигура зеркальна по вертикали, и дуги
+        // "выпуклостью вниз" в DXF становятся "выпуклостью вверх"
+        // в Canvas, ломая замкнутые контуры (замочная скважина и т.п.)
+        const tempBounds = calculateBounds(importedObjects);
+        const dxfMaxY = tempBounds.maxY;
+        importedObjects.forEach(obj => invertY(obj, dxfMaxY));
+        console.log(`🔄 Инверсия Y: maxY=${dxfMaxY.toFixed(2)}`);
+
         dxfBounds = calculateBounds(importedObjects);
-        console.log('DXF Import Bounds:', dxfBounds);
+        console.log('DXF Import Bounds (после инверсии Y):', dxfBounds);
 
         return {
             objects: importedObjects,
             bounds: dxfBounds,
             fileName: dxfFileName,
-            entityCount: dxf.entities.length
+            entityCount: preprocessedEntities.length
         };
 
     } catch (err) {
@@ -184,7 +740,12 @@ function convertDXFEntity(entity) {
                     return null;
                 }).filter(v => v !== null);
 
-                for (let i = 0; i < normalizedVertices.length; i++) {
+                // Проверка: полилиния замкнута?
+                const isClosed = entity.closed === true || entity.shape === true;
+                
+                // Рисуем все сегменты
+                const vertexCount = isClosed ? normalizedVertices.length : normalizedVertices.length - 1;
+                for (let i = 0; i < vertexCount; i++) {
                     const v1 = normalizedVertices[i];
                     const v2 = normalizedVertices[(i + 1) % normalizedVertices.length];
                     const line = new Line(v1.x, v1.y, v2.x, v2.y);
@@ -221,7 +782,11 @@ function convertDXFEntity(entity) {
             }
             break;
 
-        default:
+         case 'INSERT':
+            // INSERT должен быть раскрыт в expandDXFBlocks, но если попал сюда — предупреждаем
+            console.warn(`⚠️ INSERT "${entity.name}" не был раскрыт — проверьте секцию BLOCKS в файле`);
+            break;
+            default:
             console.log('Пропущена entity:', entity.type);
     }
 }
@@ -266,99 +831,40 @@ let arcDebugCounter = 1;
 
 function approximateArc(arc) {
     const lines = [];
-    
-    // Извлекаем данные
-    let centerX, centerY;
+
+    let centerX = arc.center.x;
+    let centerY = arc.center.y;
     let radius = arc.radius;
+
     let startAngle = arc.startAngle;
     let endAngle = arc.endAngle;
-    let angleLength = arc.angleLength;
-    
-    if (arc.center) {
-        centerX = arc.center.x ?? arc.center[0];
-        centerY = arc.center.y ?? arc.center[1];
+
+    if (Math.abs(startAngle) > Math.PI * 2 || Math.abs(endAngle) > Math.PI * 2) {
+        startAngle *= Math.PI / 180;
+        endAngle *= Math.PI / 180;
     }
-    
-    if (!radius || centerX === undefined || centerY === undefined) {
-        return lines;
-    }
-    
-    // Устанавливаем углы
-    if (startAngle === undefined) startAngle = 0;
-    if (endAngle === undefined && angleLength !== undefined) {
-        endAngle = startAngle + angleLength;
-    }
-    if (angleLength === undefined && endAngle !== undefined) {
-        angleLength = endAngle - startAngle;
-    }
-    if (angleLength === undefined) {
-        angleLength = Math.PI * 2;
-        endAngle = startAngle + angleLength;
-    }
-    
-    // Определяем направление дуги
-    const isClockwise = angleLength < 0;
-    
-    // Нормализуем начальный угол в диапазон [0, 2π)
-    const twoPi = Math.PI * 2;
-    let normalizedStart = startAngle;
-    while (normalizedStart < 0) normalizedStart += twoPi;
-    while (normalizedStart >= twoPi) normalizedStart -= twoPi;
-    
-    // Вычисляем угол дуги в положительном направлении
-    let sweepAngle;
-    if (isClockwise) {
-        // Для CW дуги: берем положительный угол, но потом инвертируем направление
-        sweepAngle = -angleLength;
-    } else {
-        sweepAngle = angleLength;
-    }
-    
-    // Нормализуем sweepAngle
-    while (sweepAngle > twoPi) sweepAngle -= twoPi;
-    while (sweepAngle < 0) sweepAngle += twoPi;
-    
-    // Для CW дуг инвертируем направление при отрисовке
-    // (компенсация инверсии Y)
-    let finalStartAngle, finalSweepAngle;
-    
-    if (isClockwise) {
-        // CW дуга: при инверсии Y должна стать CCW
-        // Для этого меняем начальный угол и направление
-        finalStartAngle = normalizedStart;
-        finalSweepAngle = sweepAngle; // Отрисовываем как CCW
-    } else {
-        // CCW дуга: оставляем как есть
-        finalStartAngle = normalizedStart;
-        finalSweepAngle = sweepAngle;
-    }
-    
-    // Количество сегментов
-    const segments = Math.max(8, Math.min(100, Math.ceil(finalSweepAngle / (Math.PI / 18))));
-    const angleStep = finalSweepAngle / segments;
-    
-    let prevX = centerX + Math.cos(finalStartAngle) * radius;
-    let prevY = centerY + Math.sin(finalStartAngle) * radius;
-    
+
+    let sweepAngle = endAngle - startAngle;
+    while (sweepAngle <= 0) sweepAngle += Math.PI * 2;
+
+    const segments = Math.max(8, Math.ceil(sweepAngle / (Math.PI / 18)));
+    const step = sweepAngle / segments;
+
+    let prevX = centerX + Math.cos(startAngle) * radius;
+    let prevY = centerY + Math.sin(startAngle) * radius;
+
     for (let i = 1; i <= segments; i++) {
-        const angle = finalStartAngle + i * angleStep;
+        const angle = startAngle + step * i;
+
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
-        
-        if (isFinite(x) && isFinite(y) && isFinite(prevX) && isFinite(prevY)) {
-            lines.push(new Line(prevX, prevY, x, y));
-        }
+
+        lines.push(new Line(prevX, prevY, x, y));
+
         prevX = x;
         prevY = y;
     }
-    
-    // Отладочный вывод
-    console.log(`Дуга: центр(${centerX.toFixed(2)}, ${centerY.toFixed(2)}), ` +
-                `углы ${(normalizedStart*180/Math.PI).toFixed(0)}° → ${((normalizedStart+finalSweepAngle)*180/Math.PI).toFixed(0)}°, ` +
-                `исходное направление=${isClockwise ? 'CW' : 'CCW'}, ` +
-                `фактическое направление=${finalSweepAngle > 0 ? 'CCW' : 'CW'}, ` +
-                `линий=${lines.length}`);
-    
+
     return lines;
 }
 
@@ -385,60 +891,65 @@ function approximateBulgeArc(v1, v2, bulge) {
             return lines;
         }
         
-        // Для bulge близкого к 1 (полукруг) используем специальную обработку
-        const isNearHalfCircle = Math.abs(Math.abs(bulge) - 1) < 0.001;
-        
-        // НЕ ИНВЕРТИРУЕМ bulge для этого файла
-        // Проблема в том, что bulge уже имеет правильное направление
-        let correctedBulge;
-        
-        if (isNearHalfCircle) {
-            // Для полукругов оставляем bulge как есть
-            correctedBulge = bulge;
-        } else {
-            // Для остальных инвертируем
-            correctedBulge = -bulge;
-        }
-        
-        const sweepAngle = 4 * Math.atan(Math.abs(correctedBulge));
-        const radius = chordLength / (2 * Math.sin(sweepAngle / 2));
-        
-        if (!isFinite(radius) || radius < 0.001) {
+        // Угол дуги: theta = 4 * atan(|bulge|)
+        const theta = 4 * Math.atan(Math.abs(bulge));
+
+        const sinThetaHalf = Math.sin(theta / 2);
+        if (Math.abs(sinThetaHalf) < 0.0001) {
             lines.push(new Line(v1.x, v1.y, v2.x, v2.y));
             return lines;
         }
         
-        const midX = (v1.x + v2.x) / 2;
-        const midY = (v1.y + v2.y) / 2;
-        const perpX = -dy / chordLength;
-        const perpY = dx / chordLength;
-        const distanceToCenter = Math.sqrt(radius * radius - (chordLength * chordLength) / 4);
-        const direction = correctedBulge > 0 ? 1 : -1;
-        
-        const centerX = midX + direction * perpX * distanceToCenter;
-        const centerY = midY + direction * perpY * distanceToCenter;
-        
-        let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
-        let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
-        
-        let angleDiff = endAngle - startAngle;
-        if (correctedBulge > 0) {
-            if (angleDiff < 0) angleDiff += 2 * Math.PI;
-        } else {
-            if (angleDiff > 0) angleDiff -= 2 * Math.PI;
+        const radius = chordLength / (2 * sinThetaHalf);
+        if (!isFinite(radius) || radius > 1e10) {
+            lines.push(new Line(v1.x, v1.y, v2.x, v2.y));
+            return lines;
         }
+
+        const mx = (v1.x + v2.x) / 2;
+        const my = (v1.y + v2.y) / 2;
+
+        const dist = Math.sqrt(Math.abs(radius * radius - (chordLength * chordLength) / 4));
+
+        // Левый перпендикуляр: (-dy, dx)
+        const leftPerpX = -dy / chordLength;
+        const leftPerpY = dx / chordLength;
+
+        // bulge > 0 → центр слева (CCW), bulge < 0 → центр справа (CW)
+        const cx = mx + leftPerpX * dist * Math.sign(bulge);
+        const cy = my + leftPerpY * dist * Math.sign(bulge);
+
+        if (!isFinite(cx) || !isFinite(cy)) {
+            lines.push(new Line(v1.x, v1.y, v2.x, v2.y));
+            return lines;
+        }
+
+        // Начальный и конечный углы (стандартные формулы)
+        const startAngle = Math.atan2(v1.y - cy, v1.x - cx);
+        const endAngle   = Math.atan2(v2.y - cy, v2.x - cx);
+
+        // Правильное направление на основе bulge (без double inversion)
+        let sweepAngle = endAngle - startAngle;
         
-        const segments = Math.max(8, Math.min(50, Math.ceil(Math.abs(angleDiff) / (Math.PI / 36))));
-        const angleStep = angleDiff / segments;
-        
+        // bulge > 0 → CCW, bulge < 0 → CW
+        if (bulge >= 0) {
+            while (sweepAngle < 0) sweepAngle += 2 * Math.PI;
+        } else {
+            while (sweepAngle > 0) sweepAngle -= 2 * Math.PI;
+        }
+
+        const segments = Math.max(8, Math.min(50, Math.ceil(Math.abs(sweepAngle) / (Math.PI / 36))));
+        const angleStep = sweepAngle / segments;
+
+        // Начинаем от v1 (стандартное направление)
         let prevX = v1.x;
         let prevY = v1.y;
-        
+
         for (let i = 1; i <= segments; i++) {
             const angle = startAngle + i * angleStep;
-            const x = centerX + Math.cos(angle) * radius;
-            const y = centerY + Math.sin(angle) * radius;
-            
+            const x = cx + Math.cos(angle) * radius;
+            const y = cy + Math.sin(angle) * radius;
+
             if (isFinite(x) && isFinite(y) && isFinite(prevX) && isFinite(prevY)) {
                 lines.push(new Line(prevX, prevY, x, y));
             }
@@ -463,7 +974,8 @@ function approximateEllipse(ellipse) {
     const b = a * ellipse.axisRatio;
     const rotation = Math.atan2(ellipse.majorAxisEndPoint.y, ellipse.majorAxisEndPoint.x);
     
-    for (let i = 0; i <= segments; i++) {
+    // Исправлено: i < segments (без лишнего сегмента)
+    for (let i = 0; i < segments; i++) {
         const angle = (2 * Math.PI * i) / segments;
         const nextAngle = (2 * Math.PI * (i + 1)) / segments;
         
@@ -547,21 +1059,40 @@ function calculateBounds(objects) {
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
     let objectsWithPoints = 0;
+    let invalidObjects = 0;
     
     objects.forEach(obj => {
         if (obj.type === 'line') {
+            // Проверка: координаты определены?
+            if (typeof obj.x1 !== 'number' || typeof obj.y1 !== 'number' ||
+                typeof obj.x2 !== 'number' || typeof obj.y2 !== 'number') {
+                console.warn(`⚠️ Line с невалидными координатами:`, obj);
+                invalidObjects++;
+                return;
+            }
             objectsWithPoints++;
             minX = Math.min(minX, obj.x1, obj.x2);
             maxX = Math.max(maxX, obj.x1, obj.x2);
             minY = Math.min(minY, obj.y1, obj.y2);
             maxY = Math.max(maxY, obj.y1, obj.y2);
         } else if (obj.type === 'circle') {
+            if (typeof obj.cx !== 'number' || typeof obj.cy !== 'number' || typeof obj.radius !== 'number') {
+                console.warn(`⚠️ Circle с невалидными координатами:`, obj);
+                invalidObjects++;
+                return;
+            }
             objectsWithPoints++;
             minX = Math.min(minX, obj.cx - obj.radius);
             maxX = Math.max(maxX, obj.cx + obj.radius);
             minY = Math.min(minY, obj.cy - obj.radius);
             maxY = Math.max(maxY, obj.cy + obj.radius);
         } else if (obj.type === 'rect') {
+            if (typeof obj.x !== 'number' || typeof obj.y !== 'number' ||
+                typeof obj.width !== 'number' || typeof obj.height !== 'number') {
+                console.warn(`⚠️ Rect с невалидными координатами:`, obj);
+                invalidObjects++;
+                return;
+            }
             objectsWithPoints++;
             minX = Math.min(minX, obj.x);
             maxX = Math.max(maxX, obj.x + obj.width);
@@ -570,7 +1101,10 @@ function calculateBounds(objects) {
         }
     });
     
-    console.log(`Объектов с координатами: ${objectsWithPoints}`);
+    console.log(`Объектов с валидными координатами: ${objectsWithPoints}`);
+    if (invalidObjects > 0) {
+        console.warn(`⚠️ Невалидных объектов: ${invalidObjects}`);
+    }
     console.log(`Границы: minX=${minX}, minY=${minY}, maxX=${maxX}, maxY=${maxY}`);
     console.log(`Ширина=${maxX - minX}, Высота=${maxY - minY}`);
     
@@ -634,6 +1168,7 @@ function drawImportPreview(svgElement) {
     console.log(`Отрисовано линий: ${drawnLines}`);
     console.log(`Всего элементов в SVG: ${svgElement.children.length}`);
 }
+
 function createPartFromImport(quantity, name) {
     if (importedObjects.length === 0) {
         alert('⚠️ Нет импортированных объектов');
@@ -677,6 +1212,7 @@ function createPartFromImport(quantity, name) {
         objects: copyObjects,
         quantity: quantity,
         name: name || dxfFileName || `Импорт #${Date.now()}`,
+        thickness: 0.8,  // Добавляем толщину по умолчанию
         bounds: {
             minX: 0,
             minY: 0,
@@ -686,10 +1222,16 @@ function createPartFromImport(quantity, name) {
         nestingEnabled: true,
         visible: false,
         rotationMode: 'auto',
+        oneCutEnabled: false,  // Добавляем "В один рез"
+        noRotate: false,  // Добавляем "Не вращать"
         spacing: 3
     };
 
     if (typeof parts !== 'undefined') {
+        console.log(`✅ [DXF Import] Создана деталь #${part.id} "${part.name}"`);
+        console.log(`   currentPartId = ${currentPartId}`);
+        console.log(`   parts.length = ${parts.length}`);
+        
         parts.push(part);
         if (typeof syncGlobalsToStore === 'function') syncGlobalsToStore();
         if (typeof updatePartsList === 'function') updatePartsList();

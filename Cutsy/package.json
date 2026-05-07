@@ -1,21 +1,19 @@
 {
-  "name": "2d-cad-nesting",
-  "version": "1.0.0",
-  "description": "2D CAD приложение для создания чертежей с автоматической раскладкой деталей на листах",
-  "main": "server.js",
+  "name": "cutsy-cad-pro",
+  "version": "2.0.0",
+  "description": "2D CAD приложение для раскладки деталей на листах",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
-    "open": "start index.html"
+    "build": "node build.js",
+    "generate-key": "node scripts/generate-key.js",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
-  "keywords": [
-    "cad",
-    "2d",
-    "nesting",
-    "dxf",
-    "svg",
-    "раскладка",
-    "чертежи"
-  ],
-  "author": "",
-  "license": "Non-Commercial",
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.0",
+    "html-minifier-terser": "^7.2.0",
+    "clean-css": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
 }

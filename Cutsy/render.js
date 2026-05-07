@@ -102,7 +102,7 @@ function drawGrid() {
     // ЧИСЛОВЫЕ ПОДПИСИ НА РАЗМЕТКЕ (каждые 50 мм)
     // ═══════════════════════════════════════════════════════════
     // Рисуем подписи только если масштаб достаточно большой
-    if (zoom >= 0.5 && zoom <= 5.0) {
+    if (zoom >= 0.5 && zoom <= 12.0) {
         const fontSize = Math.max(9, Math.min(14, 11 / zoom));
         ctx.font = `${fontSize}px Segoe UI`;
         ctx.textAlign = 'center';
@@ -429,28 +429,60 @@ function drawSheet() {
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(obj.text || '', 0, 0);
-                    ctx.restore();
-                }
+    ctx.restore();
+}
             });
-
-            // Номер детали в центре bounding box
+    
+            // Номер детали вдоль длинной стороны bounding box
             const centerXBox = drawX + w / 2;
             const centerYBox = drawY + h / 2;
-            ctx.fillStyle = partColor;
+            const partName = part?.name || `#${nested.partId}`;
+            
             ctx.font = '10px Segoe UI';
             ctx.textAlign = 'center';
-            ctx.fillText(part?.name || `#${nested.partId}`, centerXBox, centerYBox);
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = partColor;
+            
+            // Определяем длинную сторону
+            if (w >= h) {
+                // Ширина больше или равна высоте - текст горизонтально
+                ctx.fillText(partName, centerXBox, centerYBox);
+            } else {
+                // Высота больше - текст вертикально (поворот на 90°)
+                ctx.save();
+                ctx.translate(centerXBox, centerYBox);
+                ctx.rotate(Math.PI / 2);
+                ctx.fillText(partName, 0, 0);
+                ctx.restore();
+            }
         } else {
             // Если нет объектов - рисуем bounding box
             ctx.strokeStyle = partColor;
             ctx.lineWidth = 1;
             ctx.strokeRect(drawX, drawY, w, h);
 
-            // Номер детали
-            ctx.fillStyle = partColor;
+            // Номер детали вдоль длинной стороны bounding box
+            const centerXBox = drawX + w / 2;
+            const centerYBox = drawY + h / 2;
+            const partName = part?.name || `#${nested.partId}`;
+            
             ctx.font = '10px Segoe UI';
             ctx.textAlign = 'center';
-            ctx.fillText(part?.name || `#${nested.partId}`, drawX + w/2, drawY + h/2);
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = partColor;
+            
+            // Определяем длинную сторону
+            if (w >= h) {
+                // Ширина больше или равна высоте - текст горизонтально
+                ctx.fillText(partName, centerXBox, centerYBox);
+            } else {
+                // Высота больше - текст вертикально (поворот на 90°)
+                ctx.save();
+                ctx.translate(centerXBox, centerYBox);
+                ctx.rotate(Math.PI / 2);
+                ctx.fillText(partName, 0, 0);
+                ctx.restore();
+            }
         }
 
         // Выделение выбранных деталей
@@ -791,7 +823,7 @@ window.render = function render() {
         }
 
         // Находим несоединённые точки
-        const CONNECTION_TOLERANCE = 5;
+        const CONNECTION_TOLERANCE = 0.5;
         const unconnectedPoints = [];
 
         for (let i = 0; i < lineEndpoints.length; i++) {
@@ -827,12 +859,21 @@ window.render = function render() {
             });
         });
 
-        // Рисуем несоединённые точки красным
+        // Рисуем несоединённые точки красным с пульсацией
         if (unconnectedPoints.length > 0) {
+            // Пульсация: радиус меняется от 0 до 1 по синусоиде (60ms период = 16.67Hz)
+            const pulse = (Math.sin(Date.now() * 0.006) + 1) / 2; // 0..1
+            const pulseFactor = 0.4; // Коэффициент пульсации (40% от базового размера)
+            
             for (const point of unconnectedPoints) {
+                // Базовый радиус: 5 / zoom (при zoom=0.5 будет 10px)
+                const baseRadius = 5 / zoom;
+                // Добавляем пульсацию
+                const radius = baseRadius * (1 + pulse * pulseFactor);
+                
                 ctx.fillStyle = 'rgba(255, 50, 50, 1)';
                 ctx.beginPath();
-                ctx.arc(point.x, point.y, 2.5 / zoom, 0, Math.PI * 2);
+                ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1 / zoom;
@@ -841,11 +882,43 @@ window.render = function render() {
         }
     }
 
-    // Подсветка точки при наведении (hover)
-    if (hoveredPoint && !draggedPoint) {
+    // Подсветка точки при наведении (hover) для инструмента Select
+    // Подсветка точки при наведении (hover) для инструментов "Выбор", "Размер", "Угол" и "Линия"
+    if (hoveredPoint && !draggedPoint && (currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line')) {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
         ctx.beginPath();
         ctx.arc(hoveredPoint.point.x, hoveredPoint.point.y, 4 / zoom, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+    }
+
+    // Подсветка центра координат (0, 0) при наведении
+    if ((currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line') && !hoveredPoint) {
+        // Проверяем расстояние от курсора до центра координат
+        // Получаем координаты мыши из последнего события mousemove
+        const mouseWorldX = (window.lastMouseX - panX - canvas.width / 2) / zoom;
+        const mouseWorldY = (window.lastMouseY - panY - canvas.height / 2) / zoom;
+        const distToOrigin = Math.sqrt(Math.pow(mouseWorldX, 2) + Math.pow(mouseWorldY, 2));
+        const originHoverRadius = 8 / zoom; // Радиус наведения на центр
+        
+        if (distToOrigin < originHoverRadius) {
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
+            ctx.beginPath();
+            ctx.arc(0, 0, 6 / zoom, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2 / zoom;
+            ctx.stroke();
+        }
+    }
+
+    // Подсветка точки при наведении (hover) для инструмента Угол
+    if (angleHoveredPoint && currentTool === 'angle') {
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
+        ctx.beginPath();
+        ctx.arc(angleHoveredPoint.point.x, angleHoveredPoint.point.y, 4 / zoom, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2 / zoom;

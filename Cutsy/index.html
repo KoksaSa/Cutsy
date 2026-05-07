@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/png" href="favicon.png">
     <!-- Заставка загружается первой с defer -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="splash.js" defer></script>
 </head>
 <body>
@@ -76,6 +77,16 @@
         <button class="align-btn" id="nestMultiParts" style="margin-top:8px;background:#5a4a7a;" data-i18n="btn_nesting_all">📑 Разложить</button>
         <button class="align-btn" id="setPricesBtn" style="margin-top:6px;background:#2d5a7a;">💰 Установить цены</button>
         <button class="align-btn" id="exportPdf" style="margin-top:6px;background:#7a5a2d;" data-i18n="btn_export_pdf_report">📊 Отчёт PDF</button>
+        
+        <!-- Фильтр по толщине -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;">
+            <select id="thicknessFilter" style="flex:1;padding:6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+                <option value="all">Все толщины</option>
+            </select>
+            <button id="selectAllThickness" style="padding:6px 12px;background:#2d7d2d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" title="Выбрать все детали">✓ Все</button>
+            <button id="deselectAllThickness" style="padding:6px 12px;background:#c72e2e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" title="Снять все галочки">✗ Снять</button>
+        </div>
+        
         <div id="partsList"></div>
         
         <h3 style="margin-top: 12px;" data-i18n="sheet_title">📐 Лист</h3>
@@ -202,10 +213,25 @@
     </div>
 
     <!-- Меню заполнения прямоугольника разметки -->
-    <div id="markupRectFillMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:350px;max-height:450px;overflow-y:auto;">
+    <div id="markupRectFillMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:350px;">
         <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="fill_remnant_title">📦 Заполнить остаток</h4>
         <div id="markupRectInfo" style="color:#aaa;font-size:11px;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;"></div>
-        <div id="markupRectPartList" style="margin-bottom:15px;"></div>
+        
+        <!-- Выбор детали -->
+        <div style="margin-bottom:10px;">
+            <label style="display:block;color:#aaa;font-size:11px;margin-bottom:4px;" data-i18n="Выберите деталь">Выберите деталь:</label>
+            <select id="markupRectPartSelect" style="width:100%;padding:8px;background:#1e1e1e;color:#fff;border:1px solid #3c3c3c;border-radius:4px;font-size:12px;">
+                <!-- Заполняется динамически -->
+            </select>
+        </div>
+        
+        <!-- Количество -->
+        <div style="margin-bottom:15px;">
+            <label style="display:block;color:#aaa;font-size:11px;margin-bottom:4px;" data-i18n="Количество">Количество:</label>
+            <input type="number" id="markupRectQuantity" value="1" min="1" max="9999"
+                style="width:100%;padding:8px;background:#1e1e1e;color:#fff;border:1px solid #3c3c3c;border-radius:4px;font-size:12px;">
+        </div>
+
         <div style="display:flex;gap:8px;justify-content:flex-end;">
             <button id="markupRectCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
             <button id="markupRectOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_place">🚀 Разместить</button>
@@ -321,6 +347,7 @@
             <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="rotation_label">🔄 Поворот:</label>
             <button class="action-btn" id="rotatePartCCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_ccw_nested">↺ Повернуть против часовой</button>
             <button class="action-btn" id="rotatePartCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_cw_nested">↻ Повернуть по часовой</button>
+            <button class="action-btn" id="rotatePartPrecise" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_precise">🎯 Точное вращение</button>
             <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="reflection_label">🪞 Отражение:</label>
             <button class="action-btn" id="flipPartX" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_flip_x_nested">↔️ Отразить по X</button>
             <button class="action-btn" id="flipPartY" style="width:100%;background:#5a4a7a;" data-i18n="btn_flip_y_nested">↕️ Отразить по Y</button>
@@ -444,8 +471,19 @@
 <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js"></script>
 <!-- Подключение глобальных переменных (СНАЧАЛА globals.js!) -->
 <script src="js/globals.js"></script>
+<!-- Подключение конфигурации производительности -->
+<script src="js/config.js"></script>
 <!-- ✅ Подключение лицензионного менеджера (ПЕРЕД основным кодом) -->
 <script src="js/license.js"></script>
+<!-- ✅ Инициализация EmailJS -->
+<script>
+    // Инициализируем EmailJS при загрузке
+    if (typeof LicenseManager !== 'undefined') {
+        LicenseManager.initEmailJS();
+    }
+</script>
+<!-- ✅ Подключение проверки лицензии при запуске -->
+<script src="js/license-gate.js"></script>
 <!-- ✅ Подключение алгоритма раскладки (NFP) -->
 <script src="nesting.js"></script>
 <!-- Подключение переводов -->
@@ -593,7 +631,7 @@
                         selectedRectIndex = -1;  // Сбрасываем выделение
                         return;
                     }
-
+                        
                     // Ищем деталь под курсором
                     let foundIndex = -1;
                     for (let i = nestedParts.length - 1; i >= 0; i--) {
@@ -793,30 +831,39 @@
                 }
 
                 // Режим параллельности/перпендикулярности (ПРИОРИТЕТ для линий)
-                if (parallelMode && parallelStep >= 1) {
+                if (parallelMode && parallelStep === 1) {
                     for (let i = objects.length - 1; i >= 0; i--) {
                         if (objects[i].contains(x, y) && objects[i].type === 'line') {
-                            if (parallelStep === 1) {
-                                referenceLineForParallel = objects[i];
-                                selectedObjects = [objects[i]];
-                                parallelStep = 2;
-                                updateParallelButtons();
-                            } else if (parallelStep === 2) {
-                                if (objects[i] !== referenceLineForParallel) {
-                                    applyParallelToLine(objects[i]);
-                                    parallelMode = null;
-                                    parallelStep = 0;
-                                    referenceLineForParallel = null;
-                                    selectedObjects = [objects[i]];
-                                    updateParallelButtons();
-                                }
+                            // Проверка: не та же самая линия
+                            if (objects[i] !== referenceLineForParallel) {
+                                const targetLine = referenceLineForParallel;  // Целевая линия (изначально выбранная)
+                                const referenceLine = objects[i];  // Опорная линия (которую только что выбрали)
+                                
+                                // Применяем выравнивание
+                                saveState();
+                                const refAngle = parallelMode === 'parallel' ? referenceLine.getAngle() : referenceLine.getAngle() + Math.PI / 2;
+                                const center = targetLine.center;
+                                const length = targetLine.length;
+                                targetLine.x1 = center.x - Math.cos(refAngle) * length / 2;
+                                targetLine.y1 = center.y - Math.sin(refAngle) * length / 2;
+                                targetLine.x2 = center.x + Math.cos(refAngle) * length / 2;
+                                targetLine.y2 = center.y + Math.sin(refAngle) * length / 2;
+                                
+                                // Сброс режима
+                                parallelMode = null;
+                                parallelStep = 0;
+                                referenceLineForParallel = null;
+                                
+                                // Выделяем выровненную линию
+                                selectedObjects = [targetLine];
+                                
+                                render();
+                                return;
                             }
-                            render();
-                            return;
                         }
                     }
                 }
-
+               
                 let clickedObject = null;
                 for (let i = objects.length - 1; i >= 0; i--) {
                     if (objects[i].contains(x, y)) { clickedObject = objects[i]; break; }
@@ -890,9 +937,9 @@
                             // Проверяем клик по объекту
                             let hit = false;
                             if (obj.type === 'line') {
-                                hit = pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2) < 10;
+                                hit = pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2) < 2;
                             } else if (obj.type === 'circle') {
-                                hit = Math.abs(Math.sqrt(Math.pow(x - obj.cx, 2) + Math.pow(y - obj.cy, 2)) - obj.radius) < 4;
+                                hit = Math.abs(Math.sqrt(Math.pow(x - obj.cx, 2) + Math.pow(y - obj.cy, 2)) - obj.radius) < 2;
                             } else if (obj.type === 'rect') {
                                 hit = x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height;
                             } else if (obj.type === 'polygon') {
@@ -933,7 +980,7 @@
                     // 1. Умное стирание линий
                     if (obj.type === 'line') {
                         const dist = pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2);
-                        if (dist < 10) {
+                        if (dist < 2) {
                             saveState();
                             const erased = eraseLineSmart(obj, x, y);
                             if (!erased) {
@@ -956,7 +1003,7 @@
                         for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
                             const edge = edges[edgeIndex];
                             const dist = pointToLineDistance(x, y, edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
-                            if (dist < 10) {
+                            if (dist < 2) {
                                 saveState();
                                 const newLines = [];
                                 for (let j = 0; j < edges.length; j++) {
@@ -985,7 +1032,7 @@
                         for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
                             const edge = edges[edgeIndex];
                             const dist = pointToLineDistance(x, y, edge.p1.x, edge.p1.y, edge.p2.x, edge.p2.y);
-                            if (dist < 10) {
+                            if (dist < 2) {
                                 saveState();
                                 const newLines = [];
                                 for (let j = 0; j < edges.length; j++) {
@@ -1011,7 +1058,7 @@
                     // 4. Стираем круги (аппроксимация дугами или полное удаление)
                     if (obj.type === 'circle') {
                         const dist = Math.abs(Math.sqrt(Math.pow(x - obj.cx, 2) + Math.pow(y - obj.cy, 2)) - obj.radius);
-                        if (dist < 4) {
+                        if (dist < 2) {
                             saveState();
                             console.log('🔍 [Ластик-Круг] Клик по кругу');
                             console.log(`   Центр: (${obj.cx.toFixed(1)}, ${obj.cy.toFixed(1)}), Радиус: ${obj.radius.toFixed(1)}`);
@@ -1200,17 +1247,6 @@
                 else if (currentTool === 'circle') currentShape = new Circle(x, y, 0);
                 else if (currentTool === 'rect') currentShape = new Rect(x, y, 0, 0);
                 else if (currentTool === 'polygon') currentShape = new Polygon(x, y, 0, polygonSides);
-                else if (currentTool === 'text') {
-                    // Для текста сразу запрашиваем ввод
-                    const text = prompt('Введите текст:', 'Надпись');
-                    if (text) {
-                        const fontSize = parseInt(prompt('Размер шрифта (10-50):', '14')) || 14;
-                        saveState();
-                        objects.push(new Text(x, y, text, fontSize));
-                        render();
-                    }
-                    isDrawing = false;
-                }
                 dimensionLabel.style.display = 'block';
             }
         });
@@ -1248,54 +1284,38 @@
                 `;
             }
 
-            // Заполняем список деталей
-            const markupRectPartList = document.getElementById('markupRectPartList');
-            if (markupRectPartList) {
-                markupRectPartList.innerHTML = '';
+            // Заполняем выпадающий список доступными деталями
+            const partSelect = document.getElementById('markupRectPartSelect');
+            partSelect.innerHTML = '';
+            
+            let hasAvailableParts = false;
+            parts.forEach(part => {
+                // Проверяем, есть ли ещё доступные детали (не все размещены)
+                const placedCount = nestedParts.filter(n => n.partId === part.id).length;
+                const remaining = part.quantity - placedCount;
                 
-                // Находим уже размещённые детали
-                const placedPartIds = new Set(nestedParts.map(n => n.partId));
+                // Проверяем, влезет ли деталь в прямоугольник
+                const fitsNormal = part.bounds.width <= rect.width - 6 && part.bounds.height <= rect.height - 6;
+                const fitsRotated = part.bounds.width <= rect.height - 6 && part.bounds.height <= rect.width - 6;
+                const fits = fitsNormal || fitsRotated;
                 
-                // Фильтруем детали: только неразмещённые и которые влезут
-                let hasFitParts = false;
-                
-                parts.forEach(part => {
-                    const isPlaced = placedPartIds.has(part.id);
-                    const placedCount = nestedParts.filter(n => n.partId === part.id).length;
-                    const remaining = part.quantity - placedCount;
-                    
-                    // Проверяем, влезет ли деталь в прямоугольник
-                    const fitsNormal = part.bounds.width <= rect.width - 6 && part.bounds.height <= rect.height - 6;
-                    const fitsRotated = part.bounds.width <= rect.height - 6 && part.bounds.height <= rect.width - 6;
-                    const fits = fitsNormal || fitsRotated;
-                    
-                    if (remaining > 0 && !isPlaced && fits) {
-                        hasFitParts = true;
-                        
-                        const div = document.createElement('div');
-                        div.style.cssText = 'padding:6px;margin-bottom:6px;background:#1e1e1e;border-radius:4px;';
-                        div.innerHTML = `
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                                <span style="color:#007acc;font-weight:bold;font-size:12px;">📦 ${part.name || `Деталь #${part.id}`}</span>
-                                <span style="color:#888;font-size:11px;">${Math.round(part.bounds.width)} × ${Math.round(part.bounds.height)} мм</span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="color:#aaa;font-size:11px;">Добавить:</span>
-                                <input type="number" id="markupRectQty_${part.id}" value="1" min="1" max="${remaining}"
-                                    style="width:60px;padding:4px;background:#007acc;color:#fff;border:none;border-radius:4px;text-align:center;font-size:12px;">
-                                <span style="color:#888;font-size:11px;">из ${remaining}</span>
-                            </div>
-                        `;
-                        markupRectPartList.appendChild(div);
-                    }
-                });
-                
-                if (!hasFitParts) {
-                    markupRectPartList.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;padding:10px;">ℹ️ Нет деталей для размещения<br><small>Все детали размещены или не влезают</small></div>';
+                if (remaining > 0 && fits) {
+                    hasAvailableParts = true;
+                    const option = document.createElement('option');
+                    option.value = part.id;
+                    option.textContent = `${part.name || `Деталь #${part.id}`} (${Math.round(part.bounds.width)}×${Math.round(part.bounds.height)} мм) - Осталось: ${remaining}`;
+                    partSelect.appendChild(option);
                 }
+            });
+            
+            if (!hasAvailableParts) {
+                partSelect.innerHTML = '<option value="">❌ Нет доступных деталей</option>';
             }
             
-            // Показываем меню
+            // Устанавливаем количество = 1
+            document.getElementById('markupRectQuantity').value = '1';
+            
+            // Показываем меню заполнения остатка
             const markupRectFillMenu = document.getElementById('markupRectFillMenu');
             if (markupRectFillMenu) {
                 markupRectFillMenu.style.display = 'block';
@@ -1305,6 +1325,10 @@
         };
 
         document.getElementById('markupRectCancel').addEventListener('click', () => {
+            // Очищаем поля
+            const partSelect = document.getElementById('markupRectPartSelect');
+            if (partSelect) partSelect.innerHTML = '';
+            document.getElementById('markupRectQuantity').value = '1';
             markupRectFillMenu.style.display = 'none';
         });
 
@@ -1314,22 +1338,25 @@
                 return;
             }
 
-            // Собираем данные из полей ввода
-            const partsToPlace = [];
-            parts.forEach(part => {
-                const input = document.getElementById(`markupRectQty_${part.id}`);
-                if (input) {
-                    const qty = parseInt(input.value) || 0;
-                    if (qty > 0) {
-                        partsToPlace.push({ part, qty });
-                    }
-                }
-            });
-
-            if (partsToPlace.length === 0) {
-                markupRectFillMenu.style.display = 'none';
+            // Получаем выбранные деталь и количество
+            const partSelect = document.getElementById('markupRectPartSelect');
+            const partId = parseFloat(partSelect.value);
+            const qty = parseInt(document.getElementById('markupRectQuantity').value) || 1;
+            
+            if (!partId || qty <= 0) {
+                alert('❌ Выберите деталь и укажите количество');
                 return;
             }
+
+            // Находим деталь
+            const part = parts.find(p => p.id === partId);
+            if (!part) {
+                alert('❌ Деталь не найдена');
+                return;
+            }
+
+            console.log('📋 [FILL REMNANT] Размещаем деталь:');
+            console.log(`  - Деталь "${part.name}" (ID: ${part.id}): ${qty} шт`);
 
             // Получаем выбранный прямоугольник
             const rects = window.markupRects || markupRects || [];
@@ -1339,6 +1366,9 @@
                 markupRectFillMenu.style.display = 'none';
                 return;
             }
+
+            // Собираем данные для размещения
+            const partsToPlace = [{ part, qty }];
             
             // Размещаем детали в прямоугольнике с использованием NFP
             placePartsInMarkupRect(rect, partsToPlace, currentMarkupRectIndex);
@@ -1346,7 +1376,7 @@
             markupRectFillMenu.style.display = 'none';
             render();
             updatePartsList();
-            console.log(`✅ Размещено деталей в остаток: ${partsToPlace.reduce((s, p) => s + p.qty, 0)}`);
+            console.log(`✅ Размещено деталей в остаток: ${qty}`);
         });
 
         // Кнопка OK
@@ -1371,7 +1401,11 @@
         // ═══════════════════════════════════════════════════════════════
 
 function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
-            console.log(`📦 [PLACE PARTS IN RECT] Размещение ${partsToPlace.reduce((s, p) => s + p.qty, 0)} деталей в прямоугольнике ${rect.width}×${rect.height}`);
+            console.log(`📦 [PLACE PARTS IN RECT] Начало размещения в прямоугольнике ${rect.width}×${rect.height}`);
+            console.log(`   Всего типов деталей: ${partsToPlace.length}`);
+            partsToPlace.forEach(({ part, qty }, idx) => {
+                console.log(`   [${idx}] "${part.name}" (ID: ${part.id}): ${qty} шт`);
+            });
             saveState();
 
             // Доступная область внутри прямоугольника (с зазором 3 мм от краёв)
@@ -1433,7 +1467,7 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
                                 refPoint = p;
                             }
                         }
-
+                        
                         const nested = {
                             partId: part.id,
                             x: position.x,
@@ -1477,7 +1511,8 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
         function findPositionInRect(placedParts, newPart, rectX, rectY, rectWidth, rectHeight) {
             console.log(`📦 [FIND POSITION IN RECT] Поиск позиции для "${newPart.name || newPart.id}" в прямоугольнике ${rectWidth}×${rectHeight}, размещено: ${placedParts.length}`);
             
-            const minGap = 3;
+            // Используем PartSpacing детали если задано, иначе 3 мм
+            const minGap = (typeof newPart.spacing === 'number') ? newPart.spacing : 3;
             const step = 10;
 
             // Получаем bounding box детали
@@ -1546,8 +1581,9 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
                 const rotatedBbox = getBoundingBox(normalizedHull);
 
                 // Быстрая проверка: влезает ли в прямоугольник
-                if (rotatedBbox.width + minGap * 2 > rectWidth ||
-                    rotatedBbox.height + minGap * 2 > rectHeight) {
+                const reqW = minGap >= 0 ? rotatedBbox.width + minGap * 2 : rotatedBbox.width;
+                const reqH = minGap >= 0 ? rotatedBbox.height + minGap * 2 : rotatedBbox.height;
+                if (reqW > rectWidth || reqH > rectHeight) {
                     continue;
                 }
 
@@ -1597,8 +1633,11 @@ function placePartsInMarkupRect(rect, partsToPlace, rectIndex) {
         }
 
         // Кнопка Отмена
-        document.getElementById('contextMenuCancel').addEventListener('click', () => {
-            contextMenu.style.display = 'none';
+        document.getElementById('markupRectCancel').addEventListener('click', () => {
+            // Очищаем поля
+            document.getElementById('markupRectPartSelect').innerHTML = '';
+            document.getElementById('markupRectQuantity').value = '1';
+            markupRectFillMenu.style.display = 'none';
         });
 
         // Enter - создать деталь
@@ -1819,6 +1858,10 @@ if (selectedObjects.length === 0) {
             let x = (e.clientX - rect.left - canvas.width / 2 - panX) / zoom;
             let y = (e.clientY - rect.top - canvas.height / 2 - panY) / zoom;
 
+            // Сохраняем координаты мыши для использования в render.js
+            window.lastMouseX = e.clientX - rect.left;
+            window.lastMouseY = e.clientY - rect.top;
+
             // ═══════════════════════════════════════════════════════════
             // ВЫДЕЛЕНИЕ РАМКОЙ НА ЛИСТЕ (Rubber Band Selection)
             // ═══════════════════════════════════════════════════════════
@@ -1913,8 +1956,23 @@ if (selectedObjects.length === 0) {
             }
 
             // === Подсветка точки при наведении (только если не перетаскиваем) ===
-            if (!draggedPoint && !isDragging && !isDrawing && currentTool === 'select') {
-                hoveredPoint = findObjectPoint(x, y);
+            // Для "Выбор" — только когда не рисуем, для "Размер" — даже во время создания размера
+            if (!draggedPoint && !isDragging) {
+                if (currentTool === 'select' && !isDrawing) {
+                    hoveredPoint = findObjectPoint(x, y);
+                    render();
+                } else if (currentTool === 'dimension' || currentTool === 'line') {
+                    // Для "Размер" и "Линия" обновляем hoveredPoint даже во время создания
+                    hoveredPoint = findObjectPoint(x, y);
+                    render();
+                }
+            }
+
+            // === Подсветка точки при наведении для инструмента "Угол" ===
+            if (currentTool === 'angle') {
+                // Ищем только точки объектов (не проекции на линии)
+                // Работает даже во время создания угла (isDrawing = true)
+                angleHoveredPoint = findObjectPoint(x, y);
                 render();
             }
 
@@ -2023,8 +2081,10 @@ if (selectedObjects.length === 0) {
                                 const other = nestedParts[i];
                                 if (other === nested) continue;  // Не проверять саму себя
                                 
-                                // Проверяем пересечение bounding box с зазором 3 мм
-                                const gap = 3;
+                                // Получаем зазор из детали или используем 3 мм по умолчанию
+                                const part = parts.find(p => p.id === nested.partId);
+                                const gap = (part && typeof part.spacing === 'number') ? part.spacing : 3;
+                                
                                 const intersect = !(
                                     moving.newX + nested.width + gap < other.x ||
                                     other.x + other.width + gap < moving.newX ||
@@ -2594,8 +2654,9 @@ if (selectedObjects.length === 0) {
             // Сбрасываем флаг клика по листу
             clickedOnSheet = false;
 
-            // Сброс hoveredPoint
+            // Сброс hoveredPoint (только для Select)
             hoveredPoint = null;
+            // НЕ сбрасываем angleHoveredPoint - он управляется mousemove
 
             // Сброс перетаскивания размерной линии
             if (isDraggingDimension) {
@@ -2798,8 +2859,12 @@ if (selectedObjects.length === 0) {
                 snapIndicator.style.display = 'none';
                 render();
             }
+            
+            // Сброс подсветки точек (только для Select)
+            hoveredPoint = null;
+            // НЕ сбрасываем angleHoveredPoint - он управляется mousemove
         });
-
+            
         canvas.addEventListener('mouseleave', () => {
             if (isDrawing) {
                 if (currentTool === 'dimension') {
@@ -2814,19 +2879,23 @@ if (selectedObjects.length === 0) {
             }
             isDragging = false;
             potentialDragObject = null;
+            
+            // Сброс подсветки точек при уходе с canvas (только для Select)
+            hoveredPoint = null;
+            angleHoveredPoint = null;
+            
             // Сброс параллельности при уходе с canvas
             if (parallelMode) {
                 parallelMode = null;
                 parallelStep = 0;
                 referenceLineForParallel = null;
-                updateParallelButtons();
             }
         });
-        
+    
         document.querySelectorAll('.tool-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 console.log('🔧 Клик по кнопке:', btn.dataset.tool);
-                
+    
                 // ═══════════════════════════════════════════════════════
                 // ПРОВЕРКА: если показаны 2+ детали — запрещаем рисовать
                 // ═══════════════════════════════════════════════════════
@@ -2873,13 +2942,12 @@ if (selectedObjects.length === 0) {
                     snapOrthoTools.style.display = (currentTool === 'line') ? 'block' : 'none';
                 }
 
-                // Сброс режима параллельности при переключении инструмента
-                if (parallelMode) {
-                    parallelMode = null;
-                    parallelStep = 0;
-                    referenceLineForParallel = null;
-                    updateParallelButtons();
-                }
+            // Сброс режима параллельности при переключении инструмента
+            if (parallelMode) {
+                parallelMode = null;
+                parallelStep = 0;
+                referenceLineForParallel = null;
+            }
                 if (currentTool === 'dimension') {
                     isDimensionMode = true;
                     isDrawing = false;  // Сбрасываем при переключении на инструмент Размер
@@ -3043,7 +3111,45 @@ if (selectedObjects.length === 0) {
             }
         });
 
-        // ═══════════════════════════════════════════════════════════════
+        // === Обработчики точного вращения детали ===
+        let preciseRotationInterval = null;
+
+        document.getElementById('rotatePartPrecise').addEventListener('mousedown', (e) => {
+            if (selectedNestedParts.length > 0 && nestedParts.length > 0) {
+                const nestedIndex = selectedNestedParts[0];
+                const nested = nestedParts[nestedIndex];
+                
+                // Сразу выполняем один поворот на 2°
+                const rotated = rotateNestedPart(nested, 2, sheetSize.width, sheetSize.height, nestedParts);
+                if (rotated) {
+                    render();
+                }
+                
+                // Затем повторяем каждые 50мс по 2° (медленное плавное вращение)
+                preciseRotationInterval = setInterval(() => {
+                    const rotated = rotateNestedPart(nested, 2, sheetSize.width, sheetSize.height, nestedParts);
+                    if (rotated) {
+                        render();
+                    }
+                }, 50);
+            }
+        });
+
+        document.getElementById('rotatePartPrecise').addEventListener('mouseup', () => {
+            if (preciseRotationInterval) {
+                clearInterval(preciseRotationInterval);
+                preciseRotationInterval = null;
+            }
+        });
+
+        document.getElementById('rotatePartPrecise').addEventListener('mouseleave', () => {
+            if (preciseRotationInterval) {
+                clearInterval(preciseRotationInterval);
+                preciseRotationInterval = null;
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════
         // ОБРАБОТЧИКИ СОЕДИНЕНИЯ ДЕТАЛЕЙ
         // ═══════════════════════════════════════════════════════════════
 
@@ -3417,7 +3523,7 @@ if (selectedObjects.length === 0) {
                 document.getElementById('polygonRadius').value = Math.round(obj.radius);
             }
         }
-        
+
         function getTypeName(type) {
             return { line: 'Линия', circle: 'Круг', rect: 'Прямоугольник', polygon: 'Многоугольник' }[type] || type;
         }
@@ -4070,19 +4176,27 @@ if (selectedObjects.length === 0) {
         });
 
         document.getElementById('alignParallelProp').addEventListener('click', () => {
+            if (!selectedObjects.length || selectedObjects[0].type !== 'line') {
+                alert('Сначала выберите линию, которую нужно выровнять');
+                return;
+            }
             parallelMode = 'parallel';
             parallelStep = 1;
-            referenceLineForParallel = null;
-            alert('Выберите первую линию (опорную), затем вторую');
+            referenceLineForParallel = selectedObjects[0];  // Запоминаем выбранную линию как целевую
+            selectedObjects = [];  // Сбрасываем выделение
         });
 
         document.getElementById('alignPerpendicularProp').addEventListener('click', () => {
+            if (!selectedObjects.length || selectedObjects[0].type !== 'line') {
+                alert('Сначала выберите линию, которую нужно выровнять');
+                return;
+            }
             parallelMode = 'perpendicular';
             parallelStep = 1;
-            referenceLineForParallel = null;
-            alert('Выберите первую линию (опорную), затем вторую');
+            referenceLineForParallel = selectedObjects[0];  // Запоминаем выбранную линию как целевую
+            selectedObjects = [];  // Сбрасываем выделение
         });
-
+            
         document.getElementById('makeParallelToEdge').addEventListener('click', () => {
             if (!selectedEdge) return;
             const lines = selectedObjects.filter(o => o.type === 'line');
@@ -4125,7 +4239,7 @@ if (selectedObjects.length === 0) {
             selectedEdge = null;
             render();
         }
-        
+
         function updateObjectsList() {
             
             const list = document.getElementById('objectsList'); list.innerHTML = '';
@@ -5062,8 +5176,106 @@ if (selectedObjects.length === 0) {
 
             // Сохраняем в кэш при каждом обновлении списка
             saveToCache();
+            
+            // Обновляем список толщин
+            updateThicknessFilter();
         }
         
+        // ═══════════════════════════════════════════════════════════════
+        // ФИЛЬТР ПО ТОЛЩИНЕ
+        // ═══════════════════════════════════════════════════════════════
+
+        // Обновление списка толщин в select
+        function updateThicknessFilter() {
+            const select = document.getElementById('thicknessFilter');
+            if (!select) return;
+
+            // Собираем уникальные толщины
+            const thicknesses = new Set();
+            parts.forEach(part => {
+                if (part.thickness) {
+                    thicknesses.add(parseFloat(part.thickness));
+                }
+            });
+
+            // Сохраняем текущее выбранное значение
+            const currentValue = select.value;
+
+            // Пересоздаём опции
+            select.innerHTML = '<option value="all">Все толщины</option>';
+            const sortedThicknesses = Array.from(thicknesses).sort((a, b) => a - b);
+            
+            sortedThicknesses.forEach(thickness => {
+                const option = document.createElement('option');
+                option.value = thickness;
+                option.textContent = `${thickness} мм`;
+                select.appendChild(option);
+            });
+
+            // Восстанавливаем выбор если толщина ещё существует
+            if (thicknesses.has(parseFloat(currentValue))) {
+                select.value = currentValue;
+            }
+        }
+        
+        // Инициализация обработчиков фильтра толщин
+        (function initThicknessFilter() {
+            const select = document.getElementById('thicknessFilter');
+            if (select) {
+                select.addEventListener('change', (e) => {
+                    const selectedThickness = e.target.value;
+                    
+                    if (selectedThickness === 'all') {
+                        // "Все толщины" — не меняем галочки, оставляем как есть
+                        return;
+                    }
+
+                    const thickness = parseFloat(selectedThickness);
+                    
+                    // Устанавливаем галочки только для деталей с выбранной толщиной
+                    parts.forEach(part => {
+                        if (part.thickness === thickness) {
+                            part.nestingEnabled = true;
+                        } else {
+                            part.nestingEnabled = false;
+                        }
+                    });
+
+                    // Обновляем список деталей для отображения новых галочек
+                    updatePartsList();
+                    console.log(`📏 [Thickness Filter] Выбрана толщина ${thickness}мм, обновлены галочки раскладки`);
+                });
+            }
+
+            // Кнопка "Выбрать все"
+            const selectAllBtn = document.getElementById('selectAllThickness');
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', () => {
+                    parts.forEach(part => {
+                        part.nestingEnabled = true;
+                    });
+                    updatePartsList();
+                    // Сбрасываем select на "Все толщины"
+                    if (select) select.value = 'all';
+                    console.log('✅ [Select All] Все детали отмечены для раскладки');
+                });
+            }
+
+            // Кнопка "Снять все"
+            const deselectAllBtn = document.getElementById('deselectAllThickness');
+            if (deselectAllBtn) {
+                deselectAllBtn.addEventListener('click', () => {
+                    parts.forEach(part => {
+                        part.nestingEnabled = false;
+                    });
+                    updatePartsList();
+                    // Сбрасываем select на "Все толщины"
+                    if (select) select.value = 'all';
+                    console.log('❌ [Deselect All] Все галочки сняты');
+                });
+            }
+        })();
+
         // Просмотр детали (вкл/выкл видимость на холсте)
         window.viewPart = function(partId) {
             const part = parts.find(p => p.id === partId);
@@ -5170,7 +5382,7 @@ if (selectedObjects.length === 0) {
             if (isNaN(newTh) || newTh < 0.1) return;
             part.thickness = newTh;
             saveToCache();
-            updatePartsList();
+            updatePartsList();  // Это вызовет updateThicknessFilter() внутри себя
         };
 
         // Изменение отступа между деталями
@@ -5800,14 +6012,21 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             // Сбрасываем старую раскладку и флаг отмены
             nestedParts = [];
             selectedNestedParts = [];
+            // ═══════════════════════════════════════════════════════════
+            // КОРРЕКЦИЯ: сбрасываем allowOverlap как в старом коде
+            // Инверсия после раскладки ломала повторную раскладку:
+            // allowOverlap=true → minGap=-100 → детали залезают друг на друга
+            // ═══════════════════════════════════════════════════════════
             allowOverlap = false;
             window.allowOverlap = false;
             isMultiNestingCancelled = false;
 
             // Сбрасываем кнопку в исходное состояние
-            const overlapBtn = document.getElementById('toggleOverlap');
-            overlapBtn.textContent = '🚫 Наложение деталей: ВЫКЛ';
-            overlapBtn.style.background = '#2d7a2d';  // Зелёный
+            const overlapBtnBefore = document.getElementById('toggleOverlap');
+            if (overlapBtnBefore) {
+                overlapBtnBefore.textContent = '🚫 Наложение деталей: ВЫКЛ';
+                overlapBtnBefore.style.background = '#2d7a2d';  // Зелёный
+            }
 
             // Показываем индикатор загрузки с кнопкой отмены и шкалой прогресса
             const loadingMsg = document.createElement('div');
@@ -6148,10 +6367,6 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                             if (overlapTools) {
                                 overlapTools.style.display = 'block';
                             }
-                            const nestedPartTools = document.getElementById('nestedPartTools');
-                            if (nestedPartTools) {
-                                nestedPartTools.style.display = 'block';
-                            }
 
                             updateSheetNavigation();
                             render();
@@ -6194,6 +6409,10 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                     if (overlapTools) {
                         overlapTools.style.display = 'block';
                     }
+
+                    // ═══════════════════════════════════════════════════════════
+                    // КОРРЕКЦИЯ: убрана инверсия allowOverlap (бывший баг)
+                    // ═══════════════════════════════════════════════════════════
 
                     // Показываем навигацию по листам
                     updateSheetNavigation();
@@ -6881,6 +7100,55 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
         render();
 
         // ═══════════════════════════════════════════════════════
+        // ПОСТОЯННЫЙ ЦИКЛ АНИМАЦИИ ДЛЯ ПУЛЬСАЦИИ КРАСНЫХ ТОЧЕК
+        // Запускается независимо от событий мыши
+        // ═══════════════════════════════════════════════════════
+        (function initAnimationLoop() {
+            function animate() {
+                // Проверяем, есть ли не замкнутые линии
+                let hasUnconnected = false;
+                if (objects.length > 0) {
+                    const lineEndpoints = [];
+                    for (const obj of objects) {
+                        if (obj.type === 'line') {
+                            lineEndpoints.push({ x: obj.x1, y: obj.y1 });
+                            lineEndpoints.push({ x: obj.x2, y: obj.y2 });
+                        }
+                    }
+                    
+                    const CONNECTION_TOLERANCE = 0.5;
+                    for (let i = 0; i < lineEndpoints.length && !hasUnconnected; i++) {
+                        const point = lineEndpoints[i];
+                        let isConnected = false;
+                        for (let j = 0; j < lineEndpoints.length; j++) {
+                            if (i === j) continue;
+                            const other = lineEndpoints[j];
+                            const dist = Math.sqrt(Math.pow(point.x - other.x, 2) + Math.pow(point.y - other.y, 2));
+                            if (dist < CONNECTION_TOLERANCE) {
+                                isConnected = true;
+                                break;
+                            }
+                        }
+                        if (!isConnected) {
+                            hasUnconnected = true;
+                        }
+                    }
+                }
+                
+                // Перерисовываем только если есть не замкнутые линии
+                if (hasUnconnected) {
+                    render();
+                }
+                
+                // Запускаем следующий кадр анимации
+                requestAnimationFrame(animate);
+            }
+            
+            // Запускаем анимацию
+            requestAnimationFrame(animate);
+        })();
+
+        // ═══════════════════════════════════════════════════════
         // ВОССТАНОВЛЕНИЕ ДЕТАЛЕЙ ИЗ КЭША
         // ═══════════════════════════════════════════════════════
         loadFromCache();
@@ -6925,6 +7193,74 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             banner.style.display = 'block';
             banner.style.pointerEvents = 'auto';
         })();
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ACCOUNT UI — Панель аккаунта в углу экрана
+         ═══════════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        function createAccountUI() {
+            const session = LicenseManager ? LicenseManager.getSession() : null;
+            if (!session || !session.email) return;
+
+            const existing = document.getElementById('accountUI');
+            if (existing) existing.remove();
+
+            const ui = document.createElement('div');
+            ui.id = 'accountUI';
+            ui.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;background:rgba(26,26,46,0.95);border:1px solid #333;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;font-family:sans-serif;font-size:12px;color:#fff;backdrop-filter:blur(5px);';
+
+            const isPro = session.hasLicense && !session.isExpired;
+            const daysLeft = LicenseManager ? LicenseManager.getDaysLeft() : 0;
+            const deviceCount = session.deviceCount || 0;
+            const maxDevices = session.maxDevices || 1;
+
+            // Дата следующей проверки
+            let nextCheckHint = '';
+            if (session.lastCheck) {
+                const lastCheck = new Date(session.lastCheck);
+                const nextCheck = new Date(lastCheck.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const daysUntilCheck = Math.ceil((nextCheck - Date.now()) / (1000 * 60 * 60 * 24));
+                if (daysUntilCheck > 0) {
+                    nextCheckHint = `Проверка лицензии через ${daysUntilCheck}д`;
+                } else {
+                    nextCheckHint = 'Проверка при запуске';
+                }
+            }
+
+            ui.innerHTML = `
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:14px;">👤</span>
+                    <span style="color:#ccc;">${session.email}</span>
+                </div>
+                <div style="width:1px;height:16px;background:#333;"></div>
+                ${isPro ? `<a href="mailto:cutsypro@gmail.com?subject=Вопрос по лицензии&body=Здравствуйте! У меня возник вопрос по лицензии." style="text-decoration:none;color:#00d4aa;font-weight:600;" title="Написать в поддержку" target="_blank">✨ PRO</a>` : `<div style="color:#888;font-weight:600;" title="${nextCheckHint}">FREE</div>`}
+                ${isPro ? `<a href="mailto:cutsypro@gmail.com?subject=Вопрос по лицензии&body=Здравствуйте! У меня возник вопрос по лицензии." style="text-decoration:none;color:#888;font-size:11px;" title="Написать в поддержку" target="_blank">${daysLeft}д</a>` : ''}
+                <div style="width:1px;height:16px;background:#333;"></div>
+                <div style="color:#888;font-size:11px;" title="Устройства: ${deviceCount}/${maxDevices}\n${nextCheckHint}">
+                    💻 ${deviceCount}/${maxDevices}
+                </div>
+                <div style="width:1px;height:16px;background:#333;"></div>
+                <button id="accountLogout" style="background:transparent;border:none;color:#ff6b6b;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="Выйти">🚪</button>
+            `;
+
+            document.body.appendChild(ui);
+
+            document.getElementById('accountLogout').addEventListener('click', function() {
+                if (LicenseManager) {
+                    LicenseManager.logout();
+                    window.location.reload();
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', createAccountUI);
+        } else {
+            createAccountUI();
+        }
+    })();
     </script>
 
 </body>

@@ -61,27 +61,31 @@ function generatePartThumbnail(part, width, height, parts) {
 }
 
 /**
- * Генерация миниатюры раскладки листа
- * @param {Object} sheet - Объект листа с nestedParts
- * @param {number} sheetIndex - Индекс листа
- * @param {Array} parts - Массив деталей
- * @param {Object} sheetSize - Размер листа
- * @returns {string} SVG строка
+ * Генерация миниатюры раскладки листа (ИСПРАВЛЕНО: умное позиционирование текста)
  */
 function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
-    const w = 300, h = 200;
+    const viewBoxW = 1600;
+    const viewBoxH = 900; 
+    
     const sw = sheet.sheetSize?.width || sheetSize.width;
     const sh = sheet.sheetSize?.height || sheetSize.height;
-    const scale = Math.min((w - 20) / sw, (h - 20) / sh);
-    const ox = (w - sw * scale) / 2;
-    const oy = 20 + (h - 20 - sh * scale) / 2;
 
-    let svgContent = `<rect x="${ox}" y="${oy}" width="${(sw * scale).toFixed(1)}" height="${(sh * scale).toFixed(1)}" fill="#f0f0f0" stroke="#999" stroke-width="1"/>`;
+    // Поворачиваем лист на 90° для ландшафтного отображения
+    const scale = Math.min(
+        (viewBoxW - 80) / sh, 
+        (viewBoxH - 80) / sw
+    );
+
+    const ox = viewBoxW / 2 - (sh * scale) / 2;
+    const oy = viewBoxH / 2 - (sw * scale) / 2;
+
+    const uiScale = viewBoxW / 1600; 
+
+    let svgContent = `<rect x="${ox}" y="${oy}" width="${(sh * scale).toFixed(1)}" height="${(sw * scale).toFixed(1)}" fill="#f8f8f8" stroke="#ccc" stroke-width="${2 * uiScale}"/>`;
 
     const colors = ['#4a90d9','#d94a4a','#4ad97a','#d9c44a','#9a4ad9','#4ad9c4','#d97a4a','#4a7ad9','#d94a9a','#7ad94a'];
     const partColors = {};
 
-    // Поворот точки вокруг центра
     const rotatePoint = (px, py, angle, cx, cy) => {
         if (angle === 0) return { x: px, y: py };
         const cos = Math.cos(angle);
@@ -92,18 +96,17 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
         };
     };
 
-    sheet.nestedParts.forEach((nested) => {
+    sheet.nestedParts.forEach((nested, idx) => {
         const part = parts.find(p => p.id === nested.partId);
         if (!part) return;
 
-        // Цвет по part.id
         if (!partColors[part.id]) {
             const colorIndex = Math.abs(parseInt(part.id) % colors.length);
             partColors[part.id] = colors[colorIndex];
         }
 
         const strokeColor = partColors[part.id];
-        const strokeWidth = 0.8;
+        const strokeWidth = 2.5 * uiScale;
 
         const rotationAngle = nested.angle || 0;
         const bboxWidth = nested.baseWidth || nested.width;
@@ -111,7 +114,6 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
         const centerX = bboxWidth / 2;
         const centerY = bboxHeight / 2;
 
-        // refPoint
         let refPoint = nested.refPoint;
         if (!refPoint) {
             const bboxHull = [
@@ -127,8 +129,10 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
 
         const normOffsetX = part.bounds.minX || 0;
         const normOffsetY = part.bounds.minY || 0;
-        const drawX = ox + nested.x * scale;
-        const drawY = oy + nested.y * scale;
+
+        // Координаты отрисовки (с поворотом листа)
+        const drawX = ox + nested.y * scale; 
+        const drawY = oy + (sw - nested.x) * scale; 
 
         const objectsToDraw = nested.objects && nested.objects.length > 0 ? nested.objects : part.objects;
 
@@ -137,11 +141,19 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
                 if (obj.type === 'line') {
                     const p1 = rotatePoint(obj.x1 - normOffsetX, obj.y1 - normOffsetY, rotationAngle, centerX, centerY);
                     const p2 = rotatePoint(obj.x2 - normOffsetX, obj.y2 - normOffsetY, rotationAngle, centerX, centerY);
-                    svgContent += `<line x1="${(drawX + (p1.x - refPoint.x) * scale).toFixed(1)}" y1="${(drawY + (p1.y - refPoint.y) * scale).toFixed(1)}" x2="${(drawX + (p2.x - refPoint.x) * scale).toFixed(1)}" y2="${(drawY + (p2.y - refPoint.y) * scale).toFixed(1)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
-                } else if (obj.type === 'circle') {
+                    const x1 = drawX + (p1.y - refPoint.y) * scale;
+                    const y1 = drawY - (p1.x - refPoint.x) * scale;
+                    const x2 = drawX + (p2.y - refPoint.y) * scale;
+                    const y2 = drawY - (p2.x - refPoint.x) * scale;
+                    svgContent += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
+                } 
+                else if (obj.type === 'circle') {
                     const rc = rotatePoint(obj.cx - normOffsetX, obj.cy - normOffsetY, rotationAngle, centerX, centerY);
-                    svgContent += `<circle cx="${(drawX + (rc.x - refPoint.x) * scale).toFixed(1)}" cy="${(drawY + (rc.y - refPoint.y) * scale).toFixed(1)}" r="${(obj.radius * scale).toFixed(1)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
-                } else if (obj.type === 'rect') {
+                    const cx = drawX + (rc.y - refPoint.y) * scale;
+                    const cy = drawY - (rc.x - refPoint.x) * scale;
+                    svgContent += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(obj.radius * scale).toFixed(1)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
+                } 
+                else if (obj.type === 'rect') {
                     const corners = [
                         { x: obj.x - normOffsetX, y: obj.y - normOffsetY },
                         { x: obj.x + obj.width - normOffsetX, y: obj.y - normOffsetY },
@@ -149,28 +161,68 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
                         { x: obj.x - normOffsetX, y: obj.y + obj.height - normOffsetY }
                     ];
                     const rc = corners.map(c => rotatePoint(c.x, c.y, rotationAngle, centerX, centerY));
-                    const pts = rc.map(c => `${(drawX + (c.x - refPoint.x) * scale).toFixed(1)},${(drawY + (c.y - refPoint.y) * scale).toFixed(1)}`).join(' ');
+                    const pts = rc.map(c => {
+                        const px = drawX + (c.y - refPoint.y) * scale;
+                        const py = drawY - (c.x - refPoint.x) * scale;
+                        return `${px.toFixed(1)},${py.toFixed(1)}`;
+                    }).join(' ');
                     svgContent += `<polygon points="${pts}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
-                } else if (obj.type === 'polygon') {
+                } 
+                else if (obj.type === 'polygon') {
                     const vertices = obj.getVertices ? obj.getVertices() : [];
                     if (vertices.length > 0) {
                         const rv = vertices.map(v => rotatePoint(v.x - normOffsetX, v.y - normOffsetY, rotationAngle, centerX, centerY));
-                        const pts = rv.map(v => `${(drawX + (v.x - refPoint.x) * scale).toFixed(1)},${(drawY + (v.y - refPoint.y) * scale).toFixed(1)}`).join(' ');
+                        const pts = rv.map(v => {
+                            const px = drawX + (v.y - refPoint.y) * scale;
+                            const py = drawY - (v.x - refPoint.x) * scale;
+                            return `${px.toFixed(1)},${py.toFixed(1)}`;
+                        }).join(' ');
                         svgContent += `<polygon points="${pts}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
                     }
                 }
             });
         } else {
-            const px = drawX + (0 - refPoint.x) * scale;
-            const py = drawY + (0 - refPoint.y) * scale;
-            const pw = bboxWidth * scale;
-            const ph = bboxHeight * scale;
-            svgContent += `<rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" fill="${strokeColor}" fill-opacity="0.4" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
+             const px = drawX + (0 - refPoint.y) * scale;
+             const py = drawY - (0 - refPoint.x) * scale;
+             const pw = bboxHeight * scale;
+             const ph = bboxWidth * scale;
+             svgContent += `<rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" fill="${strokeColor}" fill-opacity="0.25" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
         }
+
+        // ═══════════════════════════════════════════════════════════
+        // ✅ НАЗВАНИЕ ВДОЛЬ ДЛИННОЙ СТОРОНЫ BOUNDING BOX
+        // ═══════════════════════════════════════════════════════════
+        const partName = part.name || `Деталь #${part.id}`;
+        
+        // Определяем длинную сторону bounding box
+        const labelX = drawX + (bboxHeight / 2 - refPoint.y) * scale;
+        const labelY = drawY - (bboxWidth / 2 - refPoint.x) * scale;
+        
+        // Если высота больше ширины - поворачиваем текст на 90° (вертикально)
+        const shouldRotate = bboxHeight > bboxWidth;
+        const transformAttr = shouldRotate ? `transform="rotate(-90, ${labelX}, ${labelY})"` : '';
+        
+        // Размер шрифта и выравнивание
+        const fontSize = 16 * uiScale;
+        const textAnchor = 'middle';
+        
+        // ✅ Сам текст БЕЗ фона
+        svgContent += `
+            <text x="${labelX}" y="${labelY}" 
+                  ${transformAttr}
+                  font-size="${fontSize}" 
+                  font-weight="600" 
+                  fill="#000" 
+                  text-anchor="${textAnchor}" 
+                  dominant-baseline="central"
+                  style="paint-order: stroke; stroke: white; stroke-width: ${4 * uiScale}px; stroke-linecap: round; stroke-linejoin: round; font-family: Arial, sans-serif;">
+                ${partName}
+            </text>
+        `;
     });
 
-    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="border:1px solid #ccc;border-radius:3px;background:#fafafa;">
-        <text x="${w / 2}" y="14" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">Лист ${sheetIndex + 1}: ${sw}×${sh} мм (${sheet.nestedParts.length} дет.)</text>
+    return `<svg width="100%" height="100%" viewBox="0 0 ${viewBoxW} ${viewBoxH}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="border:1px solid #ccc;border-radius:6px;background:#fff;">
+        <text x="${viewBoxW / 2}" y="40" text-anchor="middle" font-size="${24 * uiScale}" font-weight="bold" fill="#007acc">Лист ${sheetIndex + 1}: ${sw}×${sh} мм (${sheet.nestedParts.length} дет.)</text>
         ${svgContent}
     </svg>`;
 }
@@ -179,45 +231,41 @@ function generateSheetThumbnail(sheet, sheetIndex, parts, sheetSize) {
  * Экспорт отчёта в PDF
  */
 function exportPdfReport() {
-    // Используем Store для получения данных
     const parts = Store.get('parts') || [];
     const nestedParts = Store.get('nestedParts') || [];
     const allSheets = Store.get('allSheets') || [];
     const sheetSize = Store.get('sheetSize') || { width: 1250, height: 2500 };
     
-    console.log('📊 [PDF Export] allSheets:', allSheets);
-    console.log('📊 [PDF Export] allSheets.length:', allSheets.length);
-    allSheets.forEach((sheet, idx) => {
-        console.log(`   Лист ${idx + 1}: thickness=${sheet.thickness}, nestedParts=${sheet.nestedParts?.length}`);
-    });
-    
     if (parts.length === 0) {
-        alert('Сначала создайте детали (кнопка "📦 Создать деталь")');
+        alert('Сначала создайте детали');
         return;
     }
 
-    const sheetsToReport = (allSheets && allSheets.length > 0)
-        ? allSheets
-        : [{ nestedParts: nestedParts, sheetSize: sheetSize, thickness: 0.8 }];
-
+    const sheetsToReport = (allSheets && allSheets.length > 0) ? allSheets : [{ nestedParts: nestedParts, sheetSize: sheetSize, thickness: 0.8 }];
     const totalNestedAll = sheetsToReport.reduce((s, sh) => s + sh.nestedParts.length, 0);
     if (totalNestedAll === 0) {
-        alert('Сначала выполните раскладку (кнопка "📑 Раскладка (все листы)")');
+        alert('Сначала выполните раскладку');
         return;
     }
 
-    // Загружаем настройки цен
     const pricingSettings = loadPricingSettings();
 
+    // ═══════════════════════════════════════════════════════
+    // ✅ ИСПРАВЛЕНИЕ ReferenceError: определяем функции цен локально
+    // ═══════════════════════════════════════════════════════
     const getPricePerKg = (thickness) => {
-        const thKey = thickness.toFixed(1);
-        return pricingSettings.pricePerKg[thKey] || pricingSettings.pricePerKg[thickness] || 0;
+        const thKey = thickness?.toFixed?.(1) || thickness;
+        return pricingSettings?.pricePerKg?.[thKey] ?? pricingSettings?.pricePerKg?.[thickness] ?? 0;
     };
-
     const getPricePerM2 = (thickness) => {
-        const thKey = thickness.toFixed(1);
-        return pricingSettings.pricePerM2[thKey] || pricingSettings.pricePerM2[thickness] || 0;
+        const thKey = thickness?.toFixed?.(1) || thickness;
+        return pricingSettings?.pricePerM2?.[thKey] ?? pricingSettings?.pricePerM2?.[thickness] ?? 0;
     };
+    const getPricePerMeterCut = (thickness) => {
+        const thKey = thickness?.toFixed?.(1) || thickness;
+        return pricingSettings?.pricePerMeterCut?.[thKey] ?? pricingSettings?.pricePerMeterCut?.[thickness] ?? 0;
+    };
+    // ═══════════════════════════════════════════════════════
 
     const density = 7.85;
     const reportByThickness = {};
@@ -227,31 +275,16 @@ function exportPdfReport() {
         const thickness = sheet.thickness || 0.8;
         const key = thickness.toFixed(1);
         if (!reportByThickness[key]) {
-            reportByThickness[key] = {
-                thickness,
-                sheets: [],
-                groupedNested: {},
-                totalWeight: 0,
-                totalLength: 0,
-                totalPlaced: 0
-            };
+            reportByThickness[key] = { thickness, sheets: [], groupedNested: {}, totalWeight: 0, totalLength: 0, totalPlaced: 0 };
         }
-        reportByThickness[key].sheets.push({
-            sheetSize: sheet.sheetSize || sheetSize,
-            nestedCount: sheet.nestedParts.length,
-            nestedParts: sheet.nestedParts
-        });
-
+        reportByThickness[key].sheets.push({ sheetSize: sheet.sheetSize || sheetSize, nestedCount: sheet.nestedParts.length, nestedParts: sheet.nestedParts });
         sheet.nestedParts.forEach(nested => {
-            if (!reportByThickness[key].groupedNested[nested.partId]) {
-                reportByThickness[key].groupedNested[nested.partId] = 0;
-            }
+            if (!reportByThickness[key].groupedNested[nested.partId]) reportByThickness[key].groupedNested[nested.partId] = 0;
             reportByThickness[key].groupedNested[nested.partId]++;
             reportByThickness[key].totalPlaced++;
         });
     });
 
-    // НЕ РАЗМЕЩЁННЫЕ ДЕТАЛИ
     const unplacedParts = [];
     parts.forEach(part => {
         const totalPlaced = sheetsToReport.reduce((s, sh) => s + sh.nestedParts.filter(n => n.partId === part.id).length, 0);
@@ -259,7 +292,6 @@ function exportPdfReport() {
         if (notPlaced > 0) unplacedParts.push({ part, notPlaced });
     });
 
-    // РАСЧЁТ ОСТАТКА
     const totalSheetArea = sheetsToReport.reduce((s, sh) => s + (sh.sheetSize?.width || sheetSize.width) * (sh.sheetSize?.height || sheetSize.height), 0);
     const usedArea = sheetsToReport.reduce((s, sh) => s + sh.nestedParts.reduce((ss, n) => {
         const p = parts.find(pp => pp.id === n.partId);
@@ -269,19 +301,12 @@ function exportPdfReport() {
     const avgTh = Object.values(reportByThickness).reduce((s, g) => s + g.thickness * g.sheets.length, 0) / sheetsToReport.length;
     const remnantWeight = remnantArea * avgTh * density / 1000000;
 
-    // ПОЛУЧАЕМ ВРЕМЯ СЕКУНДОМЕРА И РАСПРЕДЕЛЯЕМ ЕГО
     const stopwatchTime = (typeof window.getStopwatchTime === 'function') ? window.getStopwatchTime() : 0;
     const useStopwatch = stopwatchTime > 0;
-    
-    // Считаем общее время раскладки из листов (резерв)
     let grandTotalNestingTimeReserve = 0;
-    Object.values(reportByThickness).forEach(g => {
-        grandTotalNestingTimeReserve += g.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
-    });
-    
+    Object.values(reportByThickness).forEach(g => { grandTotalNestingTimeReserve += g.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0); });
     const workTimeSeconds = useStopwatch ? stopwatchTime : grandTotalNestingTimeReserve;
     
-    // Распределяем время секундомера пропорционально по группам толщин
     let timeDistribution = {};
     if (useStopwatch) {
         const totalPlacedAll = Object.values(reportByThickness).reduce((s, g) => s + g.totalPlaced, 0);
@@ -292,16 +317,8 @@ function exportPdfReport() {
         });
     }
 
-    // ФОРМИРОВАНИЕ HTML
-    let grandTotalWeight = 0;
-    let grandTotalLength = 0;
-    let grandTotalSheets = 0;
-    let grandTotalPlaced = 0;
-
-    let tableRows = '';
-    let thSectionHTML = '';
-    let sheetSummaryHTML = '';
-    let partDetailRows = '';
+    let grandTotalWeight = 0, grandTotalLength = 0, grandTotalSheets = 0, grandTotalPlaced = 0;
+    let tableRows = '', thSectionHTML = '', sheetSummaryHTML = '', partDetailRows = '';
 
     Object.keys(reportByThickness).forEach(key => {
         const group = reportByThickness[key];
@@ -313,12 +330,10 @@ function exportPdfReport() {
         Object.keys(group.groupedNested).forEach(partId => {
             const part = parts.find(p => p.id == partId);
             if (!part) return;
-
             const area = part.bounds.width * part.bounds.height;
             const weight = area * th * density / 1000000;
             const perimeter = calculatePartPerimeter(part);
             const count = group.groupedNested[partId];
-
             const totalW = weight * count;
             const totalL = perimeter * count;
             group.totalWeight += totalW;
@@ -327,10 +342,9 @@ function exportPdfReport() {
             const thumbSVG = generatePartThumbnail(part, 80, 60, parts);
             const pricePerMeterCut = getPricePerMeterCut(th);
             const partCutCost = (totalL / 1000) * pricePerMeterCut;
-            // Расчёт стоимости металла: приоритет цене за м², если задана
             const partPricePerM2 = getPricePerM2(th);
             const partPricePerKg = getPricePerKg(th);
-            const partAreaM2 = (part.bounds.width * part.bounds.height * count) / 1000000;  // м² из bounding box
+            const partAreaM2 = (part.bounds.width * part.bounds.height * count) / 1000000;
             const partMetalCost = partPricePerM2 > 0 ? partAreaM2 * partPricePerM2 : totalW * partPricePerKg;
             const partTotalCost = partMetalCost + partCutCost;
 
@@ -348,16 +362,14 @@ function exportPdfReport() {
                     <td><b>${partTotalCost.toFixed(2)}</b></td>
                 </tr>
             `;
-
-            // ПОДЕТАЛЬНАЯ ТАБЛИЦА
+            
             const singleWeight = weight.toFixed(3);
             const singlePerimeter = perimeter;
             const singleCutLength = (singlePerimeter / 1000).toFixed(3);
             const singleCutCostPart = (singlePerimeter / 1000 * pricePerMeterCut);
-            // Расчёт стоимости металла: приоритет цене за м², если задана
             const singlePricePerM2 = getPricePerM2(th);
             const singlePricePerKg = getPricePerKg(th);
-            const singleAreaM2 = (part.bounds.width * part.bounds.height) / 1000000;  // м² из размеров
+            const singleAreaM2 = (part.bounds.width * part.bounds.height) / 1000000;
             const singleMetalCostPart = singlePricePerM2 > 0 ? singleAreaM2 * singlePricePerM2 : weight * singlePricePerKg;
             const singleTotalCostPart = singleMetalCostPart + singleCutCostPart;
             const smallThumbSVG = generatePartThumbnail(part, 50, 40, parts);
@@ -378,7 +390,6 @@ function exportPdfReport() {
             `;
         });
 
-        // РАСЧЁТ ОСТАТКА ПО ТОЛЩИНЕ
         const groupSheetArea = group.sheets.reduce((s, sh) => s + sh.sheetSize.width * sh.sheetSize.height, 0);
         const groupUsedArea = group.sheets.reduce((s, sh) => s + sh.nestedParts.reduce((ss, n) => {
             const p = parts.find(pp => pp.id === n.partId);
@@ -387,22 +398,17 @@ function exportPdfReport() {
         const groupRemnantArea = Math.max(0, groupSheetArea - groupUsedArea);
         const groupRemnantWeight = groupRemnantArea * th * density / 1000000;
         
-        // Расчёт стоимости металла: приоритет цене за м², если задана
         const pricePerM2 = getPricePerM2(th);
         const pricePerKg = getPricePerKg(th);
-        const groupAreaM2 = group.totalWeight / (th * density);  // м²
+        const groupAreaM2 = group.totalWeight / (th * density);
         const groupCost = pricePerM2 > 0 ? groupAreaM2 * pricePerM2 : group.totalWeight * pricePerKg;
         
         const pricePerMeterCut = getPricePerMeterCut(th);
         const groupCutCost = (group.totalLength / 1000) * pricePerMeterCut;
-        // Используем распределённое время секундомера или время раскладки из листов
-        const groupNestingTime = useStopwatch 
-            ? (timeDistribution[key] || 0)
-            : group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
+        const groupNestingTime = useStopwatch ? (timeDistribution[key] || 0) : group.sheets.reduce((s, sh) => s + (sh.nestingTime || 0), 0);
         const groupTimeCost = (groupNestingTime / 60) * pricingSettings.pricePerMinute;
         const groupTotalCost = groupCost + groupCutCost + groupTimeCost;
-        const groupEfficiency = group.totalWeight + groupRemnantWeight > 0
-            ? (group.totalWeight / (group.totalWeight + groupRemnantWeight) * 100).toFixed(1) : '0.0';
+        const groupEfficiency = group.totalWeight + groupRemnantWeight > 0 ? (group.totalWeight / (group.totalWeight + groupRemnantWeight) * 100).toFixed(1) : '0.0';
 
         thSectionHTML += `
             <h2 class="section-title">🔩 Толщина: ${th} мм</h2>
@@ -411,7 +417,7 @@ function exportPdfReport() {
                     <div class="summary-item"><div class="label">Листов</div><div class="value">${group.sheets.length}</div></div>
                     <div class="summary-item"><div class="label">Размещено</div><div class="value">${group.totalPlaced} шт</div></div>
                     <div class="summary-item"><div class="label">Вес деталей</div><div class="value">${group.totalWeight.toFixed(3)} кг</div></div>
-                    <div class="summary-item"><div class="label">Цена металла</div><div class="value">${pricePerM2 > 0 ? pricePerM2.toFixed(2) + ' ₽/м²' : pricePerKg.toFixed(2) + ' ₽/кг'}</div></div>
+                    <div class="summary-item"><div class="label">Цена сырья</div><div class="value">${pricePerM2 > 0 ? pricePerM2.toFixed(2) + ' ₽/м²' : pricePerKg.toFixed(2) + ' ₽/кг'}</div></div>
                     <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(group.totalLength / 1000).toFixed(2)} м</div></div>
                     <div class="summary-item"><div class="label">Цена реза</div><div class="value">${pricePerMeterCut.toFixed(2)} ₽/м</div></div>
                     <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${groupCost.toFixed(2)} ₽</div></div>
@@ -425,13 +431,11 @@ function exportPdfReport() {
                 </div>
             </div>
         `;
-
         tableRows += groupTableRows;
         grandTotalWeight += group.totalWeight;
         grandTotalLength += group.totalLength;
     });
 
-    // СВОДКА ПО КАЖДОМУ ЛИСТУ
     let globalSheetIndex = 0;
     sheetsToReport.forEach((sheet) => {
         const sw = sheet.sheetSize?.width || sheetSize.width;
@@ -439,53 +443,33 @@ function exportPdfReport() {
         const sheetTh = sheet.thickness || 0.8;
         const sheetPartCount = sheet.nestedParts.length;
 
-        let sheetCuttingLength = 0;
-        let sheetWeight = 0;
+        const sheetPartCounts = {};
         sheet.nestedParts.forEach(nested => {
-            const part = parts.find(p => p.id === nested.partId);
-            if (!part) return;
-            const perimeter = calculatePartPerimeter(part);
-            const area = part.bounds.width * part.bounds.height;
-            const w = area * sheetTh * density / 1000000;
-            sheetCuttingLength += perimeter;
-            sheetWeight += w;
+            if (!sheetPartCounts[nested.partId]) sheetPartCounts[nested.partId] = 0;
+            sheetPartCounts[nested.partId]++;
         });
 
-        const sheetPricePerM2 = getPricePerM2(sheetTh);
-        const sheetPricePerKg = getPricePerKg(sheetTh);
-        const sheetAreaM2 = sheetWeight / (sheetTh * density);
-        const sheetMetalCost = sheetPricePerM2 > 0 ? sheetAreaM2 * sheetPricePerM2 : sheetWeight * sheetPricePerKg;
-        const pricePerMeterCut = getPricePerMeterCut(sheetTh);
-        const sheetCutCost = (sheetCuttingLength / 1000) * pricePerMeterCut;
-        // Используем время секундомера (распределённое) или время раскладки из листа
-        const sheetTimeSeconds = useStopwatch 
-            ? Math.round(workTimeSeconds / sheetsToReport.length)
-            : (sheet.nestingTime || 0);
-        const sheetTimeCost = (sheetTimeSeconds / 60) * pricingSettings.pricePerMinute;
-        const sheetTotalCost = sheetMetalCost + sheetCutCost + sheetTimeCost;
-        const sheetUsedArea = sheet.nestedParts.reduce((s, n) => {
-            const p = parts.find(pp => pp.id === n.partId);
-            return s + (p ? p.bounds.width * p.bounds.height : 0);
-        }, 0);
-        const sheetRemnantArea = Math.max(0, sw * sh - sheetUsedArea);
+        let partsBreakdownHTML = '';
+        Object.keys(sheetPartCounts).forEach(partId => {
+            const part = parts.find(p => p.id == partId);
+            if (part) {
+                const totalQty = part.quantity || 0;
+                const placedQty = sheetPartCounts[partId];
+                const name = part.name || `Деталь #${part.id}`;
+                partsBreakdownHTML += `<span class="sheet-part-item">🔹 ${name}: ${totalQty} / ${placedQty}</span>`;
+            }
+        });
 
-        const sheetThumb = generateSheetThumbnail(sheet, 0, parts, sheetSize);
+        const sheetThumb = generateSheetThumbnail(sheet, globalSheetIndex, parts, sheetSize);
 
         sheetSummaryHTML += `
             <div class="sheet-report-card">
-                <div class="sheet-report-header">
-                    <div class="sheet-report-thumb">${sheetThumb}</div>
-                    <div class="sheet-report-info">
-                        <h3>Лист ${globalSheetIndex + 1}: ${sw} × ${sh} мм (толщ. ${sheetTh.toFixed(1)} мм)</h3>
-                        <div class="sheet-report-stats">
-                            <div class="stat"><span class="stat-label">Деталей</span><span class="stat-value">${sheetPartCount} шт</span></div>
-                            <div class="stat"><span class="stat-label">Длина реза</span><span class="stat-value">${(sheetCuttingLength / 1000).toFixed(3)} м</span></div>
-                            <div class="stat"><span class="stat-label">Рез</span><span class="stat-value">${sheetCutCost.toFixed(2)} ₽</span></div>
-                            <div class="stat"><span class="stat-label">Металл</span><span class="stat-value">${sheetMetalCost.toFixed(2)} ₽</span></div>
-                            <div class="stat"><span class="stat-label">Время</span><span class="stat-value">${sheetTimeSeconds > 0 ? sheetTimeSeconds.toFixed(0) + ' сек' : '—'}</span></div>
-                            <div class="stat"><span class="stat-label">Итого</span><span class="stat-value" style="color:#2d7a5a;">${sheetTotalCost.toFixed(2)} ₽</span></div>
-                            <div class="stat"><span class="stat-label">Остаток</span><span class="stat-value">${(sheetRemnantArea / 1000000).toFixed(3)} м²</span></div>
-                        </div>
+                <div class="sheet-report-thumb">${sheetThumb}</div>
+                <div class="sheet-report-info">
+                    <h3>Лист ${globalSheetIndex + 1}: ${sw} × ${sh} мм (толщ. ${sheetTh.toFixed(1)} мм)</h3>
+                    <div class="sheet-report-stats-row">
+                        <div class="stat"><span class="stat-label">Деталей</span><span class="stat-value">${sheetPartCount} шт</span></div>
+                        <div class="sheet-parts-breakdown">${partsBreakdownHTML}</div>
                     </div>
                 </div>
             </div>
@@ -493,9 +477,7 @@ function exportPdfReport() {
         globalSheetIndex++;
     });
 
-    // ИТОГОВАЯ СТОИМОСТЬ
-    let grandTotalMetalCost = 0;
-    let grandTotalCutCost = 0;
+    let grandTotalMetalCost = 0, grandTotalCutCost = 0;
     Object.keys(reportByThickness).forEach(key => {
         const g = reportByThickness[key];
         const pricePerM2 = getPricePerM2(g.thickness);
@@ -517,7 +499,6 @@ function exportPdfReport() {
         return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     };
 
-    // НЕ РАЗМЕЩЁННЫЕ
     let unplacedRows = '';
     unplacedParts.forEach(({ part, notPlaced }) => {
         const thumbSVG = generatePartThumbnail(part, 80, 60, parts);
@@ -561,23 +542,81 @@ function exportPdfReport() {
         .summary-item .value { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-top: 2px; }
         .unplaced-table th { background: #c00; }
         .sheet-report-card { background: #fff; border-radius: 6px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-        .sheet-report-header { display: flex; gap: 16px; padding: 14px 18px; align-items: flex-start; }
-        .sheet-report-thumb { flex-shrink: 0; }
-        .sheet-report-info { flex: 1; }
-        .sheet-report-info h3 { font-size: 14px; color: #333; margin-bottom: 10px; }
-        .sheet-report-stats { display: flex; gap: 24px; flex-wrap: wrap; }
-        .sheet-report-stats .stat { display: flex; flex-direction: column; min-width: 100px; }
-        .sheet-report-stats .stat-label { font-size: 11px; color: #888; }
-        .sheet-report-stats .stat-value { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+        .sheet-report-thumb { width: 100%; max-width: 100%; overflow: hidden; margin-bottom: 12px; }
+        .sheet-report-thumb svg { width: 100%; height: auto; display: block; }
+        .sheet-report-info { padding: 10px 14px; }
+        .sheet-report-info h3 { font-size: 14px; color: #333; margin-bottom: 8px; }
+        .sheet-report-stats-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+        .sheet-report-stats-row .stat { display: flex; flex-direction: column; min-width: 80px; }
+        .sheet-report-stats-row .stat-label { font-size: 10px; color: #888; }
+        .sheet-report-stats-row .stat-value { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+        .sheet-parts-breakdown { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; flex: 1; }
+        .sheet-part-item { 
+            font-size: 12px; 
+            font-weight: 700; 
+            color: #111; 
+            background: #f0f4f8; 
+            padding: 5px 9px; 
+            border-radius: 5px; 
+            border: 1px solid #b0c4de; 
+            white-space: nowrap;
+            line-height: 1.3;
+        }
         @media print {
-            body { padding: 10px; background: #fff; }
-            table { box-shadow: none; border: 1px solid #ddd; }
-            th { background: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .section-title { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .summary-item { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .sheet-thumb svg { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .sheet-report-card { box-shadow: none; border: 1px solid #ddd; }
-            .no-print { display: none; }
+            @page { size: A4 landscape; margin: 5mm; }
+            body { padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            table { box-shadow: none; border: 1px solid #ccc; border-collapse: collapse; }
+            th { 
+                background: #444 !important; 
+                color: #fff !important; 
+                position: static !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+                padding: 8px 6px;
+            }
+            .section-title { background: #eee !important; border-bottom: 2px solid #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .summary-item { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .sheet-report-card { 
+                box-shadow: none; 
+                border: 2px solid #666; 
+                page-break-inside: avoid;
+                page-break-after: always;
+                margin-bottom: 15px;
+                overflow: hidden;
+                max-height: 190mm;
+                display: flex;
+                flex-direction: column;
+            }
+            .sheet-report-thumb { 
+                width: 100% !important; 
+                margin-bottom: 10px !important; 
+                flex: 1; 
+                min-height: 0;
+                max-height: 75%;
+                overflow: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .sheet-report-thumb svg, .sheet-report-thumb img { 
+                width: 100% !important; 
+                height: 100% !important; 
+                object-fit: contain; 
+            }
+            .sheet-report-info { width: 100% !important; padding: 5px 0 !important; flex: 0 0 auto; min-height: 50px; }
+            .sheet-report-stats-row { flex-direction: column !important; gap: 6px !important; }
+            .sheet-parts-breakdown { margin-top: 6px !important; }
+            .sheet-part-item { 
+                background: #fff !important; 
+                border: 1px solid #999 !important; 
+                font-weight: 700 !important; 
+                font-size: 11pt !important;
+                padding: 4px 8px !important;
+                color: #000 !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -596,9 +635,9 @@ ${partDetailRows ? `
                 <th>Толщ. (мм)</th>
                 <th>Площадь (м²)</th>
                 <th>Вес (кг)</th>
-                <th>Рез (м)</th>
-                <th>Рез (₽)</th>
-                <th>Металл (₽)</th>
+                <th>Длина реза (м)</th>
+                <th>Сумма за резку (₽)</th>
+                <th>Сумма за деталь (₽)</th>
                 <th>Итого (₽)</th>
             </tr>
         </thead>
@@ -619,9 +658,9 @@ ${thSectionHTML}
                 <th>Толщ. (мм)</th>
                 <th>Кол-во</th>
                 <th>Вес (кг)</th>
-                <th>Рез (м)</th>
-                <th>Рез (₽)</th>
-                <th>Металл (₽)</th>
+                <th>Длина реза (м)</th>
+                <th>Сумма за резку (₽)</th>
+                <th>Сумма за деталь (₽)</th>
                 <th>Итого (₽)</th>
             </tr>
         </thead>
@@ -662,8 +701,8 @@ ${thSectionHTML}
             <div class="summary-item"><div class="label">Не размещено</div><div class="value">${unplacedParts.reduce((s, u) => s + u.notPlaced, 0)} шт</div></div>
             <div class="summary-item"><div class="label">Общий вес</div><div class="value">${grandTotalWeight.toFixed(3)} кг</div></div>
             <div class="summary-item"><div class="label">Длина реза</div><div class="value">${(grandTotalLength / 1000).toFixed(2)} м</div></div>
-            <div class="summary-item"><div class="label">Стоимость реза</div><div class="value">${grandTotalCutCost.toFixed(2)} ₽</div></div>
-            <div class="summary-item"><div class="label">Стоимость металла</div><div class="value">${grandTotalMetalCost.toFixed(2)} ₽</div></div>
+            <div class="summary-item"><div class="label">Стоимость реза итого </div><div class="value">${grandTotalCutCost.toFixed(2)} ₽</div></div>
+            <div class="summary-item"><div class="label">Стоимость всех деталей кг/м2</div><div class="value">${grandTotalMetalCost.toFixed(2)} ₽</div></div>
             <div class="summary-item"><div class="label">Время работы</div><div class="value">${workTimeSeconds > 0 ? formatTime(workTimeSeconds) : '—'}</div></div>
             <div class="summary-item"><div class="label">Стоимость времени</div><div class="value">${grandTotalTimeCost > 0 ? grandTotalTimeCost.toFixed(2) + ' ₽' : '—'}</div></div>
             <div class="summary-item" style="background:#e8f5e9;"><div class="label">ИТОГО</div><div class="value">${grandTotalCost.toFixed(2)} ₽</div></div>
@@ -684,7 +723,6 @@ ${thSectionHTML}
     printWindow.document.close();
 }
 
-// Инициализация обработчика при загрузке
 document.addEventListener('DOMContentLoaded', () => {
     const exportPdfBtn = document.getElementById('exportPdf');
     if (exportPdfBtn) {

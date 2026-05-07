@@ -1,6 +1,13 @@
 # Node.js
 node_modules/
 
+# Production build
+dist/
+
+# Environment
+.env
+.env.local
+
 # npm debug
 npm-debug.log*
 
@@ -19,6 +26,10 @@ desktop.ini
 # Temporary files
 *.tmp
 *.temp
+
+# License keys (never commit!)
+*.key
+keys.txt
 
 # LocalStorage backup (if any)
 *.json.bak
