@@ -7225,6 +7225,20 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                 nestedParts = [];
                 updatePartsList();
                 showProperties(null);
+                
+                // Скрываем лист с раскладкой
+                showSheetView = false;
+                document.getElementById('showSheet').textContent = '👁️ Показать лист';
+                
+                // Скрываем панель инструментов раскладки
+                const sheetTools = document.getElementById('sheetTools');
+                if (sheetTools) sheetTools.style.display = 'none';
+                
+                // Сбрасываем зум и панорамирование (как после F5)
+                panX = 0;
+                panY = 0;
+                zoom = 1;
+                
                 render();
                 // Очищаем кэш
                 localStorage.removeItem('cadParts');
