@@ -305,7 +305,9 @@ function findObjectPoint(mouseX, mouseY) {
         const points = obj.getPoints();
         for (let pt of points) {
             const dist = Math.sqrt(Math.pow(pt.x - mouseX, 2) + Math.pow(pt.y - mouseY, 2));
-            if (dist < POINT_SNAP_DISTANCE) {
+            // Увеличенный радиус для точек круга (8px вместо 1px)
+            const snapRadius = obj.type === 'circle' ? 8 : POINT_SNAP_DISTANCE;
+            if (dist < snapRadius) {
                 let pointType = null;
                 let edgeIndex = 0;
                 if (obj.type === 'line') {
