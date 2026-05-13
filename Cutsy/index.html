@@ -25,8 +25,101 @@
     <!-- Заставка загружается первой с defer -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="splash.js" defer></script>
+    
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- PRE-LICENSE CHECK — блокирует UI до проверки лицензии      -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <style>
+        #preLicenseOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            display: none; align-items: center; justify-content: center;
+            z-index: 99999; font-family: 'Segoe UI', sans-serif;
+        }
+        #preLicenseOverlay.active { display: flex; }
+        #preLicenseOverlay .pre-card {
+            background: rgba(26, 26, 46, 0.95);
+            border: 1px solid #333; border-radius: 16px;
+            padding: 40px; width: 100%; max-width: 500px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+        #preLicenseOverlay h2 {
+            color: #00d4aa; margin: 0 0 8px 0; font-size: 24px;
+        }
+        #preLicenseOverlay .pre-subtitle {
+            color: #888; font-size: 13px; margin-bottom: 20px;
+        }
+        #preLicenseOverlay .pre-loader {
+            width: 40px; height: 40px;
+            border: 3px solid #333;
+            border-top-color: #00d4aa;
+            border-radius: 50%;
+            animation: preSpin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes preSpin { to { transform: rotate(360deg); } }
+    </style>
+    <script>
+        (function() {
+            const SESSION_KEY = 'cutsy_session_v3';
+            const raw = localStorage.getItem(SESSION_KEY);
+            let needGate = false;
+            
+            if (!raw) {
+                needGate = true;
+            } else {
+                try {
+                    const session = JSON.parse(raw);
+                    if (session.isTrial) {
+                        if (!session.expiresAt || new Date(session.expiresAt) < new Date()) {
+                            needGate = true;
+                        }
+                    } else {
+                        // Проверяем лицензию
+                        const hasKey = !!session.licenseKey;
+                        const notExpired = session.expiresAt && new Date(session.expiresAt) > new Date();
+                        const expiredFlag = session.isExpired === true;
+                        
+                        if (!hasKey || expiredFlag || !notExpired) {
+                            needGate = true;
+                        }
+                    }
+                } catch(e) {
+                    needGate = true;
+                }
+            }
+            
+            if (needGate) {
+                // Показываем overlay как только появится body
+                const showOverlay = function() {
+                    const el = document.getElementById('preLicenseOverlay');
+                    if (el) el.classList.add('active');
+                };
+                
+                if (document.body) {
+                    showOverlay();
+                } else {
+                    // Ждём появления body
+                    var obs = new MutationObserver(function() {
+                        if (document.body) { showOverlay(); obs.disconnect(); }
+                    });
+                    obs.observe(document.documentElement, { childList: true });
+                }
+            }
+        })();
+    </script>
 </head>
 <body>
+    <!-- Pre-license overlay — показывается до загрузки license-gate.js -->
+    <div id="preLicenseOverlay">
+        <div class="pre-card">
+            <h2>✨ Cutsy CAD PRO</h2>
+            <p class="pre-subtitle">Проверка лицензии...</p>
+            <div class="pre-loader"></div>
+        </div>
+    </div>
+
     <div class="toolbar">
         <h3 data-i18n="toolbar_title">Инструменты</h3>
         <div class="tools-grid">
@@ -342,6 +435,10 @@
             </div>
             <div class="status-right">
                 <div class="status-item" style="color:#fff;">ИНН: 222510680891 / ОГРНИП: 324220200109230</div>
+                <div class="status-item" style="color:#888;font-size:11px;margin-top:4px;">
+                    <a href="privacy.html" style="color:#007acc;text-decoration:none;" target="_blank">🔒 Политика конфиденциальности</a> | 
+                    <a href="terms.html" style="color:#007acc;text-decoration:none;" target="_blank">📋 Пользовательское соглашение</a>
+                </div>
                 <div class="status-item" id="nestedSelectInfo" style="display:none;background:#007acc;padding:2px 8px;border-radius:4px;"><span>🔲</span><span id="nestedSelectedCount">Выделено деталей: 0</span></div>
             </div>
         </div>

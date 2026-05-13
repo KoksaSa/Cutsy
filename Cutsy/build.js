@@ -68,7 +68,7 @@ const NO_OBFUSCATE_FILES = [
 ];
 
 // HTML-файлы для минификации
-const HTML_FILES = ['index.html'];
+const HTML_FILES = ['index.html', 'privacy.html', 'terms.html'];
 
 // CSS-файлы для минификации
 const CSS_FILES = ['styles.css'];

@@ -137,6 +137,10 @@
 
     function createOverlay() {
         injectStyles();
+        // Удаляем pre-license overlay из index.html
+        const preOverlay = document.getElementById('preLicenseOverlay');
+        if (preOverlay) preOverlay.remove();
+        
         const overlay = document.createElement('div');
         overlay.id = 'licenseGateOverlay';
         overlay.className = 'lic-overlay';
@@ -187,7 +191,8 @@
                 </div>
                 
                 <div class="lic-footer" style="margin-top:12px;font-size:10px;color:#666;">
-                    ИНН: 222510680891 | ОГРНП: 324220200109230
+                    <a href="privacy.html" style="color:#00d4aa;text-decoration:none;" target="_blank">🔒 Политика конфиденциальности</a> | 
+                    <a href="terms.html" style="color:#00d4aa;text-decoration:none;" target="_blank">📋 Пользовательское соглашение</a>
                 </div>
             </div>
         `;
