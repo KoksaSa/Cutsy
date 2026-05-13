@@ -166,10 +166,12 @@ body {
    ═══════════════════════════════════════════════════════════════ */
 .status-bar {
     height: 30px; background: #007acc;
-    display: flex; align-items: center;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 0 15px; font-size: 12px; gap: 15px;
 }
 
+.status-left { display: flex; align-items: center; gap: 15px; }
+.status-right { display: flex; align-items: center; gap: 15px; color: #fff; }
 .status-item { display: flex; align-items: center; gap: 5px; }
 
 /* ═══════════════════════════════════════════════════════════════

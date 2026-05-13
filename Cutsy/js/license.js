@@ -2,11 +2,8 @@ class LicenseManager {
     static PRO_KEY_PREFIX = 'CUTSY2-PRO-';
     static SESSION_KEY = 'cutsy_session_v3';
     static LICENSE_DAYS = 365;
-    static GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ09bbUsXlr051NXXJvXJiur-jQSXhUArtjnbybD0gDH85d6Yvo0NAoOCLT0iaaTLr/exec';
-    static EMAILJS_PUBLIC_KEY = '6qHNX-RQ7mR40FM19';
-    static EMAILJS_SERVICE_ID = 'service_sxy6r81';
-    static EMAILJS_TEMPLATE_ID = 'template_bax3azf';
-    static EMAILJS_ADMIN_TEMPLATE_ID = 'template_5smm3fj';
+    static CHECK_INTERVAL_DAYS = 2;
+    static GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-NdSG4lUh1oqnK6s-wmxmgaC7ns4bmokyN9J7C6Ws0yYXkrQ-fuqev91Uhg-qiKXukw/exec';
     static TELEGRAM_BOT_TOKEN = '8526541616:AAEwEZzd4jrwjNgiSqwjLUR_c8GyGTrfPiE';
     static TELEGRAM_CHAT_ID = '358002688';
 
@@ -21,28 +18,10 @@ class LicenseManager {
         }
     }
 
-    static async sendWelcomeEmail(userEmail) {
-        if (!userEmail) {
-            console.error('sendWelcomeEmail: email не указан');
-            return false;
-        }
+    static async sendAdminNotification(userEmail, licenseType) {
         try {
-            const templateParams = {
-                to_email: userEmail,
-                user_email: userEmail
-            };
-            await emailjs.send(this.EMAILJS_SERVICE_ID, this.EMAILJS_TEMPLATE_ID, templateParams);
-            console.log('✅ EmailJS: письмо отправлено на', userEmail);
-            return true;
-        } catch (error) {
-            console.error('❌ EmailJS ошибка:', error);
-            return false;
-        }
-    }
-
-    static async sendAdminNotification(userEmail) {
-        try {
-            const text = `🔔 *Новая регистрация в Cutsy CAD PRO*\n\n📧 Пользователь: \`${userEmail}\`\n📅 Дата: ${new Date().toLocaleString('ru-RU')}\n\n⏳ Ожидает активации ключа.`;
+            const tariffInfo = licenseType ? `\n📅 Тариф: *${licenseType}*` : '';
+            const text = `🔔 *Новая регистрация в Cutsy CAD PRO*\n\n📧 Пользователь: \`${userEmail}\`${tariffInfo}\n📅 Дата: ${new Date().toLocaleString('ru-RU')}\n\n⏳ Ожидает активации ключа.`;
             
             const response = await fetch(`https://api.telegram.org/bot${this.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                 method: 'POST',
@@ -68,9 +47,10 @@ class LicenseManager {
         }
     }
 
-    static async sendAdminNotificationWithKey(userEmail, licenseKey) {
+    static async sendAdminNotificationWithKey(userEmail, licenseKey, licenseType) {
         try {
-            const text = `🔔 *Новая регистрация в Cutsy CAD PRO*\n\n📧 Пользователь: \`${userEmail}\`\n🔑 Ключ: \`${licenseKey}\`\n📅 Дата: ${new Date().toLocaleString('ru-RU')}\n\n✉️ Отправьте ключ клиенту.`;
+            const tariffInfo = licenseType ? `\n📅 Тариф: *${licenseType}*` : '';
+            const text = `🔔 *Новая регистрация в Cutsy CAD PRO*\n\n📧 Пользователь: \`${userEmail}\`\n🔑 Ключ: \`${licenseKey}\`${tariffInfo}\n📅 Дата: ${new Date().toLocaleString('ru-RU')}\n\n✉️ Отправьте ключ клиенту.`;
             
             const response = await fetch(`https://api.telegram.org/bot${this.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                 method: 'POST',
@@ -106,6 +86,77 @@ class LicenseManager {
 
     static saveSession(session) {
         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+    }
+
+    static isTrial() {
+        const session = this.getSession();
+        return !!(session && session.isTrial);
+    }
+
+    static isTrialExpired() {
+        const session = this.getSession();
+        if (!session || !session.isTrial) return false;
+        if (!session.expiresAt) return true;
+        return new Date(session.expiresAt) < new Date();
+    }
+
+    static canExportDXF() {
+        if (this.isTrial()) return false;
+        return this.isPro();
+    }
+
+    static getNestingCount() {
+        const key = 'cutsy_nesting_count';
+        const raw = localStorage.getItem(key);
+        return raw ? parseInt(raw, 10) || 0 : 0;
+    }
+
+    static incrementNestingCount() {
+        const key = 'cutsy_nesting_count';
+        const count = this.getNestingCount() + 1;
+        localStorage.setItem(key, count.toString());
+        return count;
+    }
+
+    static resetNestingCount() {
+        localStorage.removeItem('cutsy_nesting_count');
+    }
+
+    static canUse(feature, currentValue) {
+        // PRO-версия (не пробная) — всё доступно
+        if (this.isPro() && !this.isTrial()) return true;
+        
+        // Пробная версия — с ограничениями
+        if (this.isTrial()) {
+            const limits = { 
+                maxParts: 30, 
+                allowDxfExport: false, 
+                allowPricing: false, 
+                allowAutoNesting: true,  // Разрешаем, но с лимитом 5
+                allowLineTool: false,
+                allowDimensionTool: false,
+                maxNestingCount: 5
+            };
+            switch (feature) {
+                case 'addPart': return (currentValue || 0) < limits.maxParts;
+                case 'exportDxf': return limits.allowDxfExport;
+                case 'setCustomPrice': return limits.allowPricing;
+                case 'autoNesting': return limits.allowAutoNesting && this.getNestingCount() < limits.maxNestingCount;
+                case 'lineTool': return limits.allowLineTool;
+                case 'dimensionTool': return limits.allowDimensionTool;
+                default: return true;
+            }
+        }
+        
+        // Без лицензии — базовые ограничения
+        const limits = { maxParts: 30, allowDxfExport: false, allowPricing: false, allowAutoNesting: false };
+        switch (feature) {
+            case 'addPart': return (currentValue || 0) < limits.maxParts;
+            case 'exportDxf': return limits.allowDxfExport;
+            case 'setCustomPrice': return limits.allowPricing;
+            case 'autoNesting': return limits.allowAutoNesting;
+            default: return true;
+        }
     }
 
     static clearSession() {
@@ -149,7 +200,7 @@ class LicenseManager {
     }
 
     static get CHECK_INTERVAL_DAYS() {
-        return 7;
+        return 2;  // Проверка сервера каждые 2 дня
     }
 
     static shouldCheckServer(session) {
@@ -178,7 +229,7 @@ class LicenseManager {
     static async ping() {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 сек
             const response = await fetch(this.GOOGLE_SCRIPT_URL, {
                 method: 'GET',
                 signal: controller.signal
@@ -237,52 +288,6 @@ class LicenseManager {
         }
     }
 
-    static async register(email, password) {
-        if (!email || !password) {
-            return { success: false, message: '❌ Введите email и пароль' };
-        }
-        if (password.length < 6) {
-            return { success: false, message: '❌ Пароль минимум 6 символов' };
-        }
-        try {
-            const result = await this.apiCall('register', { email, password });
-            console.log('📋 Register result:', result);  // ← ОТЛАДКА
-            if (result.status === 'ok') {
-                // Сохраняем сессию после регистрации
-                const session = {
-                    email: email,
-                    sessionToken: null,
-                    loggedInAt: Date.now(),
-                    licenseKey: null,
-                    hasLicense: false,
-                    activatedAt: null,
-                    expiresAt: null,
-                    isExpired: false,
-                    deviceCount: 0,
-                    maxDevices: 1,
-                    lastCheck: new Date().toISOString()
-                };
-                this.saveSession(session);
-                
-                // Отправляем приветственное письмо через EmailJS
-                await this.sendWelcomeEmail(email);
-                // Отправляем уведомление админу с ключом через Telegram
-                console.log('📋 licenseKey from server:', result.licenseKey);  // ← ОТЛАДКА
-                if (result.licenseKey) {
-                    await this.sendAdminNotificationWithKey(email, result.licenseKey);
-                } else {
-                    await this.sendAdminNotification(email);
-                }
-                return { success: true, message: result.message };
-            } else {
-                return { success: false, message: result.message || '❌ Ошибка регистрации' };
-            }
-        } catch (error) {
-            console.error('Register error:', error);
-            return { success: false, message: '❌ ' + (error.message || 'Ошибка соединения с сервером') };
-        }
-    }
-
     static getDeviceToken() {
         try {
             const data = [
@@ -324,10 +329,11 @@ class LicenseManager {
                     isExpired: result.isExpired || false,
                     deviceCount: result.deviceCount || 0,
                     maxDevices: result.maxDevices || 1,
-                    lastCheck: new Date().toISOString()  // ← Дата входа = дата проверки
+                    isTrial: result.isTrial || false,
+                    lastCheck: new Date().toISOString()
                 };
                 this.saveSession(session);
-                return { success: true, message: result.message, hasLicense: result.hasLicense, isExpired: result.isExpired, deviceCount: result.deviceCount, maxDevices: result.maxDevices };
+                return { success: true, message: result.message, hasLicense: result.hasLicense, isExpired: result.isExpired, deviceCount: result.deviceCount, maxDevices: result.maxDevices, isTrial: result.isTrial };
             } else {
                 return { success: false, message: result.message || '❌ Ошибка входа', deviceLimit: result.deviceLimit, currentDevices: result.currentDevices, maxDevices: result.maxDevices };
             }
@@ -402,9 +408,10 @@ class LicenseManager {
                 session.isExpired = result.isExpired;
                 session.expiresAt = result.expiresAt || null;
                 session.maxDevices = result.maxDevices || session.maxDevices || 1;
+                session.isTrial = result.isTrial || false;
                 session.lastCheck = new Date().toISOString();  // ← Обновляем дату проверки
                 this.saveSession(session);
-                return { hasLicense: result.hasLicense, isExpired: result.isExpired, daysLeft: result.daysLeft || 0, maxDevices: result.maxDevices || 1 };
+                return { hasLicense: result.hasLicense, isExpired: result.isExpired, daysLeft: result.daysLeft || 0, maxDevices: result.maxDevices || 1, isTrial: result.isTrial };
             }
         } catch (error) {
             console.error('Check license error:', error);
@@ -454,16 +461,21 @@ class LicenseManager {
     static showUpgradeModal(feature) {
         const msgs = {
             addPart: '📦 Лимит 30 деталей.',
-            exportDxf: '🔧 Экспорт DXF — только PRO.',
-            setCustomPrice: '💰 Цены — только PRO.',
-            autoNesting: '⚡ Авто-раскладка — только PRO.'
+            exportDxf: '🔧 Экспорт DXF недоступен в пробном периоде. Купите тариф для доступа к экспорту.',
+            setCustomPrice: '💰 Настройка цен доступна только в PRO-версии. Купите тариф для доступа к расчёту стоимости.',
+            autoNesting: '⚡ Авто-раскладка недоступна в пробном периоде. Купите тариф.',
+            nestingLimit: '📋 В пробном периоде доступно только 5 раскладок. Купите тариф для неограниченного использования.',
+            lineTool: '✏️ Инструмент "Линия" недоступен в пробном периоде. Купите тариф для рисования деталей.',
+            dimensionTool: '📏 Инструмент "Размер" недоступен в пробном периоде. Купите тариф для замера деталей.'
         };
         const m = document.createElement('div');
         m.className = 'lic-modal';
         m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:sans-serif;';
-        m.innerHTML = '<div style="background:#1a1a2e;color:#fff;padding:28px;border-radius:16px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #333;"><h3 style="margin:0 0 18px;color:#00d4aa;font-size:20px;">✨ PRO-версия</h3><p style="margin:0 0 20px;line-height:1.5;color:#ccc;">' + (msgs[feature] || 'Эта функция доступна в PRO.') + '</p><ul style="margin:0 0 24px 18px;padding:0;line-height:1.7;color:#ddd;font-size:14px;"><li>✅ Неограниченные детали</li><li>✅ Экспорт DXF/PDF</li><li>✅ Настройка цен</li><li>✅ Авто-раскладка NFP</li><li>✅ Поддержка 7 дней</li></ul><div style="display:flex;gap:12px;"><button id="lic-buy" style="flex:1;padding:12px;background:#00d4aa;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;">💬 Купить PRO</button><button id="lic-later" style="flex:1;padding:12px;background:#333;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Позже</button></div></div>';
+        m.innerHTML = '<div style="background:#1a1a2e;color:#fff;padding:28px;border-radius:16px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #333;"><h3 style="margin:0 0 18px;color:#00d4aa;font-size:20px;">✨ PRO-версия</h3><p style="margin:0 0 24px;line-height:1.5;color:#ccc;">' + (msgs[feature] || 'Эта функция доступна в PRO.') + '</p><div style="display:flex;gap:12px;"><button id="lic-buy" style="flex:1;padding:12px;background:#00d4aa;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;">💬 Купить PRO</button><button id="lic-later" style="flex:1;padding:12px;background:#333;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Позже</button></div></div>';
         document.body.appendChild(m);
-        document.getElementById('lic-buy').onclick = () => { window.open('https://t.me/SilikinK', '_blank'); };
+        document.getElementById('lic-buy').onclick = () => { 
+            window.open('https://script.google.com/macros/s/AKfycbx-NdSG4lUh1oqnK6s-wmxmgaC7ns4bmokyN9J7C6Ws0yYXkrQ-fuqev91Uhg-qiKXukw/exec?action=form', '_blank'); 
+        };
         document.getElementById('lic-later').onclick = () => m.remove();
         m.onclick = (e) => { if (e.target === m) m.remove(); };
     }

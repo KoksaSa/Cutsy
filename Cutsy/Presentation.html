@@ -181,6 +181,17 @@
             scroll-behavior: smooth;
             justify-content: flex-start;
         }
+        @media (max-width: 768px) {
+            .license-grid {
+                flex-direction: column;
+                overflow-x: hidden;
+                overflow-y: visible;
+            }
+            .license-card {
+                flex: 0 0 auto;
+                min-width: 100%;
+            }
+        }
         .license-grid::-webkit-scrollbar {
             height: 8px;
         }
@@ -337,16 +348,176 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 30px 15px;
+                margin-bottom: 25px;
+            }
+
             .header h1 {
-                font-size: 2em;
+                font-size: 1.8em;
             }
-
+            
+            .header .subtitle {
+                font-size: 1em;
+                padding: 0 10px;
+            }
+            
+            .version-badge {
+                font-size: 0.8em;
+                padding: 4px 12px;
+            }
+            
             .section {
-                padding: 20px;
+                padding: 20px 15px;
+                margin-bottom: 20px;
             }
-
-            .license-grid, .feature-grid, .steps {
+            
+            .section h2 {
+                font-size: 1.4em;
+                margin-bottom: 15px;
+            }
+            
+            .section h2::before {
+                height: 24px;
+            }
+            
+            table {
+                font-size: 0.9em;
+            }
+            
+            th, td {
+                padding: 10px 8px;
+            }
+            
+            .feature-grid {
                 grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .feature-card {
+                padding: 15px;
+            }
+            
+            .feature-card h3 {
+                font-size: 1.1em;
+            }
+            
+            .feature-card p {
+                font-size: 0.9em;
+            }
+            
+            .license-grid {
+                flex-direction: column;
+                overflow-x: hidden;
+                padding-bottom: 10px;
+            }
+            
+            .license-card {
+                flex: 0 0 auto;
+                min-width: 100%;
+                padding: 20px 15px;
+            }
+            
+            .license-card h3 {
+                font-size: 1.3em;
+            }
+            
+            .license-card .duration {
+                font-size: 2em;
+                margin: 12px 0;
+            }
+            
+            .license-card .badge {
+                font-size: 0.75em;
+                padding: 2px 8px;
+            }
+            
+            .license-card button {
+                padding: 14px;
+                font-size: 14px;
+            }
+            
+            .steps {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .step {
+                padding: 20px 15px;
+            }
+            
+            .step-number {
+                width: 35px;
+                height: 35px;
+                line-height: 35px;
+                font-size: 1.1em;
+                margin-bottom: 12px;
+            }
+            
+            .step h3 {
+                font-size: 1.1em;
+            }
+            
+            .step p {
+                font-size: 0.85em;
+            }
+            
+            .contact-buttons {
+                gap: 12px;
+            }
+            
+            .contact-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .custom-dev-section {
+                padding: 20px 15px;
+            }
+            
+            .custom-dev-section h3 {
+                font-size: 1.3em;
+            }
+            
+            .custom-dev-section > div {
+                flex-direction: column;
+            }
+            
+            .custom-dev-section > div > div {
+                min-width: 100% !important;
+            }
+            
+            .footer {
+                padding: 30px 15px;
+                font-size: 0.85em;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5em;
+            }
+            
+            .section h2 {
+                font-size: 1.2em;
+            }
+            
+            table {
+                font-size: 0.85em;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+            }
+            
+            .license-card .duration {
+                font-size: 1.7em;
             }
         }
     </style>
@@ -595,11 +766,13 @@
                     <span class="badge" style="background: #ffd700; color: #000;">🎯 БЕСПЛАТНО</span>
                     <h3>🗓️ Пробный</h3>
                     <div class="duration" style="color: #ffd700; font-size: 2em; margin: 15px 0;">7 ДНЕЙ</div>
-                    <p class="description" style="color: #00d4aa;">Полный доступ</p>
+                    <p class="description" style="color: #00d4aa;">Ограниченный доступ</p>
                     <p style="margin-top: 15px; color: #888;">🔹 1 устройство</p>
                     <div style="margin-top: 20px; text-align: left; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-                        <p style="color: #00d4aa; font-weight: bold; font-size: 1em; margin: 5px 0;">✅ Без оплаты</p>
-                        <p style="color: #aaa; font-size: 0.9em; margin: 5px 0;">✅ Все функции</p>
+                        <p style="color: #ff6b6b; font-weight: bold; font-size: 0.9em; margin: 5px 0;">⚠️ Не все функции доступны</p>
+                        <p style="color: #aaa; font-size: 0.85em; margin: 5px 0;">🔹 Без регистрации</p>
+                        <p style="color: #aaa; font-size: 0.85em; margin: 5px 0;">🔹 5 раскладок максимум</p>
+                        <p style="color: #aaa; font-size: 0.85em; margin: 5px 0;">🔹 Без экспорта DXF</p>
                     </div>
                     <button style="margin-top: 20px; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.3s;">👉 ПОПРОБОВАТЬ</button>
                 </a>
@@ -644,7 +817,7 @@
             </div>
             
             <!-- Custom Development -->
-            <div style="margin-top: 30px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.1) 100%); border-radius: 15px; padding: 25px; border: 2px solid rgba(255, 215, 0, 0.3);">
+            <div class="custom-dev-section" style="margin-top: 30px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.1) 100%); border-radius: 15px; padding: 25px; border: 2px solid rgba(255, 215, 0, 0.3);">
                 <h3 style="color: #ffd700; font-size: 1.5em; margin-bottom: 15px;">🛠️ Кастомная доработка</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                     <div style="flex: 1; min-width: 250px;">

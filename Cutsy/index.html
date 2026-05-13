@@ -2,6 +2,19 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109146930', 'ym');
+
+    ym(109146930, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109146930" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2D Моделирование - DXF Editor</title>
@@ -317,13 +330,18 @@
             </div>
         </div>
         <div class="status-bar">
-            <div class="status-item"><span>📍</span><span id="coords">X: 0, Y: 0</span></div>
-            <div class="status-item"><span>🔧</span><span id="currentTool">Инструмент: Выбрать</span></div>
-            <div class="status-item"><span>📐</span><span id="objectCount">Объектов: 0</span></div>
-            <div class="status-item"><span>🔲</span><span id="selectedCount">Выбрано: 0</span></div>
-            <div class="status-item" id="editingPartIndicator" style="display:none;"><span>✏️</span><span id="editingPartName"></span></div>
-            <div class="status-item"><span>↩️</span><span id="undoStack">История: 0</span></div>
-            <div class="status-item" id="nestedSelectInfo" style="display:none;background:#007acc;padding:2px 8px;border-radius:4px;"><span>🔲</span><span id="nestedSelectedCount">Выделено деталей: 0</span></div>
+            <div class="status-left">
+                <div class="status-item"><span>📍</span><span id="coords">X: 0, Y: 0</span></div>
+                <div class="status-item"><span>🔧</span><span id="currentTool">Инструмент: Выбрать</span></div>
+                <div class="status-item"><span>📐</span><span id="objectCount">Объектов: 0</span></div>
+                <div class="status-item"><span>🔲</span><span id="selectedCount">Выбрано: 0</span></div>
+                <div class="status-item" id="editingPartIndicator" style="display:none;"><span>✏️</span><span id="editingPartName"></span></div>
+                <div class="status-item"><span>↩️</span><span id="undoStack">История: 0</span></div>
+            </div>
+            <div class="status-right">
+                <div class="status-item" style="color:#fff;">ИНН: 222510680891 / ОГРНИП: 324220200109230</div>
+                <div class="status-item" id="nestedSelectInfo" style="display:none;background:#007acc;padding:2px 8px;border-radius:4px;"><span>🔲</span><span id="nestedSelectedCount">Выделено деталей: 0</span></div>
+            </div>
         </div>
     </div>
 
@@ -3082,6 +3100,28 @@ if (selectedObjects.length === 0) {
             btn.addEventListener('click', () => {
                 console.log('🔧 Клик по кнопке:', btn.dataset.tool);
     
+                // ═══════════════════════════════════════════════════════
+                // ПРОВЕРКА ПРОБНОГО ТАРИФА — блокировка инструментов Линия и Размер
+                // ═══════════════════════════════════════════════════════
+                if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                    if (btn.dataset.tool === 'line') {
+                        if (typeof LicenseManager.showUpgradeModal === 'function') {
+                            LicenseManager.showUpgradeModal('lineTool');
+                        } else {
+                            alert('✏️ Инструмент "Линия" недоступен в пробном периоде. Купите тариф для рисования деталей.');
+                        }
+                        return;
+                    }
+                    if (btn.dataset.tool === 'dimension') {
+                        if (typeof LicenseManager.showUpgradeModal === 'function') {
+                            LicenseManager.showUpgradeModal('dimensionTool');
+                        } else {
+                            alert('📏 Инструмент "Размер" недоступен в пробном периоде. Купите тариф для замера деталей.');
+                        }
+                        return;
+                    }
+                }
+
                 // ═══════════════════════════════════════════════════════
                 // ПРОВЕРКА: если показаны 2+ детали — запрещаем рисовать
                 // ═══════════════════════════════════════════════════════
@@ -6144,6 +6184,20 @@ if (selectedObjects.length === 0) {
 document.getElementById('nestMultiParts').addEventListener('click', async () => {
             console.log(`🚀 [NEST MULTI PARTS] Начало раскладки на несколько листов. Всего деталей: ${parts.length}`);
             
+            // 🔒 Проверка пробного тарифа — только 5 раскладок
+            if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                const nestingCount = LicenseManager.getNestingCount();
+                if (nestingCount >= 5) {
+                    if (typeof LicenseManager.showUpgradeModal === 'function') {
+                        LicenseManager.showUpgradeModal('nestingLimit');
+                    } else {
+                        alert('📋 В пробном периоде доступно только 5 раскладок. Купите тариф для неограниченного использования.');
+                    }
+                    return;
+                }
+                // Инкрементируем счётчик ПОСЛЕ успешной раскладки (ниже в коде)
+            }
+
             if (parts.length === 0) {
                 alert('Сначала создайте детали (выделите объекты → ПКМ → "Создать деталь")');
                 return;
@@ -6607,6 +6661,12 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                     updatePartsList();
                     saveState();  // Сохраняем состояние после раскладки
 
+                    // 🔒 Инкрементируем счётчик раскладки для пробного тарифа
+                    if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                        LicenseManager.incrementNestingCount();
+                        console.log('📋 Пробный тариф: раскладка #', LicenseManager.getNestingCount());
+                    }
+
                     // ═══════════════════════════════════════════════════════════
                     // ИТОГОВЫЙ ЛОГ: листы + детали
                     // ═══════════════════════════════════════════════════════════
@@ -6681,6 +6741,16 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
         };
 
         document.getElementById('setPricesBtn').addEventListener('click', () => {
+            // 🔒 Проверка пробного тарифа — установка цен недоступна
+            if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                if (typeof LicenseManager.showUpgradeModal === 'function') {
+                    LicenseManager.showUpgradeModal('setCustomPrice');
+                } else {
+                    alert('💰 Настройка цен доступна только в PRO-версии. Купите тариф для доступа.');
+                }
+                return;
+            }
+
             // Удаляем старое окно если есть
             const oldModal = document.getElementById('pricingModal');
             if (oldModal) oldModal.remove();
@@ -6838,8 +6908,19 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             // Блокируем кнопки если нельзя переключиться
             prevBtn.disabled = window.currentSheetIndex === 0;
             prevBtn.style.opacity = window.currentSheetIndex === 0 ? '0.5' : '1';
-            nextBtn.disabled = window.currentSheetIndex === window.allSheets.length - 1;
-            nextBtn.style.opacity = window.currentSheetIndex === window.allSheets.length - 1 ? '0.5' : '1';
+            
+            // 🔒 Для пробного тарифа блокируем кнопку "следующий лист"
+            const isTrial = typeof LicenseManager !== 'undefined' && LicenseManager.isTrial();
+            if (isTrial) {
+                nextBtn.disabled = true;
+                nextBtn.style.opacity = '0.3';
+                nextBtn.style.cursor = 'not-allowed';
+                nextBtn.title = '📋 Доступен только первый лист в пробном периоде';
+            } else {
+                nextBtn.disabled = window.currentSheetIndex === window.allSheets.length - 1;
+                nextBtn.style.opacity = window.currentSheetIndex === window.allSheets.length - 1 ? '0.5' : '1';
+                nextBtn.title = '';
+            }
 
             // Кнопка удаления активна только если листов больше 1
             if (window.allSheets.length === 1) {
@@ -6902,6 +6983,21 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
 
         // Переключение на следующий лист
         document.getElementById('nextSheet').addEventListener('click', () => {
+            // 🔒 Проверка пробного тарифа — только первый лист
+            const isTrial = typeof LicenseManager !== 'undefined' && LicenseManager.isTrial();
+            console.log('🔍 [NEXT SHEET CLICK] isTrial =', isTrial);
+            if (isTrial) {
+                if (window.allSheets && window.allSheets.length > 1) {
+                    console.log('🔒 [NEXT SHEET] Trial user — blocking access to additional sheets');
+                    if (typeof LicenseManager.showUpgradeModal === 'function') {
+                        LicenseManager.showUpgradeModal('nestingLimit');
+                    } else {
+                        alert('📋 В пробном периоде доступен только первый лист раскладки. Купите тариф для доступа ко всем листам.');
+                    }
+                    return;
+                }
+            }
+
             if (window.allSheets && window.currentSheetIndex < window.allSheets.length - 1) {
                 // Сохраняем детали, прямоугольники и линию обрезки текущего листа
                 window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
@@ -7401,6 +7497,8 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
             const daysLeft = LicenseManager ? LicenseManager.getDaysLeft() : 0;
             const deviceCount = session.deviceCount || 0;
             const maxDevices = session.maxDevices || 1;
+            const isTrial = session.isTrial || false;
+            const nestingCount = LicenseManager ? LicenseManager.getNestingCount() : 0;
 
             // Дата следующей проверки
             let nextCheckHint = '';
@@ -7421,11 +7519,14 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
                     <span style="color:#ccc;">${session.email}</span>
                 </div>
                 <div style="width:1px;height:16px;background:#333;"></div>
+                <a href="Presentation.html" style="text-decoration:none;color:#0096ff;font-weight:600;" title="Открыть презентацию" target="_blank">📄 Презентация</a>
+                <div style="width:1px;height:16px;background:#333;"></div>
+                ${isTrial ? `<div style="background:linear-gradient(135deg,#ffd700 0%,#ffed4e 100%);color:#000;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;" title="Пробный период: ${daysLeft} дней осталось | Раскладок: ${nestingCount}/5 | Экспорт DXF: заблокирован">🎯 ПРОБНЫЙ</div><div style="width:1px;height:16px;background:#333;"></div>` : ''}
                 ${isPro ? `<a href="mailto:cutsypro@gmail.com?subject=Вопрос по лицензии&body=Здравствуйте! У меня возник вопрос по лицензии." style="text-decoration:none;color:#00d4aa;font-weight:600;" title="Написать в поддержку" target="_blank">✨ PRO</a>` : `<div style="color:#888;font-weight:600;" title="${nextCheckHint}">FREE</div>`}
                 ${isPro ? `<a href="mailto:cutsypro@gmail.com?subject=Вопрос по лицензии&body=Здравствуйте! У меня возник вопрос по лицензии." style="text-decoration:none;color:#888;font-size:11px;" title="Написать в поддержку" target="_blank">${daysLeft}д</a>` : ''}
                 <div style="width:1px;height:16px;background:#333;"></div>
-                <div style="color:#888;font-size:11px;" title="Устройства: ${deviceCount}/${maxDevices}\n${nextCheckHint}">
-                    💻 ${deviceCount}/${maxDevices}
+                <div style="color:#888;font-size:11px;" title="Устройства: ${deviceCount}/${maxDevices}\n${nextCheckHint}${isTrial ? '\nРаскладок: ' + nestingCount + '/5' : ''}">
+                    💻 ${deviceCount}/${maxDevices}${isTrial ? ' | 📋' + nestingCount + '/5' : ''}
                 </div>
                 <div style="width:1px;height:16px;background:#333;"></div>
                 <button id="accountLogout" style="background:transparent;border:none;color:#ff6b6b;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="Выйти">🚪</button>

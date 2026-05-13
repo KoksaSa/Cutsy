@@ -19,7 +19,8 @@ const DIST_DIR = path.join(SRC_DIR, 'dist');  // Сборка в папке dist
 // Файлы и папки, которые копируются как есть (ресурсы)
 const COPY_AS_IS = [
     'favicon.png',
-    'logo.png'
+    'logo.png',
+    'Presentation.html'
     // ⚠️ НЕ добавлять screenshots/ — тестовые файлы, не нужны в продакшене
     // Если нужно добавить другие ресурсы, добавьте их сюда
 ];

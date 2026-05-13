@@ -258,6 +258,16 @@ document.addEventListener('DOMContentLoaded', function() {
         exportDxfBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             
+            // 🔒 Проверка пробного тарифа — экспорт DXF недоступен
+            if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                if (typeof LicenseManager.showUpgradeModal === 'function') {
+                    LicenseManager.showUpgradeModal('exportDxf');
+                } else {
+                    alert('🔧 Экспорт DXF недоступен в пробном периоде. Купите тариф для доступа к экспорту.');
+                }
+                return;
+            }
+            
             if (selectedObjects.length === 0) {
                 alert('⚠️ Нет выделенных объектов');
                 return;
