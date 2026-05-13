@@ -895,7 +895,7 @@ window.render = function render() {
     }
 
     // Подсветка центра координат (0, 0) при наведении
-    if ((currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line') && !hoveredPoint) {
+    if ((currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line' || currentTool === 'circle') && !hoveredPoint) {
         // Проверяем расстояние от курсора до центра координат
         // Получаем координаты мыши из последнего события mousemove
         const mouseWorldX = (window.lastMouseX - panX - canvas.width / 2) / zoom;
