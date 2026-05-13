@@ -901,7 +901,7 @@ window.render = function render() {
         const mouseWorldX = (window.lastMouseX - panX - canvas.width / 2) / zoom;
         const mouseWorldY = (window.lastMouseY - panY - canvas.height / 2) / zoom;
         const distToOrigin = Math.sqrt(Math.pow(mouseWorldX, 2) + Math.pow(mouseWorldY, 2));
-        const originHoverRadius = 8 / zoom; // Радиус наведения на центр
+        const originHoverRadius = SNAP_DISTANCE / zoom; // Радиус наведения = радиус привязки
         
         if (distToOrigin < originHoverRadius) {
             ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
