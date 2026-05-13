@@ -847,6 +847,7 @@ window.render = function render() {
 
         // Рисуем все точки привязки
         objects.forEach(obj => {
+            if (!obj || typeof obj.getPoints !== 'function') return;
             const points = obj.getPoints();
             points.forEach((pt, idx) => {
                 ctx.fillStyle = 'rgba(255, 165, 0, 0.9)';
