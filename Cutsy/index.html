@@ -1445,12 +1445,23 @@
             // Остальные инструменты рисования
             if (currentTool !== 'select' && currentTool !== 'eraser' && currentTool !== 'dimension' && e.button === 0) {
                 isDrawing = true;
+                
+                // Привязка к точкам объектов
                 if (snapEnabled && objects.length > 0) {
                     const snap = findSnapPoint(x, y);
                     if (snap) {
                         x = snap.x; y = snap.y; snapPoint = snap;
                     }
                 }
+                
+                // Привязка к центру координат (0, 0) — отдельная проверка
+                if (snapEnabled) {
+                    const distToOrigin = Math.sqrt(x * x + y * y);
+                    if (distToOrigin < SNAP_DISTANCE) {
+                        x = 0; y = 0;
+                    }
+                }
+                
                 startPoint = { x, y };
                 if (currentTool === 'line') currentShape = new Line(x, y, x, y);
                 else if (currentTool === 'circle') currentShape = new Circle(x, y, 0);
@@ -1516,7 +1527,7 @@
                     partSelect.appendChild(option);
                 }
             });
-            
+
             if (!hasAvailableParts) {
                 partSelect.innerHTML = '<option value="">❌ Нет доступных деталей</option>';
             }
@@ -2818,6 +2829,8 @@ if (selectedObjects.length === 0) {
 
             if (isDrawing && currentShape) {
                 let snappedX = x, snappedY = y; snapPoint = null;
+                
+                // Привязка к точкам объектов
                 if (snapEnabled && objects.length > 0) {
                     const closest = findSnapPoint(x, y, currentShape);
                     if (closest) {
@@ -2830,6 +2843,17 @@ if (selectedObjects.length === 0) {
                     }
                 } else {
                     snapIndicator.style.display = 'none';
+                }
+                
+                // Привязка к центру координат (0, 0) — отдельная проверка
+                if (snapEnabled) {
+                    const distToOrigin = Math.sqrt(x * x + y * y);
+                    if (distToOrigin < SNAP_DISTANCE) {
+                        snappedX = 0; snappedY = 0;
+                        snapIndicator.style.display = 'block';
+                        snapIndicator.style.left = (e.clientX + 10) + 'px';
+                        snapIndicator.style.top = (e.clientY + 10) + 'px';
+                    }
                 }
                 
                 if (currentTool === 'line') {
@@ -5404,7 +5428,7 @@ if (selectedObjects.length === 0) {
                     }
                 });
             });
-
+                
             // Сохраняем в кэш при каждом обновлении списка
             saveToCache();
             

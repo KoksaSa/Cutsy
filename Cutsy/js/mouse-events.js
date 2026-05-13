@@ -780,12 +780,23 @@ canvas.addEventListener('mousedown', (e) => {
         }
 
         isDrawing = true;
+        
+        // Привязка к точкам объектов
         if (snapEnabled && objects.length > 0) {
             const snap = findSnapPoint(x, y);
             if (snap) {
                 x = snap.x; y = snap.y; snapPoint = snap;
             }
         }
+        
+        // Привязка к центру координат (0, 0) — отдельная проверка
+        if (snapEnabled) {
+            const distToOrigin = Math.sqrt(x * x + y * y);
+            if (distToOrigin < SNAP_DISTANCE) {
+                x = 0; y = 0;
+            }
+        }
+        
         startPoint = { x, y };
         if (currentTool === 'line') currentShape = new Line(x, y, x, y);
         else if (currentTool === 'circle') currentShape = new Circle(x, y, 0);
