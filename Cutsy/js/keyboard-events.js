@@ -136,6 +136,65 @@ document.addEventListener('keydown', (e) => {
             render();
         }
     }
+    
+    // ═══════════════════════════════════════════════════════════
+    // ГОРЯЧИЕ КЛАВИШИ ДЛЯ ИНСТРУМЕНТОВ (Fusion 360 стиль)
+    // Поддержка английской и русской раскладок
+    // Не срабатывают, если фокус в input/textarea
+    // ═══════════════════════════════════════════════════════════
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (!document.activeElement || !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+            
+            // Функция переключения инструмента
+            function setTool(toolName, toolLabel) {
+                currentTool = toolName;
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                const btn = document.querySelector(`[data-tool="${toolName}"]`);
+                if (btn) btn.classList.add('active');
+                document.getElementById('currentTool').textContent = 'Инструмент: ' + toolLabel;
+                render();
+            }
+            
+            const key = e.key.toLowerCase();
+            
+            // L / Д — Линия
+            if (key === 'l' || key === 'д') {
+                setTool('line', 'Линия');
+            }
+            // C / С — Круг
+            else if (key === 'c' || key === 'с') {
+                setTool('circle', 'Круг');
+            }
+            // R / К — Прямоугольник
+            else if (key === 'r' || key === 'к') {
+                setTool('rect', 'Прямоугольник');
+            }
+            // P / А — Многоугольник
+            else if (key === 'p' || key === 'а') {
+                setTool('polygon', 'Многоугольник');
+            }
+            // S / Ы — Выбор
+            else if (key === 's' || key === 'ы') {
+                setTool('select', 'Выбор');
+            }
+            // E / У — Ластик
+            else if (key === 'e' || key === 'у') {
+                setTool('eraser', 'Ластик');
+            }
+            // D / В — Размер
+            else if (key === 'd' || key === 'в') {
+                setTool('dimension', 'Размер');
+            }
+            // A / Ф — Угол
+            else if (key === 'a' || key === 'ф') {
+                setTool('angle', 'Угол');
+            }
+            // T / Т — Текст
+            else if (key === 't' || key === 'т') {
+                setTool('text', 'Текст');
+            }
+        }
+    }
     // Ctrl+C / Ctrl+С - копировать выделенные детали с листа (английская/русская раскладка)
     if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'с') && (e.ctrlKey || e.metaKey) && showSheetView && selectedNestedParts.length > 0) {
         e.preventDefault();
