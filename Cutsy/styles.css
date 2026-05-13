@@ -850,3 +850,152 @@ body {
         padding: 8px 12px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   МОБИЛЬНАЯ АДАПТАЦИЯ - УЛУЧШЕНИЯ
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Предотвращение зума на iOS при двойном тапе */
+@media (pointer: coarse) {
+    a, button, input, select, textarea {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Разрешаем выделение в input */
+    input[type="text"],
+    input[type="number"],
+    textarea {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+}
+
+/* Плавная прокрутка для мобильных */
+@media (max-width: 768px) {
+    .toolbar,
+    .properties-panel,
+    #partsList,
+    .objects-list {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Увеличиваем минимальный размер кликабельных элементов */
+@media (max-width: 768px) {
+    .tool-btn,
+    .align-btn,
+    .toggle-btn,
+    .action-btn {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    /* Увеличиваем input поля для touch */
+    input[type="number"],
+    input[type="text"],
+    select {
+        font-size: 16px !important; /* Предотвращает зум на iOS */
+        padding: 12px !important;
+        min-height: 44px;
+    }
+
+    /* Увеличиваем чекбоксы и радиокнопки */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 24px;
+        height: 24px;
+        touch-action: manipulation;
+    }
+
+    /* Контекстные меню на мобильных */
+    #contextMenu,
+    #nestedInfoMenu,
+    #addPartToSheetMenu,
+    #markupRectFillMenu {
+        min-width: calc(100% - 40px) !important;
+        max-width: calc(100% - 40px) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        padding: 20px !important;
+    }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 360px) {
+    .tools-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .tool-btn {
+        min-height: 50px;
+        font-size: 9px;
+    }
+
+    .tool-btn span:not(.icon) {
+        display: none;
+    }
+
+    .tool-btn .icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Скрываем дополнительные элементы */
+    #stopwatch {
+        display: none !important;
+    }
+}
+
+/* Исправление для iPad в режиме разделенного экрана */
+@media (max-width: 500px) and (orientation: landscape) {
+    .modal-window {
+        max-height: 90vh !important;
+        margin: 10px !important;
+    }
+
+    .toolbar {
+        max-height: 50vh !important;
+    }
+}
+
+/* Адаптация статус бара для мобильных */
+@media (max-width: 480px) {
+    .status-bar {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 30px;
+        padding: 4px 8px;
+    }
+
+    .status-left,
+    .status-right {
+        flex: 1;
+        flex-wrap: wrap;
+    }
+
+    .status-item {
+        margin: 2px 0;
+    }
+}
+
+/* Улучшение отображения кнопок на touch экранах */
+@media (hover: none) and (pointer: coarse) {
+    .tool-btn:hover,
+    .align-btn:hover,
+    .toggle-btn:hover,
+    .action-btn:hover {
+        /* Отключаем hover эффекты на touch экранах */
+        background: inherit;
+    }
+
+    .tool-btn:active,
+    .align-btn:active,
+    .toggle-btn:active,
+    .action-btn:active {
+        /* Показываем активное состояние при нажатии */
+        opacity: 0.7;
+        transform: scale(0.98);
+    }
+}

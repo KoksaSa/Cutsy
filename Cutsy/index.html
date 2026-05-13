@@ -16,7 +16,9 @@
 <noscript><div><img src="https://mc.yandex.ru/watch/109146930" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <!-- /Yandex.Metrika counter -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>2D Моделирование - DXF Editor</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -533,6 +535,9 @@
     
     <!-- Подключение обработчика мыши -->
     <script src="js/mouse-events.js"></script>
+    
+    <!-- Подключение touch-событий для мобильных устройств -->
+    <script src="js/touch-events.js"></script>
     
     <!-- Подключение контекстных меню -->
     <script src="js/context-menus.js"></script>
@@ -7547,6 +7552,46 @@ document.getElementById('nestMultiParts').addEventListener('click', async () => 
         } else {
             createAccountUI();
         }
+
+        // ═══════════════════════════════════════════════════════════════
+        // МОБИЛЬНАЯ АДАПТАЦИЯ - ИНИЦИАЛИЗАЦИЯ
+        // ═══════════════════════════════════════════════════════════════
+        (function() {
+            // Проверка мобильного устройства
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                console.log('📱 [Mobile] Мобильное устройство обнаружено');
+                
+                // Добавляем класс для мобильных стилей
+                document.body.classList.add('mobile-device');
+                
+                // Предотвращаем зум по двойному тапу
+                document.addEventListener('dblclick', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+                
+                // Предотвращаем контекстное меню при long press
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // Инициализация touch событий для canvas
+                const canvas = document.getElementById('canvas');
+                if (canvas && typeof initTouchEvents === 'function') {
+                    initTouchEvents(canvas);
+                    console.log('📱 [Mobile] Touch события инициализированы');
+                }
+                
+                // Предотвращаем зум на input полях iOS
+                document.addEventListener('touchstart', function(e) {
+                    if (e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+        })();
     })();
     </script>
 
