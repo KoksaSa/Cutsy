@@ -159,6 +159,15 @@ document.addEventListener('keydown', (e) => {
             
             // L / Д — Линия
             if (key === 'l' || key === 'д') {
+                // 🔒 Проверка пробного тарифа — блокировка инструмента Линия
+                if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                    if (typeof LicenseManager.showUpgradeModal === 'function') {
+                        LicenseManager.showUpgradeModal('lineTool');
+                    } else {
+                        alert('✏️ Инструмент "Линия" недоступен в пробном периоде. Купите тариф для рисования деталей.');
+                    }
+                    return;
+                }
                 setTool('line', 'Линия');
             }
             // C / С — Круг
@@ -171,6 +180,47 @@ document.addEventListener('keydown', (e) => {
             }
             // P / А — Многоугольник
             else if (key === 'p' || key === 'а') {
+                setTool('polygon', 'Многоугольник');
+            }
+            // S / Ы — Выбор
+            else if (key === 's' || key === 'ы') {
+                setTool('select', 'Выбор');
+            }
+            // E / У — Ластик
+            else if (key === 'e' || key === 'у') {
+                setTool('eraser', 'Ластик');
+            }
+            // D / В — Размер
+            else if (key === 'd' || key === 'в') {
+                // 🔒 Проверка пробного тарифа — блокировка инструмента Размер
+                if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+                    if (typeof LicenseManager.showUpgradeModal === 'function') {
+                        LicenseManager.showUpgradeModal('dimensionTool');
+                    } else {
+                        alert('📏 Инструмент "Размер" недоступен в пробном периоде. Купите тариф для замера деталей.');
+                    }
+                    return;
+                }
+                setTool('dimension', 'Размер');
+            }
+            // A / Ф — Угол
+            else if (key === 'a' || key === 'ф') {
+                setTool('angle', 'Угол');
+            }
+            // T / Т — Текст
+            else if (key === 't' || key === 'т') {
+                setTool('text', 'Текст');
+            }
+            // C / С — Круг
+            else if (key === 'c' || key === 'с') {
+                setTool('circle', 'Круг');
+            }
+            // R / К — Прямоугольник
+            else if (key === 'r' || key === 'к') {
+                setTool('rect', 'Прямоугольник');
+            }
+            // F / З — Многоугольник
+            else if (key === 'p' || key === 'з') {
                 setTool('polygon', 'Многоугольник');
             }
             // S / Ы — Выбор
