@@ -2170,8 +2170,8 @@ if (selectedObjects.length === 0) {
                 if (currentTool === 'select' && !isDrawing) {
                     hoveredPoint = findObjectPoint(x, y);
                     render();
-                } else if (currentTool === 'dimension' || currentTool === 'line') {
-                    // Для "Размер" и "Линия" обновляем hoveredPoint даже во время создания
+                } else if (currentTool === 'dimension' || currentTool === 'line' || currentTool === 'circle') {
+                    // Для "Размер", "Линия" и "Круг" обновляем hoveredPoint даже во время создания
                     hoveredPoint = findObjectPoint(x, y);
                     render();
                 }

@@ -883,8 +883,8 @@ window.render = function render() {
     }
 
     // Подсветка точки при наведении (hover) для инструмента Select
-    // Подсветка точки при наведении (hover) для инструментов "Выбор", "Размер", "Угол" и "Линия"
-    if (hoveredPoint && !draggedPoint && (currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line')) {
+    // Подсветка точки при наведении (hover) для инструментов "Выбор", "Размер", "Угол", "Линия" и "Круг"
+    if (hoveredPoint && !draggedPoint && (currentTool === 'select' || currentTool === 'dimension' || currentTool === 'angle' || currentTool === 'line' || currentTool === 'circle')) {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';  // Зелёный цвет
         ctx.beginPath();
         ctx.arc(hoveredPoint.point.x, hoveredPoint.point.y, 4 / zoom, 0, Math.PI * 2);
