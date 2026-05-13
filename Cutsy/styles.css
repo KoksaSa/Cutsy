@@ -541,3 +541,312 @@ body {
         transform: scale(1.15);
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   МОБИЛЬНАЯ АДАПТАЦИЯ (дополнительно к index.html)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Планшеты и меньше (до 1024px) */
+@media (max-width: 1024px) {
+    .toolbar {
+        width: 240px;
+        padding: 10px;
+    }
+    
+    .properties-panel {
+        width: 200px;
+        padding: 12px;
+    }
+}
+
+/* Мобильные устройства (до 768px) */
+@media (max-width: 768px) {
+    /* Основной layout */
+    body {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .toolbar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #3c3c3c;
+        padding: 10px;
+        max-height: none;
+        min-height: auto;
+    }
+    
+    .properties-panel {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #3c3c3c;
+        padding: 12px;
+        order: 3;
+        max-height: 40vh;
+    }
+    
+    .main-area {
+        flex: 1;
+        min-height: 50vh;
+    }
+    
+    /* Инструменты */
+    .tools-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+    
+    .tool-btn {
+        min-height: 60px;
+        padding: 8px 4px;
+        font-size: 11px;
+    }
+    
+    .tool-btn .icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    /* Кнопки действий */
+    .align-btn, .toggle-btn, .action-btn {
+        padding: 12px 15px;
+        font-size: 13px;
+        margin-top: 8px;
+    }
+    
+    /* Статус бар */
+    .status-bar {
+        height: 40px;
+        padding: 0 10px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .status-left, .status-right {
+        gap: 8px;
+    }
+    
+    .status-item {
+        font-size: 11px;
+        gap: 4px;
+    }
+    
+    .status-item span {
+        font-size: 10px;
+    }
+    
+    /* Скрываем менее важные элементы на маленьких экранах */
+    .status-item:nth-child(6),
+    .status-item:nth-child(7) {
+        display: none;
+    }
+    
+    /* Панель свойств */
+    .properties-panel h3 {
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    
+    .prop-group label {
+        font-size: 11px;
+    }
+    
+    .prop-group input {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    /* Список объектов */
+    .object-item {
+        padding: 10px;
+        font-size: 12px;
+    }
+    
+    .object-item .delete-obj {
+        width: 24px;
+        height: 24px;
+        font-size: 16px;
+    }
+    
+    /* Модальные окна */
+    .modal-window {
+        max-width: 95%;
+        max-height: 90vh;
+        margin: 10px;
+    }
+    
+    .modal-header {
+        padding: 12px 15px;
+    }
+    
+    .modal-header h3 {
+        font-size: 15px;
+    }
+    
+    .modal-content {
+        padding: 15px;
+        font-size: 13px;
+    }
+    
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+    }
+    
+    /* Импорт DXF */
+    .import-file-item {
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .import-file-thumbnail {
+        width: 60px;
+        height: 45px;
+    }
+    
+    .import-file-name {
+        font-size: 12px;
+    }
+    
+    .import-file-inputs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .import-file-inputs input[type="text"],
+    .import-file-inputs input[type="number"] {
+        width: 100%;
+    }
+    
+    /* Баннер доната */
+    .donate-banner {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        padding: 16px 20px;
+    }
+    
+    .donate-text {
+        font-size: 13px;
+    }
+    
+    .donate-card {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    /* Таблицы */
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    
+    table {
+        font-size: 11px;
+    }
+    
+    th, td {
+        padding: 8px 6px;
+    }
+    
+    /* Карточки деталей */
+    .part-card {
+        padding: 10px;
+    }
+    
+    .part-name {
+        font-size: 12px !important;
+    }
+    
+    /* Навигация по листам */
+    #sheetNavigator {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+    
+    #sheetNavigator button {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    #sheetInfo {
+        font-size: 11px;
+        min-width: 80px;
+    }
+}
+
+/* Очень маленькие экраны (до 480px) */
+@media (max-width: 480px) {
+    .toolbar {
+        padding: 8px;
+    }
+    
+    .tools-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+    
+    .tool-btn {
+        min-height: 55px;
+        font-size: 10px;
+    }
+    
+    .tool-btn .icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .status-bar {
+        height: 35px;
+    }
+    
+    .status-item {
+        font-size: 10px;
+    }
+    
+    .status-item span {
+        font-size: 9px;
+    }
+    
+    /* Скрываем больше элементов статус бара */
+    .status-item:nth-child(5),
+    .status-item:nth-child(6),
+    .status-item:nth-child(7),
+    .status-item:nth-child(8) {
+        display: none;
+    }
+    
+    /* Увеличиваем отступы для touch-интерфейса */
+    .align-btn, .toggle-btn, .action-btn {
+        padding: 14px 15px;
+    }
+    
+    .prop-group input {
+        padding: 12px;
+        font-size: 15px;
+    }
+    
+    /* Модальные окна */
+    .modal-window {
+        margin: 5px;
+        max-width: 98%;
+    }
+    
+    .modal-header {
+        padding: 10px 12px;
+    }
+    
+    .modal-content {
+        padding: 12px;
+    }
+    
+    .modal-footer {
+        padding: 8px 12px;
+    }
+    
+    .modal-footer button {
+        padding: 8px 12px;
+    }
+}

@@ -14,6 +14,16 @@ function transliterate(word) {
 }
 
 function exportSheetToDXF() {
+    // 🔒 Блокировка экспорта для пробного тарифа
+    if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+        if (typeof LicenseManager.showUpgradeModal === 'function') {
+            LicenseManager.showUpgradeModal('exportDxf');
+        } else {
+            alert('🔧 Экспорт DXF недоступен в пробном периоде. Купите тариф для доступа к экспорту.');
+        }
+        return;
+    }
+
     // Сохраняем текущие детали в allSheets перед экспортом
     if (window.allSheets && window.allSheets.length > 0 && window.currentSheetIndex >= 0) {
         window.allSheets[window.currentSheetIndex].nestedParts = [...nestedParts];
@@ -288,6 +298,16 @@ function exportSheetToDXF() {
 
 // Export all sheets with BLOCK grouping
 function exportAllSheetsToDXF(allSheets) {
+    // 🔒 Блокировка экспорта для пробного тарифа
+    if (typeof LicenseManager !== 'undefined' && LicenseManager.isTrial()) {
+        if (typeof LicenseManager.showUpgradeModal === 'function') {
+            LicenseManager.showUpgradeModal('exportDxf');
+        } else {
+            alert('🔧 Экспорт DXF недоступен в пробном периоде. Купите тариф для доступа к экспорту.');
+        }
+        return;
+    }
+
     const totalParts = allSheets.reduce((s, sh) => s + sh.nestedParts.length, 0);
     console.log(`\n📤 [ЭКСПОРТ DXF] Все листы`);
     console.log(`   📄 Листов: ${allSheets.length}`);
