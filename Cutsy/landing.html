@@ -1,0 +1,710 @@
+<!-- S: SilikinK Project -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109146930', 'ym');
+
+    ym(109146930, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109146930" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- ═══ SEO META ═══ -->
+    <title>Cutsy CAD PRO — Автоматическая раскладка деталей для ЧПУ | Экономия 40% материала</title>
+    <meta name="title" content="Cutsy CAD PRO — Автоматическая раскладка деталей для ЧПУ | Экономия 40% материала">
+    <meta name="description" content="Профессиональное ПО для автоматического раскроя металла, фанеры, ДСП. Импорт DXF, многостраничный nesting, фото-остатки. Экономия до 40% материала. Работает в браузере.">
+    <meta name="keywords" content="раскладка деталей, nesting программа, раскрой металла, ЧПУ программа, DXF редактор, оптимизация раскроя, CypCut альтернатива, лазерная резка, плазменная резка, раскрой фанеры, CAD программа, sheet metal nesting, CNC software">
+    <meta name="author" content="SilikinK">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Russian">
+    <meta name="revisit-after" content="7 days">
+    <link rel="canonical" href="https://cutsypro.ru/landing.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cutsypro.ru/landing.html">
+    <meta property="og:site_name" content="Cutsy CAD PRO">
+    <meta property="og:title" content="Cutsy CAD PRO — Автоматическая раскладка деталей для ЧПУ">
+    <meta property="og:description" content="Экономия до 40% материала. Импорт DXF, многостраничный nesting, фото-остатки. Работает в браузере.">
+    <meta property="og:image" content="https://cutsypro.ru/og-image-placeholder.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="ru_RU">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cutsy CAD PRO — Автоматическая раскладка деталей для ЧПУ">
+    <meta name="twitter:description" content="Экономия до 40% материала. Импорт DXF, многостраничный nesting.">
+    <meta name="twitter:image" content="https://cutsypro.ru/og-image-placeholder.png">
+
+    <!-- Hreflang -->
+    <link rel="alternate" hreflang="ru" href="https://cutsypro.ru/landing.html">
+    <link rel="alternate" hreflang="en" href="https://cutsypro.ru/landing.html?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://cutsypro.ru/landing.html">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="splash.js" defer></script>
+    
+    <!-- Schema.org SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Cutsy CAD PRO",
+        "url": "https://cutsypro.ru",
+        "description": "Профессиональная программа для автоматической раскладки деталей на листе (Nesting). Импорт/экспорт DXF, оптимизация раскроя.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "7490",
+            "priceCurrency": "RUB"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "127"
+        }
+    }
+    </script>
+    
+</head>
+<body>
+    <div class="toolbar">
+        <h3 data-i18n="toolbar_title">Инструменты</h3>
+        <div class="tools-grid">
+            <button class="tool-btn active" data-tool="select" title="S / Ы — Выбрать">
+                <span class="icon"><svg width="20" height="20"><path d="M5 2 L15 10 L8 10 Z" fill="#fff" stroke="#fff"/></svg></span>
+                <span data-i18n="tool_select">Выбор</span>
+            </button>
+            <button class="tool-btn" data-tool="line" title="L / Д — Линия">
+                <span class="icon"><svg width="20" height="20"><line x1="4" y1="16" x2="16" y2="4" stroke="#fff" stroke-width="2"/></svg></span>
+                <span data-i18n="tool_line">Линия</span>
+            </button>
+            <button class="tool-btn" data-tool="circle" title="C / С — Круг">
+                <span class="icon"><svg width="20" height="20"><circle cx="10" cy="10" r="7" stroke="#fff" stroke-width="2"/></svg></span>
+                <span data-i18n="tool_circle">Круг</span>
+            </button>
+            <button class="tool-btn" data-tool="rect" title="R / К — Прямоугольник">
+                <span class="icon"><svg width="20" height="20"><rect x="3" y="5" width="14" height="10" stroke="#fff" stroke-width="2"/></svg></span>
+                <span data-i18n="tool_rect">Прямоуг</span>
+            </button>
+            <button class="tool-btn" data-tool="polygon" title="P / З — Многоугольник">
+                <span class="icon"><svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" stroke="#fff" stroke-width="2"/></svg></span>
+                <span data-i18n="tool_polygon">Многоуг</span>
+            </button>
+            <button class="tool-btn" data-tool="eraser" title="E / У — Ластик">
+                <span class="icon">
+                    <svg width="20" height="20">
+                        <rect x="4" y="4" width="12" height="12" fill="#ff6b6b" stroke="#fff" stroke-width="2"/>
+                        <line x1="6" y1="6" x2="14" y2="14" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                </span>
+                <span data-i18n="tool_eraser">Ластик</span>
+            </button>
+            <button class="tool-btn" data-tool="dimension" title="D / В — Размер">
+                <span class="icon">
+                    <svg width="20" height="20">
+                        <line x1="3" y1="10" x2="17" y2="10" stroke="#fff" stroke-width="2"/>
+                        <line x1="3" y1="5" x2="3" y2="15" stroke="#fff" stroke-width="2"/>
+                        <line x1="17" y1="5" x2="17" y2="15" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                </span>
+                <span data-i18n="tool_dimension">Размер</span>
+            </button>
+            <button class="tool-btn" data-tool="angle" title="A / Ф — Угол">
+                <span class="icon">
+                    <svg width="20" height="20">
+                        <path d="M 3 17 L 3 3 L 17 3" stroke="#fff" stroke-width="2" fill="none"/>
+                        <path d="M 3 13 A 10 10 0 0 1 7 3" stroke="#fff" stroke-width="1.5" fill="none"/>
+                    </svg>
+                </span>
+                <span data-i18n="tool_angle">Угол</span>
+            </button>
+            <button class="tool-btn" data-tool="text" title="T / Т — Текст">
+                <span class="icon">
+                    <svg width="20" height="20">
+                        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="14" font-weight="bold">A</text>
+                    </svg>
+                </span>
+                <span data-i18n="tool_text">Текст</span>
+            </button>
+        </div>
+
+        <h3 style="margin-top: 20px;" data-i18n="parts_title">📋 Детали</h3>
+        <div style="display:flex;gap:4px;margin-top:8px;">
+            <button class="align-btn" id="nestMultiParts" style="flex:1;background:#5a4a7a;padding:4px 3px;font-size:14px;" data-i18n="btn_nesting_all" title="Разложить все детали">📑</button>
+            <button class="align-btn" id="setPricesBtn" style="flex:1;background:#2d5a7a;padding:4px 3px;font-size:14px;" title="Установить цены">💰</button>
+            <button class="align-btn" id="exportPdf" style="flex:1;background:#7a5a2d;padding:4px 3px;font-size:14px;" data-i18n="btn_export_pdf_report" title="Отчёт PDF">📊</button>
+        </div>
+        
+        <!-- Фильтр по толщине -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;">
+            <select id="thicknessFilter" style="flex:1;padding:6px;background:#2a2a2a;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+                <option value="all">Все толщины</option>
+            </select>
+            <button id="selectAllThickness" style="padding:3px 6px;background:#2d7d2d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" title="Выбрать все детали">✓ Все</button>
+            <button id="deselectAllThickness" style="padding:3px 6px;background:#c72e2e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" title="Снять все галочки">✗ Снять</button>
+        </div>
+        
+        <div id="partsList"></div>
+        
+        <h3 style="margin-top: 12px;" data-i18n="sheet_title">📐 Лист</h3>
+        <select id="sheetSize" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+            <option value="1250x2500" style="font-weight:bold;">1250 × 2500 мм (стандарт)</option>
+            <option value="1000x2000" style="font-weight:bold;">1000 × 2000 мм (стандарт)</option>
+            <option value="1500x1500" style="font-weight:bold;">1500 × 1500 мм (стандарт)</option>
+            <option value="1500x3000" style="font-weight:bold;">1500 × 3000 мм (стандарт)</option>
+            <option disabled>────────────────────</option>
+            <option value="custom">➕ Свой размер</option>
+            <option disabled>────────────────────</option>
+            <option value="photo-remnant" style="font-weight:bold;">📸 Загрузить фото</option>
+        </select>
+
+        <!-- Скрытый input для загрузки фото остатка -->
+        <input type="file" id="sheetRemnantInput" accept="image/*" style="display:none;">
+        <div id="customSheetSize" style="display:none;margin-top:8px;gap:6px;flex-wrap:wrap;">
+            <input type="number" id="sheetWidth" placeholder="Ширина" value="1250" style="flex:1;min-width:80px;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+            <input type="number" id="sheetHeight" placeholder="Высота" value="2500" style="flex:1;min-width:80px;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+            <button id="saveCustomSheet" style="padding:6px 12px;background:#2d7a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" title="Сохранить размер">💾</button>
+        </div>
+        <div id="customSheetsList" style="margin-top:8px;"></div>
+        <!-- Остаток листа с кнопкой удаления -->
+        <div id="remnantSheetItem" style="display:none;margin-top:8px;padding:8px;background:#1e1e1e;border:1px solid #3c3c3c;border-radius:4px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span id="remnantSheetName" style="color:#007acc;font-weight:bold;font-size:12px;">📸 Остаток листа</span>
+                <button id="deleteRemnant" style="background:#7a2d2d;color:#fff;border:none;width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:14px;" title="Удалить остаток листа">×</button>
+            </div>
+            <button id="selectRemnant" style="width:100%;margin-top:6px;padding:6px;background:#2d5a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;">👁️ Выбрать остаток</button>
+        </div>
+        <button class="align-btn" id="showSheet" style="margin-top:8px;" data-i18n="btn_show_sheet">👁️ Показать лист</button>
+        <button class="align-btn" id="addSheet" style="margin-top:8px;background:#2d5a7a;" data-i18n="btn_add_sheet" title="Add new sheet">📄 Добавить лист</button>
+        <button class="align-btn" id="clearNesting" style="margin-top:8px;background:#7a2d2d;" data-i18n="btn_clear_nesting" title="Clear nesting from sheet">🗑️ Очистить раскладку</button>
+
+        <h3 style="margin-top: 12px;" data-i18n="gaps_title">📐 Зазоры</h3>
+        <div style="margin-top:8px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;margin-top:8px;" data-i18n="edge_gap_label">📐 Отступ от края листа (мм):</label>
+            <input type="number" id="edgeGap" value="3" min="0" max="100" step="0.5" style="width:100%;padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+        </div>
+
+        <h3 style="margin-top: 12px;" data-i18n="actions_title">⚙️ Действия</h3>
+        <button class="action-btn" id="importDxf" data-i18n="btn_import_dxf">📂 Импорт DXF</button>
+        <button class="action-btn" id="exportDxf" data-i18n="btn_export_dxf">📄 Экспорт раскладки (DXF)</button>
+        <button class="action-btn" id="exportDrawingPdf" data-i18n="btn_export_pdf_drawing">🖼️ Чертеж PDF</button>
+        <button class="action-btn danger" id="clearAll" data-i18n="btn_clear_all">🗑️ Очистить всё</button>
+    </div>
+
+    <!-- Скрытый input для загрузки DXF -->
+    <input type="file" id="dxfInput" accept=".dxf" style="display:none;">
+    
+    <!-- Скрытый input для импорта DXF (мульти-выбор, макс 10 файлов) -->
+    <input type="file" id="importDXFInput" accept=".dxf" multiple style="display:none;">
+
+    <!-- Контекстное меню для создания детали -->
+    <div id="contextMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:280px;">
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="ctx_create_part">📦 Создать деталь</h4>
+
+        <!-- Информация о детали -->
+        <div id="contextInfoContent" style="color:#aaa;font-size:11px;line-height:1.6;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;"></div>
+
+        <div style="margin-bottom:10px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_name_label">📝 Имя детали:</label>
+            <input type="text" id="contextPartName" value="" data-i18n-placeholder="part_name_placeholder" placeholder="Например: Деталь 1" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_quantity_label">📋 Количество деталей (шт):</label>
+            <input type="number" id="contextPartQuantity" value="1" min="1" max="9999" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;" data-i18n="part_thickness_label">📏 Толщина металла (мм):</label>
+            <select id="contextPartThickness" style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;">
+                <option value="0.5">0.5 мм</option>
+                <option value="0.7">0.7 мм</option>
+                <option value="0.8" selected>0.8 мм</option>
+                <option value="1">1 мм</option>
+                <option value="1.2">1.2 мм</option>
+                <option value="1.5">1.5 мм</option>
+                <option value="2">2 мм</option>
+                <option value="2.5">2.5 мм</option>
+                <option value="3">3 мм</option>
+                <option value="4">4 мм</option>
+                <option value="5">5 мм</option>
+                <option value="6">6 мм</option>
+                <option value="8">8 мм</option>
+                <option value="10">10 мм</option>
+            </select>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:4px;">📐 Отступ между деталями (мм):</label>
+            <input type="number" id="contextPartSpacing" value="3" min="-500" max="500" step="0.5" 
+                style="width:100%;padding:8px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;"
+                title="Отрицательное значение = детали могут накладываться друг на друга">
+            <small style="color:#888;font-size:10px;">⚠️ Отрицательное значение разрешает пересечение деталей (до -500 мм)</small>
+        </div>
+        <div style="margin-bottom:10px;">
+            <button id="contextMenuExportDxf" style="width:100%;padding:8px 12px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="btn_export_dxf_context" title="Export selected objects to DXF">📄 Export DXF</button>
+        </div>
+        <div style="margin-bottom:10px;">
+            <button id="contextMenuCreateRemnant" style="width:100%;padding:8px 12px;background:#2d7a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="btn_create_remnant" title="Create sheet remnant from selected lines">📸 Create Remnant</button>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="contextMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="contextMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="ok">OK</button>
+        </div>
+    </div>
+
+    <!-- Контекстное меню для информации о детали на листе -->
+    <div id="nestedInfoMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:280px;">
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="nested_info_title">📊 Информация о детали</h4>
+        <div id="nestedInfoContent" style="color:#ccc;font-size:12px;line-height:1.8;"></div>
+        <div style="margin-top:15px;padding-top:10px;border-top:1px solid #3c3c3c;display:flex;gap:8px;justify-content:flex-end;">
+            <button id="nestedInfoClose" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="close">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Контекстное меню для добавления деталей на лист -->
+    <div id="addPartToSheetMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:320px;max-height:400px;overflow-y:auto;">
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="add_parts_title">📦 Добавить детали на лист</h4>
+        <div id="addPartList" style="margin-bottom:15px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="addPartMenuCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="addPartMenuOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="add">Добавить</button>
+        </div>
+    </div>
+
+    <!-- Меню заполнения прямоугольника разметки -->
+    <div id="markupRectFillMenu" style="display:none;position:fixed;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;min-width:350px;">
+        <h4 style="margin:0 0 10px 0;color:#007acc;font-size:13px;" data-i18n="fill_remnant_title">📦 Заполнить остаток</h4>
+        <div id="markupRectInfo" style="color:#aaa;font-size:11px;margin-bottom:10px;padding:8px;background:#1e1e1e;border-radius:4px;"></div>
+        
+        <!-- Выбор детали -->
+        <div style="margin-bottom:10px;">
+            <label style="display:block;color:#aaa;font-size:11px;margin-bottom:4px;" data-i18n="Выберите деталь">Выберите деталь:</label>
+            <select id="markupRectPartSelect" style="width:100%;padding:8px;background:#1e1e1e;color:#fff;border:1px solid #3c3c3c;border-radius:4px;font-size:12px;">
+                <!-- Заполняется динамически -->
+            </select>
+        </div>
+        
+        <!-- Количество -->
+        <div style="margin-bottom:15px;">
+            <label style="display:block;color:#aaa;font-size:11px;margin-bottom:4px;" data-i18n="Количество">Количество:</label>
+            <input type="number" id="markupRectQuantity" value="1" min="1" max="9999"
+                style="width:100%;padding:8px;background:#1e1e1e;color:#fff;border:1px solid #3c3c3c;border-radius:4px;font-size:12px;">
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="markupRectCancel" style="padding:6px 12px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="cancel">Отмена</button>
+            <button id="markupRectOk" style="padding:6px 12px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_place">🚀 Разместить</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для импорта DXF (мульти-выбор) -->
+    <div id="importDXFDialog" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#252526;border:1px solid #3c3c3c;border-radius:8px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.7);z-index:10001;min-width:800px;max-width:95vw;max-height:90vh;overflow:hidden;">
+        <h3 style="margin:0 0 15px 0;color:#007acc;font-size:16px;" data-i18n="dxf_import_title">📂 Импорт деталей из DXF</h3>
+
+        <!-- Сообщение о лимите файлов -->
+        <div id="importFileLimitWarning" style="display:none;background:#7a2d2d;color:#fff;padding:10px;border-radius:4px;margin-bottom:15px;font-size:12px;" data-i18n="dxf_import_limit_warning">
+            ⚠️ Максимум 20 файлов. Выберите не более 20 файлов DXF.
+        </div>
+
+        <!-- Список файлов с миниатюрами -->
+        <div id="importFileList" style="max-height:400px;overflow-y:auto;margin-bottom:15px;border:1px solid #3c3c3c;border-radius:4px;background:#1e1e1e;">
+            <!-- Сюда будут добавляться элементы списка через JS -->
+            <div style="padding:20px;text-align:center;color:#888;font-size:12px;" data-i18n="dxf_import_select_files">Выберите файлы DXF для импорта</div>
+        </div>
+
+        <!-- Итоговая информация -->
+        <div id="importSummary" style="background:#1e1e1e;padding:10px;border-radius:4px;margin-bottom:15px;font-size:12px;color:#ccc;display:none;">
+            <span style="color:#007acc;font-weight:bold;" data-i18n="dxf_import_summary">📊 Итого:</span>
+            <span id="importSummaryCount">0</span> <span data-i18n="dxf_import_files_selected">файлов выбрано</span>,
+            <span id="importSummaryParts">0</span> <span data-i18n="dxf_import_parts_will">деталей будет импортировано</span>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button id="importDXFSelectAll" style="padding:4px 8px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="dxf_import_select_all">✅ Выбрать все</button>
+            <button id="importDXFDeselectAll" style="padding:4px 8px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="dxf_import_deselect_all">❌ Снять все</button>
+            <div style="flex:1;"></div>
+            <button id="importDXFOk" style="padding:10px 20px;background:#007acc;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n="dxf_import_selected">📥 Импортировать выбранные</button>
+            <button id="importDXFCancel" style="padding:10px 20px;background:#3c3c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" data-i18n="cancel">Отмена</button>
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="canvas"></canvas>
+
+            <!-- Баннер доната 
+            <div class="donate-banner" id="donateBanner">
+                <div class="donate-content">
+                    <button class="donate-close" id="donateClose" title="Закрыть">×</button>
+                    <div class="donate-text">
+                        <span class="donate-icon">💙</span><br>
+                        <strong>Поддержите развитие донатом</strong><br>
+                        <span class="donate-card">🏦 Т-Банк: <strong>2200 7010 8281 9795</strong></span><br>
+                        <span class="donate-hint">Переведите любую сумму и напишите мне:<br>
+                        <a href="https://t.me/SilikinK" target="_blank" style="color:#4fc3f7;text-decoration:none;font-weight:bold;">📩 @SilikinK</a></span>
+                    </div>
+                </div>
+            </div> -->
+
+            <div class="dimension-label" id="dimensionLabel" style="display: none;">0</div>
+            <div class="snap-indicator" id="snapIndicator" style="display: none;">🧲 Привязка</div>
+
+            <!-- Панель размеров -->
+            <div style="position:absolute;top:10px;left:10px;background:#252526;border:1px solid #3c3c3c;border-radius:4px;padding:8px;display:flex;gap:6px;align-items:center;z-index:100;">
+                <button class="align-btn" id="autoDimension" style="width:auto;margin:0;padding:8px 12px;" data-i18n="btn_auto_dimensions">📏 Авто-размеры</button>
+                <button class="align-btn" id="clearDimensions" style="width:auto;margin:0;padding:8px 12px;background:#7a2d2d;" data-i18n="btn_clear_dimensions">🗑️ Скрыть размеры</button>
+                <div style="width:1px;height:20px;background:#3c3c3c;margin:0 2px;"></div>
+                <!-- Секундомер -->
+                <div id="stopwatch" style="display:flex;align-items:center;gap:4px;">
+                    <span id="stopwatchDisplay" style="font-family:'Consolas',monospace;font-size:16px;font-weight:bold;color:#00e676;min-width:70px;text-align:center;background:#1a1a1a;padding:4px 8px;border-radius:4px;border:1px solid #333;">00:00</span>
+                    <button id="stopwatchToggle" style="background:#2d7d2d;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold;" title="Старт/Стоп">▶</button>
+                    <button id="stopwatchReset" style="background:#555;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold;" title="Сброс">↺</button>
+                </div>
+                <div style="width:1px;height:20px;background:#3c3c3c;margin:0 2px;"></div>
+                <button id="langToggle" style="background:#3c3c3c;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;" data-i18n="lang_ru" title="Switch language">RU</button>
+            </div>
+
+            <!-- Навигация по листам (под листом) -->
+            <div id="sheetNavigator" style="position:absolute;bottom:10px;right:10px;background:#252526;border:1px solid #3c3c3c;border-radius:6px;padding:8px 12px;display:none;gap:10px;align-items:center;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                <button id="prevSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n-title="prev_sheet" title="Предыдущий лист">⏮️</button>
+                <span id="sheetInfo" style="color:#fff;font-size:13px;font-weight:bold;min-width:100px;text-align:center;" data-i18n="sheet_nav_info">Лист 1 из 1</span>
+                <button id="nextSheet" style="background:#3c3c3c;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;" data-i18n-title="next_sheet" title="Следующий лист">⏭️</button>
+                <div style="width:1px;height:20px;background:#3c3c3c;margin:0 4px;"></div>
+                <button id="resizeSheet" style="background:#4792c8;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_resize_sheet" title="Изменить размер листа">📐</button>
+                <button id="deleteSheet" style="background:#ff5252;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;" data-i18n="btn_delete_sheet" title="Удалить лист">🗑️</button>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-item"><span>📍</span><span id="coords">X: 0, Y: 0</span></div>
+                <div class="status-item"><span>🔧</span><span id="currentTool">Инструмент: Выбрать</span></div>
+                <div class="status-item"><span>📐</span><span id="objectCount">Объектов: 0</span></div>
+                <div class="status-item"><span>🔲</span><span id="selectedCount">Выбрано: 0</span></div>
+                <div class="status-item" id="editingPartIndicator" style="display:none;"><span>✏️</span><span id="editingPartName"></span></div>
+                <div class="status-item"><span>↩️</span><span id="undoStack">История: 0</span></div>
+            </div>
+            <div class="status-right">
+                                <div class="status-item" style="color:#888;font-size:11px;margin-top:4px;">
+                                </div>
+                <div class="status-item" id="nestedSelectInfo" style="display:none;background:#007acc;padding:2px 8px;border-radius:4px;"><span>🔲</span><span id="nestedSelectedCount">Выделено деталей: 0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="properties-panel">
+        <h3 data-i18n="properties_title">Свойства</h3>
+
+        <!-- Привязки и ортогональность (видны только при рисовании линии) -->
+        <div id="snapOrthoTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
+            <button class="toggle-btn active" id="toggleSnap" style="width:100%;margin-bottom:8px;">🧲 Привязки: ВКЛ</button>
+            <button class="toggle-btn" id="toggleOrtho" style="width:100%;">📐 Ортогональность: ВЫКЛ</button>
+        </div>
+
+        <!-- Кнопка наложения деталей (видна только когда показан лист) -->
+        <div id="overlapTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="danger_zone_label">⚠️ Зона опасности:</label>
+            <button class="action-btn" id="toggleOverlap" style="width:100%;background:#2d7a2d;" data-i18n="btn_nesting_overlap_off" title="Allow parts to overlap during nesting">🚫 Пересечение деталей: ВЫКЛ</button>
+        </div>
+
+        <!-- Кнопки отражения и поворота детали (видны только когда выбрана деталь на листе) -->
+        <div id="nestedPartTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="rotation_label">🔄 Поворот:</label>
+            <button class="action-btn" id="rotatePartCCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_ccw_nested">↺ Повернуть против часовой</button>
+            <button class="action-btn" id="rotatePartCW" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_cw_nested">↻ Повернуть по часовой</button>
+            <button class="action-btn" id="rotatePartPrecise" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_rotate_precise">🎯 Точное вращение</button>
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="reflection_label">🪞 Отражение:</label>
+            <button class="action-btn" id="flipPartX" style="width:100%;margin-bottom:8px;background:#5a4a7a;" data-i18n="btn_flip_x_nested">↔️ Отразить по X</button>
+            <button class="action-btn" id="flipPartY" style="width:100%;background:#5a4a7a;" data-i18n="btn_flip_y_nested">↕️ Отразить по Y</button>
+
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="join_label">🔗 Соединение:</label>
+            <button class="action-btn" id="joinSelectedParts" style="width:100%;background:#2d7a5a;" data-i18n="btn_join_selected" title="Join selected parts in one cut">🔗 Соединить выбранные</button>
+            <button class="action-btn" id="alignSelectedParts" style="width:100%;background:#2d6a7a;margin-top:6px;" data-i18n="btn_align_selected" title="Выровнять выбранные детали с отступом">Выровнять выбранное</button>
+            
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="diagonal_layout_label">📐 Диагональная раскладка:</label>
+            <button class="toggle-btn" id="diagonalLayoutBtn" style="width:100%;">📐 Диагональная раскладка: ВЫКЛ</button>
+
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;margin-top:12px;" data-i18n="snake_layout_label">🐍 Змеевидная раскладка:</label>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <input type="number" id="snakeKerf" value="0.5" step="0.1" min="0" max="10"
+                    style="flex:1;background:#2d2d2d;color:#fff;border:1px solid #555;border-radius:4px;padding:4px 8px;font-size:12px;"
+                    title="Толщина реза (kerf) в мм">
+                <span style="color:#aaa;font-size:11px;line-height:28px;">мм</span>
+            </div>
+            <button class="action-btn" id="snakeLayoutBtn" style="width:100%;background:#2d5a7a;" data-i18n="btn_snake_layout" title="Змеевидная раскладка для круглых деталей">🐍 Змеевидная раскладка</button>
+        </div>
+
+        <!-- Кнопка разметки остатка (видна только когда показан лист) -->
+        <div id="markupRectTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;" data-i18n="markup_remnant_label">📐 Разметка остатка:</label>
+            <div style="position:relative;">
+                <button class="action-btn" id="toggleMarkupRectRight" style="width:100%;background:#5a4a2d;" data-i18n="btn_markup_remnant" title="Режим разметки остатка">⬜ Разметка остатка</button>
+                <button id="markupModeDropdown" style="position:absolute;right:0;top:0;width:30px;height:100%;background:#6a5a3d;border:none;color:#fff;cursor:pointer;font-size:14px;border-left:1px solid #5a4a2d;">▼</button>
+            </div>
+            <div id="markupModeMenu" style="display:none;position:absolute;background:#2d2d2d;border:1px solid #3c3c3c;border-radius:4px;z-index:1000;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                <div style="padding:8px 12px;color:#aaa;font-size:11px;border-bottom:1px solid #3c3c3c;">Выберите тип:</div>
+                <div style="padding:8px 12px;color:#fff;cursor:pointer;" data-mode="rect" onmouseover="this.style.background='#3c3c3c'" onmouseout="this.style.background=''">▢ Прямоугольник</div>
+                <div style="padding:8px 12px;color:#fff;cursor:pointer;" data-mode="circle" onmouseover="this.style.background='#3c3c3c'" onmouseout="this.style.background=''">⭕ Круг</div>
+            </div>
+            <button class="action-btn" id="clearMarkupRects" style="width:100%;margin-top:8px;background:#5a4a2d;" data-i18n="btn_clear_markup" title="Clear all markup rectangles">🗑️ Очистить разметку</button>
+        </div>
+
+        <!-- Кнопка обрезки остатка (видна только когда показан лист) -->
+        <div id="cutRemnantTools" style="display:none;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #3c3c3c;">
+            <label style="color:#aaa;font-size:11px;display:block;margin-bottom:8px;">✂️ Обрезка остатка:</label>
+            <button class="action-btn" id="toggleCutRemnant" style="width:100%;background:#7a5a2d;" title="Показать/скрыть линию обрезки">✂️ Линия обрезки</button>
+        </div>
+        
+        <div id="multiSelectInfo" class="multi-select-info" style="display: none;">
+            🔲 Выбрано объектов: <span id="multiCount">0</span><br>
+            <small>Перетащите для перемещения</small><br>
+            <button id="flipSelectionBtn" style="width:100%;margin-top:6px;padding:6px 12px;background:#5a4a7a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">🪞 Отразить (создать копию)</button>
+        </div>
+        <div id="noSelection" style="color: #888; font-size: 12px; text-align: center; padding: 20px;">
+            <p data-i18n="select_object_to_edit">Выберите объект для редактирования</p>
+        </div>
+        <div id="propertiesForm" style="display: none;">
+            <div class="prop-group">
+                <label data-i18n="object_type_label">Тип объекта</label>
+                <input type="text" id="objType" disabled>
+            </div>
+            <div id="lineProps" class="prop-group" style="display: none;">
+                <label>📏 Длина линии (Enter для применения)</label>
+                <input type="number" id="lineLength" step="1" min="1">
+            </div>
+            <div id="circleProps" class="prop-group" style="display: none;">
+                <label>⭕ Диаметр круга (Enter для применения)</label>
+                <input type="number" id="circleD" step="1" min="1">
+            </div>
+            <div id="rectProps" class="prop-group" style="display: none;">
+                <label data-i18n="width_label">📐 Ширина (Enter для применения)</label>
+                <input type="number" id="rectW" step="1" min="1">
+                <label data-i18n="height_label">📐 Высота (Enter для применения)</label>
+                <input type="number" id="rectH" step="1" min="1">
+            </div>
+            <div id="polygonProps" class="prop-group" style="display: none;">
+                <label>⬡ Количество сторон (Enter для применения)</label>
+                <input type="number" id="polygonSides" step="1" min="3" max="20">
+                <label>⬡ Радиус (Enter для применения)</label>
+                <input type="number" id="polygonRadius" step="1" min="1">
+            </div>
+            <div id="dimensionProps" class="prop-group" style="display: none;">
+                <label>📏 Значение размера</label>
+                <input type="number" id="dimensionValue" step="1" min="1">
+                <label style="margin-top:12px;">📐 Угол размерной линии (°)</label>
+                <input type="number" id="dimensionAngle" step="1" min="0" max="360" value="0" placeholder="0 = горизонтально">
+                <button class="action-btn success" id="applyDimensionAngle" style="margin-top:6px;padding:6px;background:#2d7d2d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">✓ Применить угол</button>
+                <button class="action-btn danger" id="deleteDimension" style="margin-top: 8px;">🗑️ Удалить размер</button>
+            </div>
+            <div id="dimensionEditProps" class="prop-group" style="display: none;">
+                <label>📏 Размерная линия (Enter для применения)</label>
+                <input type="number" id="dimensionEditValue" step="1" min="1">
+                <button class="action-btn danger" id="deleteDimensionEdit" style="margin-top: 8px;">🗑️ Удалить</button>
+            </div>
+            <div id="edgeProps" class="prop-group" style="display: none;">
+                <label>📏 Длина грани (Enter для применения)</label>
+                <input type="number" id="edgeLength" step="1" min="1">
+                <button class="align-btn" id="makeParallelToEdge" style="margin-top: 8px; background:#2d5a7a;">∥️ Параллельно грани</button>
+            </div>
+            <div id="textProps" class="prop-group" style="display: none;">
+                <label>🔤 Текст надписи (Enter для применения)</label>
+                <input type="text" id="textContent" style="padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;">
+                <label style="margin-top:8px;">📏 Размер шрифта (Enter для применения)</label>
+                <input type="number" id="textFontSize" step="1" min="8" max="100" style="padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;">
+            </div>
+            
+            <!-- Блок выравнивания для линий -->
+            <div id="lineAlignProps" style="display: none;margin-top:15px;padding-top:15px;border-top:1px solid #3c3c3c;">
+                <h4 style="color:#007acc;font-size:12px;margin:0 0 10px 0;">⚖️ Выравнивание линии</h4>
+                <button class="align-btn" id="alignHProp">↔️ По горизонтали (X)</button>
+                <button class="align-btn" id="alignVProp">↕️ По вертикали (Y)</button>
+                <button class="align-btn" id="alignParallelProp">∥️ Параллельно</button>
+                <button class="align-btn" id="alignPerpendicularProp">⊥️ Перпендикулярно</button>
+            </div>
+            
+            <button class="action-btn danger" id="deleteObj" style="margin-top: 15px;">🗑️ Удалить объект</button>
+        </div>
+        
+    <!-- flip-selection-btn.js -->
+    <script src="js/flip-selection-btn.js?v=3.27"></script>
+
+        <h3 style="margin-top: 20px;" data-i18n="objects_title">Объекты</h3>
+        <div class="objects-list" id="objectsList"></div>
+    </div>
+
+    <!-- Подключение алгоритма раскладки (Nesting) - ДО основного скрипта -->
+    <script src="flip-nested.js?v=3.27"></script>
+
+    <!-- Подключение экспорта SVG (раскладка на листе) -->
+    <script src="svg-export.js?v=3.27"></script>
+
+    <!-- Подключение экспорта деталей в SVG -->
+    <script src="js/detail-export.js?v=3.27"></script>
+
+    <!-- Подключение классов фигур -->
+    <script src="shapes.js?v=3.27"></script>
+
+    <!-- Подключение UI функций -->
+    <script src="ui-functions.js?v=3.27"></script>
+
+    <!-- Подключение функций отрисовки -->
+    <script src="render.js?v=3.27"></script>
+
+    <!-- Подключение функций привязок -->
+    <script src="snapping.js?v=3.27"></script>
+
+    <!-- Подключение функций размеров -->
+    <script src="dimensions.js?v=3.27"></script>
+
+    <!-- Подключение библиотеки DXF парсера -->
+<script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js"></script>
+<!-- Подключение глобальных переменных (СНАЧАЛА globals.js!) -->
+<script src="js/globals.js?v=3.27"></script>
+<!-- Подключение конфигурации производительности -->
+<script src="js/config.js?v=3.27"></script>
+<!-- ✅ Подключение лицензионного менеджера (ПЕРЕД основным кодом) -->
+<script src="js/license.js?v=3.27"></script>
+<!-- ✅ Инициализация EmailJS -->
+    <!-- emailjs-init.js -->
+    <script src="js/emailjs-init.js?v=3.27"></script>
+
+<!-- ✅ Подключение проверки лицензии при запуске -->
+<script src="js/license-gate.js?v=3.27"></script>
+<!-- Подключение фото-остатка листа (ДО nesting.js) -->
+<script src="js/sheet-remnant.js?v=3.27"></script>
+
+<!-- ✅ Подключение алгоритма раскладки (NFP) -->
+<script src="js/nesting/nesting.js?v=3.34"></script>
+<!-- ✅ Подключение змеевидной раскладки -->
+<script src="snake-layout.js?v=3.35"></script>
+<!-- Подключение переводов -->
+<script src="translations.js?v=3.27"></script>
+
+    <!-- Подключение импорта DXF -->
+    <script src="dxf-import.js?v=3.27"></script>
+
+    <!-- Подключение обработчиков импорта DXF -->
+    <script src="dxf-import-ui.js?v=3.27"></script>
+
+    <!-- Подключение State Management -->
+    <script src="js/store.js?v=3.27"></script>
+
+    <!-- Подключение валидации -->
+    <script src="js/validators.js?v=3.27"></script>
+
+    <!-- Подключение звуковых оповещений -->
+    <script src="js/sound.js?v=3.27"></script>
+    
+    <!-- Подключение соединения деталей -->
+    <script src="js/join-parts.js?v=3.27"></script>
+
+    <!-- Обработчик клавиатуры -->
+    <script src="js/keyboard-events.js?v=3.34"></script>
+
+    <!-- Подключение обработчика мыши -->
+    <script src="js/mouse-events.js?v=3.29"></script>
+    
+    <!-- Подключение touch-событий для мобильных устройств -->
+    <script src="js/touch-events.js?v=3.27"></script>
+    
+    <!-- Подключение контекстных меню -->
+    <script src="js/context-menus.js?v=3.27"></script>
+
+    <!-- Подключение экспорта PDF отчёта -->
+    <script src="pdf-report.js?v=3.27"></script>
+
+    <!-- Подключение взаимного исключения цен за кг и м² -->
+    <script src="pricing-mutual-exclusion.js?v=3.27"></script>
+
+    <!-- Подключение системы Undo/Redo -->
+    <script src="js/undo-redo.js?v=3.34"></script>
+
+    <!-- Подключение отражения выделенных объектов -->
+    <script src="flip-selection.js?v=3.27"></script>
+
+    <!-- geometry-utils.js -->
+    <script src="js/geometry-utils.js?v=3.27"></script>
+
+    <!-- markup-rect-ui.js -->
+    <script src="js/markup-rect-ui.js?v=3.27"></script>
+
+    <!-- nesting-algorithms.js -->
+    <script src="js/nesting/nesting-algorithms.js?v=3.27"></script>
+
+    <!-- part-creation.js -->
+    <script src="js/part-creation.js?v=3.27"></script>
+
+    <!-- tool-handlers.js -->
+    <script src="js/tool-handlers.js?v=3.27"></script>
+
+    <!-- find-alignment.js -->
+    <script src="js/nesting/find-alignment.js?v=1.0"></script>
+
+    <!-- nested-part-operations.js -->
+    <script src="js/nesting/nested-part-operations.js?v=3.28"></script>
+
+    <!-- properties-panel.js -->
+    <script src="js/properties-panel.js?v=3.27"></script>
+
+    <!-- dxf-parser.js -->
+    <script src="js/dxf-parser.js?v=3.27"></script>
+
+    <!-- pdf-export.js -->
+    <script src="js/pdf-export.js?v=3.27"></script>
+
+    <!-- parts-list-ui.js -->
+    <script src="js/parts-list-ui.js?v=3.31"></script>
+
+    <!-- sheet-management.js -->
+    <script src="js/sheet-management.js?v=3.27"></script>
+
+
+    <!-- markup-tools.js -->
+    <script src="js/markup-tools.js?v=3.27"></script>
+
+
+    <!-- nesting-ui.js -->
+    <script src="js/nesting/nesting-ui.js?v=3.29"></script>
+
+
+    <!-- pricing.js -->
+    <script src="js/pricing.js?v=3.27"></script>
+
+
+    <!-- export-clear.js -->
+    <script src="js/export-clear.js?v=3.27"></script>
+
+
+    <!-- cache-storage.js -->
+    <script src="js/cache-storage.js?v=3.27"></script>
+
+
+    <!-- app-init.js -->
+    <script src="js/app-init.js?v=3.27"></script>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ACCOUNT UI — Панель аккаунта в углу экрана
+         ═══════════════════════════════════════════════════════════════ -->
+    <!-- account-ui.js -->
+    <script src="js/account-ui.js?v=3.27"></script>
+
+
+</body>
+</html>

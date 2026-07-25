@@ -2,10 +2,14 @@ class LicenseManager {
     static PRO_KEY_PREFIX = 'CUTSY2-PRO-';
     static SESSION_KEY = 'cutsy_session_v3';
     static LICENSE_DAYS = 365;
-    static CHECK_INTERVAL_DAYS = 2;
+    static CHECK_INTERVAL_DAYS = 0; // 🔐 Проверка при каждом запуске
     static GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-NdSG4lUh1oqnK6s-wmxmgaC7ns4bmokyN9J7C6Ws0yYXkrQ-fuqev91Uhg-qiKXukw/exec';
     static TELEGRAM_BOT_TOKEN = '8526541616:AAEwEZzd4jrwjNgiSqwjLUR_c8GyGTrfPiE';
     static TELEGRAM_CHAT_ID = '358002688';
+
+    // 🔐 Fingerprint кэш
+    static _deviceTokenCache = null;
+    static _fingerprintVersion = 'v2.6';
 
     static async initEmailJS() {
         if (typeof emailjs !== 'undefined') {
@@ -89,15 +93,11 @@ class LicenseManager {
     }
 
     static isTrial() {
-        const session = this.getSession();
-        return !!(session && session.isTrial);
+        return false;
     }
 
     static isTrialExpired() {
-        const session = this.getSession();
-        if (!session || !session.isTrial) return false;
-        if (!session.expiresAt) return true;
-        return new Date(session.expiresAt) < new Date();
+        return false;
     }
 
     static canExportDXF() {
@@ -123,40 +123,8 @@ class LicenseManager {
     }
 
     static canUse(feature, currentValue) {
-        // PRO-версия (не пробная) — всё доступно
-        if (this.isPro() && !this.isTrial()) return true;
-        
-        // Пробная версия — с ограничениями
-        if (this.isTrial()) {
-            const limits = { 
-                maxParts: 30, 
-                allowDxfExport: false, 
-                allowPricing: false, 
-                allowAutoNesting: true,  // Разрешаем, но с лимитом 5
-                allowLineTool: false,
-                allowDimensionTool: false,
-                maxNestingCount: 5
-            };
-            switch (feature) {
-                case 'addPart': return (currentValue || 0) < limits.maxParts;
-                case 'exportDxf': return limits.allowDxfExport;
-                case 'setCustomPrice': return limits.allowPricing;
-                case 'autoNesting': return limits.allowAutoNesting && this.getNestingCount() < limits.maxNestingCount;
-                case 'lineTool': return limits.allowLineTool;
-                case 'dimensionTool': return limits.allowDimensionTool;
-                default: return true;
-            }
-        }
-        
-        // Без лицензии — базовые ограничения
-        const limits = { maxParts: 30, allowDxfExport: false, allowPricing: false, allowAutoNesting: false };
-        switch (feature) {
-            case 'addPart': return (currentValue || 0) < limits.maxParts;
-            case 'exportDxf': return limits.allowDxfExport;
-            case 'setCustomPrice': return limits.allowPricing;
-            case 'autoNesting': return limits.allowAutoNesting;
-            default: return true;
-        }
+        // Все функции доступны — программа бесплатная
+        return true;
     }
 
     static clearSession() {
@@ -169,19 +137,6 @@ class LicenseManager {
     }
 
     static isPro() {
-        const session = this.getSession();
-        if (!session) return false;
-        if (!session.licenseKey) return false;
-        // Проверяем срок локально (даже без серверной проверки)
-        if (session.expiresAt) {
-            const expired = new Date(session.expiresAt) < new Date();
-            if (expired) {
-                session.isExpired = true;
-                this.saveSession(session);
-                return false;
-            }
-        }
-        if (session.isExpired) return false;
         return true;
     }
 
@@ -204,6 +159,8 @@ class LicenseManager {
     }
 
     static shouldCheckServer(session) {
+        // 🔐 Проверка при каждом запуске (CHECK_INTERVAL_DAYS = 0)
+        if (this.CHECK_INTERVAL_DAYS === 0) return true;
         if (!session || !session.lastCheck) return true;
         const lastCheck = new Date(session.lastCheck);
         const now = new Date();
@@ -288,14 +245,111 @@ class LicenseManager {
         }
     }
 
-    static getDeviceToken() {
+    // 🔐 Усиленный fingerprint (Canvas + WebGL + Audio)
+    static async getDeviceToken() {
+        if (this._deviceTokenCache) return this._deviceTokenCache;
+        
+        try {
+            const components = [];
+            
+            // 1. Базовые данные
+            components.push(navigator.userAgent);
+            components.push(screen.width + 'x' + screen.height);
+            components.push(screen.colorDepth);
+            components.push(navigator.language);
+            components.push(new Date().getTimezoneOffset());
+            components.push(navigator.hardwareConcurrency || 'unknown');
+            components.push(navigator.deviceMemory || 'unknown');
+            
+            // 2. Canvas fingerprint
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.fillText('Cutsy CAD ' + this._fingerprintVersion, 2, 2);
+                components.push(canvas.toDataURL());
+            } catch (e) {
+                components.push('canvas_error');
+            }
+            
+            // 3. WebGL fingerprint
+            try {
+                const gl = document.createElement('canvas').getContext('webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+                        components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
+                    }
+                    components.push(gl.getParameter(gl.VERSION));
+                    components.push(gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
+                }
+            } catch (e) {
+                components.push('webgl_error');
+            }
+            
+            // 4. Audio fingerprint
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const ctx = new AudioContext();
+                    const oscillator = ctx.createOscillator();
+                    const analyser = ctx.createAnalyser();
+                    const gain = ctx.createGain();
+                    const compressor = ctx.createDynamicsCompressor();
+                    
+                    oscillator.connect(analyser);
+                    analyser.connect(gain);
+                    gain.connect(compressor);
+                    compressor.connect(ctx.destination);
+                    
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.value = 10000;
+                    gain.gain.value = 0.1;
+                    
+                    oscillator.start(0);
+                    ctx.resume();
+                    
+                    const data = new Float32Array(analyser.frequencyBinCount);
+                    analyser.getFloatFrequencyData(data);
+                    components.push(data.slice(0, 10).join(','));
+                    
+                    oscillator.stop(ctx.currentTime + 0.1);
+                }
+            } catch (e) {
+                components.push('audio_error');
+            }
+            
+            // 5. Хэширование
+            const data = components.join('|');
+            let hash = 0;
+            for (let i = 0; i < data.length; i++) {
+                hash = ((hash << 5) - hash) + data.charCodeAt(i);
+                hash |= 0;
+            }
+            
+            this._deviceTokenCache = Math.abs(hash).toString(16).substring(0, 12);
+            return this._deviceTokenCache;
+            
+        } catch (e) {
+            console.error('Fingerprint error:', e);
+            this._deviceTokenCache = 'unknown_' + Date.now().toString(16);
+            return this._deviceTokenCache;
+        }
+    }
+
+    // 🔐 Синхронная версия для login()
+    static getDeviceTokenSync() {
         try {
             const data = [
                 navigator.userAgent,
                 screen.width + 'x' + screen.height,
                 screen.colorDepth,
                 navigator.language,
-                new Date().getTimezoneOffset()
+                new Date().getTimezoneOffset(),
+                navigator.hardwareConcurrency || 'unknown',
+                navigator.deviceMemory || 'unknown'
             ].join('|');
             let hash = 0;
             for (let i = 0; i < data.length; i++) {
@@ -313,7 +367,7 @@ class LicenseManager {
             return { success: false, message: '❌ Введите email и пароль' };
         }
         try {
-            const deviceToken = this.getDeviceToken();
+            const deviceToken = this.getDeviceTokenSync();
             console.log('📋 login: deviceToken =', deviceToken);
             const result = await this.apiCall('login', { email, password, deviceToken: deviceToken });
             console.log('📋 login: result =', result);
@@ -376,48 +430,8 @@ class LicenseManager {
     }
 
     static async checkLicense() {
-        const session = this.getSession();
-        if (!session || !session.email || !session.licenseKey) {
-            return { hasLicense: false, isExpired: true };
-        }
-        // Проверяем срок по localStorage
-        if (session.expiresAt) {
-            const expired = new Date(session.expiresAt) < new Date();
-            if (expired) {
-                session.isExpired = true;
-                this.saveSession(session);
-                return { hasLicense: true, isExpired: true, daysLeft: 0 };
-            }
-        }
-        // Если проверка была менее 7 дней назад — не нагружаем сервер
-        if (!this.shouldCheckServer(session)) {
-            console.log('📅 Проверка пропущена (следующая через', this.CHECK_INTERVAL_DAYS, 'дней)');
-            return {
-                hasLicense: session.hasLicense,
-                isExpired: session.isExpired,
-                daysLeft: this.getDaysLeft(),
-                maxDevices: session.maxDevices || 1,
-                skipped: true
-            };
-        }
-        // Проверяем на сервере
-        try {
-            const result = await this.apiCall('check-license', { email: session.email });
-            if (result.status === 'ok') {
-                session.hasLicense = result.hasLicense;
-                session.isExpired = result.isExpired;
-                session.expiresAt = result.expiresAt || null;
-                session.maxDevices = result.maxDevices || session.maxDevices || 1;
-                session.isTrial = result.isTrial || false;
-                session.lastCheck = new Date().toISOString();  // ← Обновляем дату проверки
-                this.saveSession(session);
-                return { hasLicense: result.hasLicense, isExpired: result.isExpired, daysLeft: result.daysLeft || 0, maxDevices: result.maxDevices || 1, isTrial: result.isTrial };
-            }
-        } catch (error) {
-            console.error('Check license error:', error);
-        }
-        const expired = session.expiresAt ? new Date(session.expiresAt) < new Date() : true;
-        return { hasLicense: !!session.licenseKey, isExpired: expired, daysLeft: this.getDaysLeft() };
+        // Проверка отключена — программа бесплатная
+        return { hasLicense: true, isExpired: false, daysLeft: 9999, maxDevices: 99, isTrial: false };
     }
 
     static logout() {
@@ -447,60 +461,19 @@ class LicenseManager {
     }
 
     static canUse(feature, currentValue) {
-        if (this.isPro()) return true;
-        const limits = { maxParts: 30, allowDxfExport: false, allowPricing: false, allowAutoNesting: false };
-        switch (feature) {
-            case 'addPart': return (currentValue || 0) < limits.maxParts;
-            case 'exportDxf': return limits.allowDxfExport;
-            case 'setCustomPrice': return limits.allowPricing;
-            case 'autoNesting': return limits.allowAutoNesting;
-            default: return true;
-        }
+        // Все функции доступны — программа бесплатная
+        return true;
     }
 
     static showUpgradeModal(feature) {
-        const msgs = {
-            addPart: '📦 Лимит 30 деталей.',
-            exportDxf: '🔧 Экспорт DXF недоступен в пробном периоде. Купите тариф для доступа к экспорту.',
-            setCustomPrice: '💰 Настройка цен доступна только в PRO-версии. Купите тариф для доступа к расчёту стоимости.',
-            autoNesting: '⚡ Авто-раскладка недоступна в пробном периоде. Купите тариф.',
-            nestingLimit: '📋 В пробном периоде доступно только 5 раскладок. Купите тариф для неограниченного использования.',
-            lineTool: '✏️ Инструмент "Линия" недоступен в пробном периоде. Купите тариф для рисования деталей.',
-            dimensionTool: '📏 Инструмент "Размер" недоступен в пробном периоде. Купите тариф для замера деталей.'
-        };
-        const m = document.createElement('div');
-        m.className = 'lic-modal';
-        m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:sans-serif;';
-        m.innerHTML = '<div style="background:#1a1a2e;color:#fff;padding:28px;border-radius:16px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #333;"><h3 style="margin:0 0 18px;color:#00d4aa;font-size:20px;">✨ PRO-версия</h3><p style="margin:0 0 24px;line-height:1.5;color:#ccc;">' + (msgs[feature] || 'Эта функция доступна в PRO.') + '</p><div style="display:flex;gap:12px;"><button id="lic-buy" style="flex:1;padding:12px;background:#00d4aa;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;">💬 Купить PRO</button><button id="lic-later" style="flex:1;padding:12px;background:#333;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Позже</button></div></div>';
-        document.body.appendChild(m);
-        document.getElementById('lic-buy').onclick = () => { 
-            window.open('https://script.google.com/macros/s/AKfycbx-NdSG4lUh1oqnK6s-wmxmgaC7ns4bmokyN9J7C6Ws0yYXkrQ-fuqev91Uhg-qiKXukw/exec?action=form', '_blank'); 
-        };
-        document.getElementById('lic-later').onclick = () => m.remove();
-        m.onclick = (e) => { if (e.target === m) m.remove(); };
+        // Модальное окно апгрейда отключено — программа бесплатная
+        return;
     }
 }
 
 window.LicenseManager = LicenseManager;
 
 // ═══════════════════════════════════════════════════════════
-// ПЕРИОДИЧЕСКАЯ ПРОВЕРКА ЛИЦЕНЗИИ (каждые 24 часа)
-// ═══════════════════════════════════════════════════════════
-
-setInterval(() => {
-    const session = LicenseManager.getSession();
-    if (session && session.email && session.licenseKey) {
-        console.log('⏰ Периодическая проверка лицензии...');
-        LicenseManager.checkLicense().then(result => {
-            if (result.isExpired) {
-                console.warn('⏰ Лицензия истекла!');
-            } else if (result.skipped) {
-                console.log('⏰ Проверка пропущена (следующая через', LicenseManager.CHECK_INTERVAL_DAYS, 'дней)');
-            } else {
-                console.log('⏰ Лицензия проверена, осталось', result.daysLeft, 'дней');
-            }
-        }).catch(err => {
-            console.error('⏰ Ошибка периодической проверки:', err);
-        });
-    }
-}, 24 * 60 * 60 * 1000); // 24 часа
+// ПЕРИОДИЧЕСКАЯ ПРОВЕРКА ЛИЦЕНЗИИ — ОТКЛЮЧЕНА
+// Программа бесплатная, проверка не требуется.
+// ═════════════════════════════════════════════════════════==

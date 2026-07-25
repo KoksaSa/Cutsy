@@ -1,6 +1,22 @@
 # 🔨 Сборка проекта Cutsy CAD PRO
 
-## 📋 Что изменено в этой версии (v3.1)
+## 📋 Что изменено в этой версии (v3.3)
+
+### 🚀 Полная SEO-оптимизация:
+- ✅ **Расширенные мета-теги** — Open Graph, Twitter Cards, keywords, description
+- ✅ **Schema.org разметка** — WebApplication, FAQPage, HowTo для rich snippets
+- ✅ **robots.txt** — с ссылкой на sitemap.xml
+- ✅ **sitemap.xml** — карта сайта для поисковых систем
+- ✅ **manifest.json** — PWA поддержка для установки на мобильные
+- ✅ **Канонический URL** — предотвращение дублирования контента
+- ✅ **SEO-текстовый блок** — скрытый контент с ключевыми словами
+- ✅ **FAQ-секция** — видимая для поисковиков с микроразметкой
+- ✅ **Автоматическое удаление console.log** — через disableConsoleOutput
+
+### 🔧 Технические исправления:
+- ✅ **Исправлена функция `stripConsoleLogs`** — корректная обработка template literals
+- ✅ **Добавлено подключение `keyboard-events.js`** — исправлены горячие клавиши
+- ✅ **Удаление ?v=X.XX из HTML** — правильное CDN-кэширование
 
 ### Упрощённая система лицензирования:
 - ✅ **Пробная версия без регистрации** — 7 дней полного доступа
@@ -21,6 +37,16 @@
 ### Вариант 1: Автоматическая сборка (рекомендуется)
 
 ```bash
+# ═══════════════════════════════════════════════════════════
+# ⚠️  ПЕРЕД ПРОДАКШЕН-СБОРКОЙ: Включи защиту!
+# ═══════════════════════════════════════════════════════════
+# 1. Открой Cutsy/build.js
+# 2. Найди строку: const ENABLE_ANTI_DEBUG = false;
+# 3. Поменяй на:   const ENABLE_ANTI_DEBUG = true;
+# 4. Запусти сборку:
+```
+
+```bash
 # 1. Перейди в папку проекта
 cd Cutsy
 
@@ -32,6 +58,43 @@ node build.js
 
 # 4. Результат: папка dist/ с готовыми файлами
 ```
+
+```bash
+# ═══════════════════════════════════════════════════════════
+# ✅ ПОСЛЕ ПРОДАКШЕН-СБОРКИ: Отключи защиту!
+# ═══════════════════════════════════════════════════════════
+# 1. Открой Cutsy/build.js
+# 2. Найди строку: const ENABLE_ANTI_DEBUG = true;
+# 3. Поменяй на:   const ENABLE_ANTI_DEBUG = false;
+# 4. Собирай normally — F12 будет работать для отладки
+```
+
+### ⚠️ Включение защиты от отладки (продакшен)
+
+По умолчанию сборка выполняется **без блокировки F12** — для удобства отладки.
+Чтобы включить anti-debug защиту (блокировка консоли, F12, Ctrl+Shift+I) для продакшен-сборки:
+
+1. Открой `Cutsy/build.js`
+2. Найди строку в начале файла:
+   ```javascript
+   const ENABLE_ANTI_DEBUG = false;
+   ```
+3. Поменяй `false` на `true`:
+   ```javascript
+   const ENABLE_ANTI_DEBUG = true;
+   ```
+4. Запусти сборку:
+   ```bash
+   node build.js
+   ```
+
+**Что включится при `ENABLE_ANTI_DEBUG = true`:**
+- 🔒 Блокировка клавиши F12
+- 🔒 Блокировка Ctrl+Shift+I / Ctrl+U
+- 🔒 Блокировка правого клика мыши
+- 🔒 Подключение `js/anti-debug.js` с детекцией DevTools
+
+> 💡 **Совет:** Всегда собирай с `ENABLE_ANTI_DEBUG = false` для разработки и отладки, и переключай на `true` только перед деплоем на продакшен.
 
 ### Вариант 2: Ручная подготовка для Google Apps Script
 
@@ -55,7 +118,7 @@ cp snapping.js dist/
 cp dimensions.js dist/
 cp nesting.js dist/
 cp translations.js dist/
-cp sheet-remnant.js dist/
+cp js/sheet-remnant.js dist/
 cp dxf-import.js dist/
 cp dxf-import-ui.js dist/
 cp pdf-report.js dist/
@@ -164,6 +227,16 @@ Cutsy/
 - Проверь консоль браузера (F12) на ошибки
 - Убедись, что `localStorage` не заблокирован
 
+### Горячие клавиши не работают
+- Проверь, что `js/keyboard-events.js` подключён в `index.html` после `js/join-parts.js`
+- Очисти кэш браузера (Ctrl+Shift+R)
+- Убедись, что фокус не в input/textarea
+
+### Холст не отображается
+- Проверь консоль браузера (F12) на ошибки JavaScript
+- Убедись, что все JS-файлы загружаются (Network tab)
+- Проверь, что `styles.css` загружается корректно
+
 ---
 
 ## 📞 Поддержка
@@ -171,3 +244,114 @@ Cutsy/
 При возникновении проблем:
 - 📧 Email: cutsypro@gmail.com
 - ✈️ Telegram: @SilikinK
+
+---
+
+## 🚀 SEO-Оптимизация
+
+### Что включено:
+
+#### 1. Мета-теги в `index.html`:
+```html
+<!-- Основные -->
+<meta name="description" content="...">
+<meta name="keywords" content="...">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph (Facebook, VK) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="...">
+<meta property="og:image" content="https://cutsypro.ru/og-image.png">
+
+<!-- Twitter Cards -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="...">
+```
+
+#### 2. Schema.org разметка:
+```html
+<script type="application/ld+json">
+{
+    "@type": "WebApplication",
+    "name": "Cutsy CAD PRO",
+    "url": "https://cutsypro.ru/",
+    "aggregateRating": { ... }
+}
+</script>
+```
+
+#### 3. Файлы для SEO:
+- `robots.txt` — https://cutsypro.ru/robots.txt
+- `sitemap.xml` — https://cutsypro.ru/sitemap.xml
+- `manifest.json` — PWA манифест
+
+### Проверка SEO:
+
+1. **Google Search Console** — https://search.google.com/search-console
+   - Добавьте сайт: https://cutsypro.ru/
+   - Отправьте sitemap.xml
+   - Проверьте индексацию
+
+2. **Yandex.Webmaster** — https://webmaster.yandex.ru/
+   - Добавьте сайт: https://cutsypro.ru/
+   - Подтвердите права
+   - Отправьте sitemap.xml
+
+3. **Rich Results Test** — https://search.google.com/test/rich-results
+   - Проверьте FAQ и HowTo разметку
+
+4. **PageSpeed Insights** — https://pagespeed.web.dev/
+   - Проверьте скорость загрузки
+
+### Рекомендации для cutsypro.ru:
+
+- ✅ Добавьте `og-image.png` (1200×630px) в корень сайта
+- ✅ Создайте страницы `/privacy.html` и `/terms.html`
+- ✅ Настройте HTTPS на хостинге (SSL-сертификат)
+- ✅ Добавьте сайт в Google Search Console и Yandex.Webmaster
+- ✅ Настройте 301 редирект с http → https
+- ✅ Настройте gzip_static on для nginx
+- ✅ Добавьте заголовки безопасности:
+  ```
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000
+  ```
+
+### Конфигурация nginx для cutsypro.ru:
+
+```nginx
+server {
+    listen 80;
+    server_name cutsypro.ru www.cutsypro.ru;
+    return 301 https://cutsypro.ru$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name cutsypro.ru www.cutsypro.ru;
+    
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    
+    root /var/www/cutsypro;
+    index index.html;
+    
+    # Включить gzip_static для .gz файлов
+    gzip_static on;
+    
+    location / {
+        try_files $uri $uri/ =404;
+    }
+    
+    location ~* \.(jpg|jpeg|png|gif|ico|svg|webp)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    location ~* \.(js|css)$ {
+        expires 1M;
+        add_header Cache-Control "public";
+    }
+}
+```

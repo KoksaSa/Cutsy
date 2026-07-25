@@ -1,6 +1,6 @@
 {
   "name": "cutsy-cad-pro",
-  "version": "2.0.0",
+  "version": "2.6.0",
   "description": "2D CAD приложение для раскладки деталей на листах",
   "private": true,
   "scripts": {

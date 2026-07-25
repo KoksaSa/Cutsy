@@ -90,7 +90,7 @@ function createDimensionLines(bounds) {
         y1: bounds.maxY + offset,
         x2: bounds.maxX,
         y2: bounds.maxY + offset,
-        value: Math.round(bounds.width),
+        value: parseFloat(bounds.width.toFixed(2)),
         type: 'horizontal'
     });
     dims.push({
@@ -98,7 +98,7 @@ function createDimensionLines(bounds) {
         y1: bounds.minY,
         x2: bounds.maxX + offset,
         y2: bounds.maxY,
-        value: Math.round(bounds.height),
+        value: parseFloat(bounds.height.toFixed(2)),
         type: 'vertical'
     });
     console.log(`📏 [createDimensionLines] Создано 2 размерных линии: горизонтальная=${dims[0].value}, вертикальная=${dims[1].value}`);

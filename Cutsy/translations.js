@@ -18,6 +18,11 @@ const TRANSLATIONS = {
         tool_angle: 'Angle',
         tool_eraser: 'Eraser',
         tool_text: 'Text',
+        tool_fillet: 'Fillet',
+        tool_microjoint: 'Microjoint',
+        tool_offset: 'Offset',
+        tool_mirror: 'Mirror',
+        tool_rotate: 'Rotate',
         
         // Toolbar
         toolbar_title: 'Tools',
@@ -48,11 +53,11 @@ const TRANSLATIONS = {
         btn_export_dxf_context: '📄 Export DXF',
         btn_export_svg: '📄 Export SVG',
         btn_export_pdf_drawing: '🖼️ Drawing PDF',
-        btn_export_pdf_report: '📊 Report PDF',
+        btn_export_pdf_report: 'Report',
         btn_create_remnant: '📸 Create Remnant',
         btn_clear_all: '🗑️ Clear All',
-        btn_rotate_cw: '↻ Rotate CW',
-        btn_rotate_ccw: '↺ Rotate CCW',
+        btn_rotate_cw: '↻',
+        btn_rotate_ccw: '↺',
         btn_flip_x: '↔️ Flip X',
         btn_flip_y: '↕️ Flip Y',
         btn_prev_sheet: '⏮️',
@@ -78,14 +83,21 @@ const TRANSLATIONS = {
         // Right panel sections
         danger_zone_label: '⚠️ Danger zone:',
         rotation_label: '🔄 Rotation:',
-        btn_rotate_ccw_nested: '↺ Rotate CCW',
-        btn_rotate_cw_nested: '↻ Rotate CW',
-        btn_rotate_precise: '🎯 Precise rotation',
+        btn_rotate_ccw_nested: '↺',
+        btn_rotate_cw_nested: '↻',
+        btn_rotate_precise_cw: '🎯 +2°',
+        btn_rotate_precise_ccw: '🎯 −2°',
         reflection_label: '🪞 Reflection:',
         btn_flip_x_nested: '↔ Flip X',
         btn_flip_y_nested: '↕ Flip Y',
         join_label: '🔗 Join:',
         btn_join_selected: '🔗 Join selected',
+        btn_align_selected: '⚖️ Align selected',
+        snake_layout_label: '🐍 Snake chain layout:',
+        btn_snake_layout: '🐍 Snake chain layout',
+        diagonal_layout_label: '📐 Diagonal layout:',
+        btn_diagonal_layout: '📐 Diagonal layout',
+        auto_nesting_label: '✅ Auto-nesting',
         markup_remnant_label: '📐 Remnant markup:',
         btn_markup_remnant: '⬜ Markup remnant',
         btn_clear_markup: '🗑️ Clear markup',
@@ -105,6 +117,7 @@ const TRANSLATIONS = {
         
         // Sheet info
         sheet_nav_info: 'Sheet {current} of {total} ({thickness}mm)',
+        sheet_tab_name: 'Sheet {num}',
         sheet_info_top: 'Sheet: {width} × {height} mm (×{zoom})',
         sheet_info_top_remnant: '📸 Remnant: {width} × {height} mm (×{zoom})',
         
@@ -321,6 +334,11 @@ const TRANSLATIONS = {
         tool_angle: 'Угол',
         tool_eraser: 'Ластик',
         tool_text: 'Текст',
+        tool_fillet: 'Скругл.',
+        tool_microjoint: 'Микростык',
+        tool_offset: 'Offset',
+        tool_mirror: 'Отраж.',
+        tool_rotate: 'Повор.',
         
         // Панель инструментов
         toolbar_title: 'Инструменты',
@@ -351,7 +369,7 @@ const TRANSLATIONS = {
         //btn_export_dxf_context: '📄 Экспорт в DXF',
         //btn_export_svg: '📄 Экспорт SVG',//
         btn_export_pdf_drawing: '🖼️ Чертеж PDF',
-        btn_export_pdf_report: '📊 Отчёт PDF',
+        btn_export_pdf_report: '📊 Отчёт',
         btn_create_remnant: '📸 Создать остаток',
         btn_clear_all: '🗑️ Удалить всё',
         btn_rotate_cw: '↻ Повернуть →',
@@ -362,8 +380,8 @@ const TRANSLATIONS = {
         btn_next_sheet: '⏭️',
         btn_resize_sheet: '📐',
         btn_delete_sheet: '🗑️',
-        btn_nesting_overlap_off: '🚫 Наложение: ВЫКЛ',
-        btn_nesting_overlap_on: '✅ Наложение: ВКЛ',
+        btn_nesting_overlap_off: '🚫 Overlap: OFF',
+        btn_nesting_overlap_on: '✅ Overlap: ON',
         btn_markup_rect: '⬜ Разметка остатка',
         btn_clear_markup: '🗑️ Очистить разметку',
         btn_view_part: '👁️',
@@ -381,16 +399,21 @@ const TRANSLATIONS = {
         // Правая панель
         danger_zone_label: '⚠️ Зона опасности:',
         rotation_label: '🔄 Поворот:',
-        btn_rotate_ccw_nested: '↺ Повернуть против часовой',
-        btn_rotate_cw_nested: '↻ Повернуть по часовой',
-        btn_rotate_precise: '🎯 Точное вращение',
+        btn_rotate_ccw_nested: '↺',
+        btn_rotate_cw_nested: '↻',
+        btn_rotate_precise_cw: '🎯 +2°',
+        btn_rotate_precise_ccw: '🎯 −2°',
         reflection_label: '🪞 Отражение:',
         btn_flip_x_nested: '↔️ Отразить по X',
         btn_flip_y_nested: '↕️ Отразить по Y',
         join_label: '🔗 Соединение:',
         btn_join_selected: '🔗 Соединить выбранные',
+        btn_align_selected: '⚖️ Выровнять выбранное',
         diagonal_layout_label: '📐 Диагональная раскладка:',
         btn_diagonal_layout: '📐 Диагональная раскладка',
+        snake_layout_label: '🐍 Змеевидная раскладка:',
+        btn_snake_layout: '🐍 Змеевидная раскладка',
+        auto_nesting_label: '✅ Авторасскладка',
         markup_remnant_label: '📐 Разметка остатка:',
         btn_markup_remnant: '⬜ Разметка остатка',
         btn_clear_markup: '🗑️ Очистить разметку',
@@ -410,6 +433,7 @@ const TRANSLATIONS = {
         
         // Информация о листе
         sheet_nav_info: 'Лист {current} из {total} ({thickness}мм)',
+        sheet_tab_name: 'Лист {num}',
         sheet_info_top: 'Лист: {width} × {height} мм (×{zoom})',
         sheet_info_top_remnant: '📸 Остаток: {width} × {height} мм (×{zoom})',
         
@@ -678,8 +702,6 @@ function setLanguage(lang) {
         langBtn.setAttribute('data-i18n', lang === 'en' ? 'lang_ru' : 'lang_en');
         langBtn.title = lang === 'en' ? 'Switch to Russian' : 'Переключить на английский';
     }
-    
-    console.log(`🌐 Language set to: ${lang}`);
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -1,155 +1,154 @@
 // ═══════════════════════════════════════════════════════════════
-// SOUND - Звуковые оповещения
+// SOUND - Звуковые оповещения v4.44
+// ═══════════════════════════════════════════════════════════════
+// v4.44 FIX W1+W2:
+// • AudioContext создаётся ЛЕНИВО при первом user-gesture (click/keydown)
+//   Раньше: init() на DOMContentLoaded → suspended context → resume() fail
+// • Oscillator nodes disconnect'ятся после завершения (no memory leak)
+// • destroy() метод для очистки при выгрузке
+// • try/catch везде — звук не должен ронять CAD
 // ═══════════════════════════════════════════════════════════════
 
 const Sound = {
-    // ═══════════════════════════════════════════════════════════
-    // НАСТРОЙКИ
-    // ═══════════════════════════════════════════════════════════
-    enabled: true,        // Звук всегда включён
-    volume: 0.3,          // Громкость (0.0 - 1.0)
-    audioContext: null,   // AudioContext для Web Audio API
+    enabled: true,
+    volume: 0.3,
+    audioContext: null,
+    _initialized: false,  // v4.44: флаг ленивой инициализации
 
-    // ═══════════════════════════════════════════════════════════
-    // ИНИЦИАЛИЗАЦИЯ
-    // ═══════════════════════════════════════════════════════════
+    // v4.44 W2: Ленивая инициализация — вызывается при первом user-gesture
+    // Браузеры требуют user-gesture для создания/возобновления AudioContext.
+    // Раньше init() на DOMContentLoaded создавал suspended context,
+    // и resume() без gesture тихо fail'ил → звук не работал.
     init() {
-        // Проверяем поддержку Web Audio API
-        if (typeof window !== 'undefined') {
+        if (this._initialized) return;
+        if (typeof window === 'undefined') return;
+        try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (AudioContext) {
                 this.audioContext = new AudioContext();
+                this._initialized = true;
+                console.log('[SOUND] AudioContext создан');
             } else {
-                console.log('⚠️ Web Audio API не поддерживается');
+                console.log('[SOUND] Web Audio API не поддерживается');
                 this.enabled = false;
             }
+        } catch (e) {
+            console.warn('[SOUND] Ошибка init:', e.message);
+            this.enabled = false;
         }
     },
 
-    // ═══════════════════════════════════════════════════════════
-    // ВОСПРОИЗВЕСТИ ЗВУК (синтезированный)
-    // ═══════════════════════════════════════════════════════════
+    // v4.44 W2: ensureContext — гарантия что контекст жив и активен
+    // Вызывается перед каждым playTone. Если контекст suspended — resume().
+    _ensureContext() {
+        if (!this.audioContext) {
+            this.init();
+        }
+        if (!this.audioContext) return false;
+        if (this.audioContext.state === 'suspended') {
+            // resume() возвращает Promise — не блокируем
+            this.audioContext.resume().catch(() => {});
+        }
+        if (this.audioContext.state === 'closed') {
+            // Контекст закрыт — пересоздаём
+            this._initialized = false;
+            this.audioContext = null;
+            this.init();
+        }
+        return !!this.audioContext;
+    },
+
+    // v4.44 W1: disconnect oscillator после завершения (no memory leak)
     playTone(frequency, duration, type = 'sine') {
-        if (!this.enabled || !this.audioContext) return;
+        if (!this.enabled) return;
+        if (!this._ensureContext()) return;
 
         try {
-            // Возобновляем контекст если приостановлен
-            if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume();
-            }
+            const ctx = this.audioContext;
+            const now = ctx.currentTime;
 
-            // Создаём осциллятор (генератор звука)
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
 
-            // Настройка осциллятора
-            oscillator.type = type;  // 'sine', 'square', 'sawtooth', 'triangle'
-            oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, now);
 
-            // Настройка громкости
-            gainNode.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+            gainNode.gain.setValueAtTime(this.volume, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
-            // Подключение
             oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
+            gainNode.connect(ctx.destination);
 
-            // Воспроизведение
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + duration);
+            oscillator.start(now);
+            oscillator.stop(now + duration);
 
+            // v4.44 W1: disconnect после завершения — освобождаем ресурсы
+            oscillator.onended = () => {
+                try {
+                    oscillator.disconnect();
+                    gainNode.disconnect();
+                } catch (e) { /* уже отключён */ }
+            };
         } catch (error) {
-            console.error('❌ Ошибка воспроизведения звука:', error);
+            console.warn('[SOUND] Ошибка playTone:', error.message);
         }
     },
 
-    // ═══════════════════════════════════════════════════════════
-    // ЗВУК УСПЕХА (завершение раскладки)
-    // ═══════════════════════════════════════════════════════════
     playSuccess() {
         if (!this.enabled) return;
-
-        // Инициализируем если нужно
-        if (!this.audioContext) {
-            this.init();
-        }
-
-        // Проигрываем приятный "дзинь" (два тона)
-        setTimeout(() => {
-            this.playTone(800, 0.15, 'sine');      // Первый тон (800 Гц)
-        }, 0);
-
-        setTimeout(() => {
-            this.playTone(1200, 0.2, 'sine');      // Второй тон (1200 Гц)
-        }, 150);
-
-        console.log('🔊 Звук успеха');
+        if (!this._ensureContext()) return;
+        // Два приятных тона
+        this.playTone(800, 0.15, 'sine');
+        setTimeout(() => this.playTone(1200, 0.2, 'sine'), 150);
+        console.log('[SOUND] Звук успеха');
     },
 
-    // ═══════════════════════════════════════════════════════════
-    // ЗВУК ОШИБКИ
-    // ═══════════════════════════════════════════════════════════
     playError() {
         if (!this.enabled) return;
-
-        if (!this.audioContext) {
-            this.init();
-        }
-
-        // Низкий неприятный звук
+        if (!this._ensureContext()) return;
         this.playTone(200, 0.3, 'sawtooth');
-
-        console.log('🔊 Звук ошибки');
+        console.log('[SOUND] Звук ошибки');
     },
 
-    // ═══════════════════════════════════════════════════════════
-    // ЗВУК ПРЕДУПРЕЖДЕНИЯ
-    // ═══════════════════════════════════════════════════════════
     playWarning() {
         if (!this.enabled) return;
-
-        if (!this.audioContext) {
-            this.init();
-        }
-
-        // Средний тон
+        if (!this._ensureContext()) return;
         this.playTone(400, 0.2, 'square');
+        console.log('[SOUND] Звук предупреждения');
+    },
 
-        console.log('🔊 Звук предупреждения');
+    // v4.44 W1: destroy — закрыть AudioContext (для cleanup)
+    destroy() {
+        if (this.audioContext) {
+            try {
+                this.audioContext.close();
+            } catch (e) { /* игнорируем */ }
+            this.audioContext = null;
+            this._initialized = false;
+        }
     }
 };
 
-// ═══════════════════════════════════════════════════════════════
-// УДОБНЫЕ ФУНКЦИИ
-// ═══════════════════════════════════════════════════════════════
+// Удобные функции
+function playSuccessSound() { Sound.playSuccess(); }
+function playErrorSound() { Sound.playError(); }
+function playWarningSound() { Sound.playWarning(); }
 
-function playSuccessSound() {
-    Sound.playSuccess();
-}
-
-function playErrorSound() {
-    Sound.playError();
-}
-
-function playWarningSound() {
-    Sound.playWarning();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
-// ═══════════════════════════════════════════════════════════════
-
-// Инициализируем при загрузке страницы
-if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => Sound.init());
-    } else {
-        Sound.init();
-    }
-}
-
-// Делаем доступным глобально
+// v4.44 W2: Инициализация при ПЕРВОМ user-gesture (не на DOMContentLoaded)
+// Браузеры требуют user interaction для AudioContext.
 if (typeof window !== 'undefined') {
+    const _soundInitOnGesture = () => {
+        Sound.init();
+        // Удаляем обработчики после первой инициализации
+        document.removeEventListener('click', _soundInitOnGesture);
+        document.removeEventListener('keydown', _soundInitOnGesture);
+    };
+    document.addEventListener('click', _soundInitOnGesture, { once: false });
+    document.addEventListener('keydown', _soundInitOnGesture, { once: false });
+
+    // Cleanup при выгрузке страницы
+    window.addEventListener('beforeunload', () => Sound.destroy());
+
     window.Sound = Sound;
     window.playSuccessSound = playSuccessSound;
     window.playErrorSound = playErrorSound;
