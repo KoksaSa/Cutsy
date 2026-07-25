@@ -174,6 +174,10 @@ canvas.addEventListener('wheel', (e) => {
     }
 
     e.preventDefault();
+    // v4.97: Очищаем линии выравнивания при зуме
+    if (window._alignmentGuides && window._alignmentGuides.length > 0) {
+        window._alignmentGuides = [];
+    }
     const rect = canvas.getBoundingClientRect();
     const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
 
@@ -2569,6 +2573,8 @@ canvas.addEventListener('mouseup', (e) => {
         isDragging = false; potentialDragObject = null; hasDragged = false; initialObjectPositions = [];
         // v4.60: Скрываем расстояния окружности
         if (typeof window.hideCircleDistances === 'function') window.hideCircleDistances();
+        // v4.97: Очищаем линии выравнивания после завершения drag
+        window._alignmentGuides = [];
     }
     // v1.0: Если НЕ было drag (просто клик) — сбрасываем potentialDragObject
     // Это позволяет: клик+отпуск = выбор, клик+удержание+движение = drag
@@ -2733,6 +2739,107 @@ canvas.addEventListener('mouseup', (e) => {
 // ═══════════════════════════════════════════════════════════════
 // 7.5. ДВОЙНОЙ КЛИК НА ЛИСТЕ — ПОВОРОТ ДЕТАЛИ НА 90°
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// v4.97: Двойной клик в режиме холста — выделить весь связанный контур
+// ═══════════════════════════════════════════════════════════════
+canvas.addEventListener('dblclick', (e) => {
+    if (showSheetView) return; // sheet view обрабатывается ниже
+    if (typeof currentTool !== 'undefined' && currentTool !== 'select') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left - canvas.width / 2 - panX) / zoom;
+    const y = (e.clientY - rect.top - canvas.height / 2 - panY) / zoom;
+
+    // Находим объект под курсором
+    let clickedObject = null;
+    for (let i = objects.length - 1; i >= 0; i--) {
+        if (objects[i] && typeof objects[i].contains === 'function' && objects[i].contains(x, y)) {
+            clickedObject = objects[i];
+            break;
+        }
+    }
+    if (!clickedObject) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    // Если объект не линия/арка — просто выделяем его
+    if (clickedObject.type !== 'line' && clickedObject.type !== 'arc') {
+        selectedObjects.length = 0;
+        selectedObjects.push(clickedObject);
+        if (typeof showProperties === 'function') showProperties(clickedObject);
+        render();
+        return;
+    }
+
+    // v4.97: Находим весь связанный контур (линии и арки с общими концами)
+    const TOL = 0.5; // допуск сопоставления вершин (мм)
+    const contour = findConnectedContour(clickedObject, TOL);
+
+    selectedObjects.length = 0;
+    for (const obj of contour) selectedObjects.push(obj);
+    if (typeof showProperties === 'function') {
+        showProperties(selectedObjects.length === 1 ? selectedObjects[0] : null);
+    }
+    render();
+});
+
+/**
+ * v4.97: Находит все линии и арки, связанные с obj через общие концы.
+ * BFS: начиная от obj, ищем все объекты, у которых концы совпадают.
+ * @param {Object} startObj — начальный объект (line или arc)
+ * @param {number} tol — допуск сопоставления (мм)
+ * @returns {Array} массив связанных объектов
+ */
+function findConnectedContour(startObj, tol) {
+    const result = [startObj];
+    const visited = new Set([startObj]);
+    const queue = [startObj];
+
+    // Получаем концы объекта
+    function getEnds(obj) {
+        if (obj.type === 'line') {
+            return [{x: obj.x1, y: obj.y1}, {x: obj.x2, y: obj.y2}];
+        }
+        if (obj.type === 'arc' && typeof obj.getStartPoint === 'function') {
+            return [obj.getStartPoint(), obj.getEndPoint()];
+        }
+        return [];
+    }
+
+    function ptsMatch(p1, p2) {
+        return Math.hypot(p1.x - p2.x, p1.y - p2.y) < tol;
+    }
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const currentEnds = getEnds(current);
+
+        for (const other of objects) {
+            if (visited.has(other)) continue;
+            if (other.type !== 'line' && other.type !== 'arc') continue;
+
+            const otherEnds = getEnds(other);
+            // Проверяем совпадение любых концов
+            let connected = false;
+            for (const ce of currentEnds) {
+                for (const oe of otherEnds) {
+                    if (ptsMatch(ce, oe)) { connected = true; break; }
+                }
+                if (connected) break;
+            }
+
+            if (connected) {
+                visited.add(other);
+                result.push(other);
+                queue.push(other);
+            }
+        }
+    }
+
+    return result;
+}
+
 canvas.addEventListener('dblclick', (e) => {
     if (!showSheetView) return;
     const rect = canvas.getBoundingClientRect();
