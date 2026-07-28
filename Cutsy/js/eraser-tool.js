@@ -15,6 +15,12 @@
 'use strict';
 
 const TRIM_TOLERANCE = 5; // мм — радиус поиска точки клика на объекте
+// v4.98: допуск зависит от зума — при крупном увеличении точность повышается
+function _getEffectiveTrimTolerance() {
+    const z = (typeof zoom !== 'undefined' && zoom > 0) ? zoom : 1;
+    const pxDist = 8 / z; // 8 пикселей на экране → модельные мм
+    return Math.min(TRIM_TOLERANCE, pxDist);
+}
 
 /**
  * Trim: обрезает сегмент объекта от точки клика до ближайшего пересечения.
@@ -29,7 +35,7 @@ window.trimObjectAtPoint = function(obj, clickX, clickY) {
     // Проверяем, что клик попадает на объект (с допуском)
     if (typeof obj.contains === 'function' && !obj.contains(clickX, clickY)) {
         // Дополнительная проверка: близость к ребру
-        if (!_isNearObject(obj, clickX, clickY, TRIM_TOLERANCE)) return false;
+        if (!_isNearObject(obj, clickX, clickY, _getEffectiveTrimTolerance())) return false;
     }
 
     if (obj.type === 'line') {
@@ -383,7 +389,7 @@ function _trimRect(obj, clickX, clickY) {
     }
 
     // Находим ближайшее ребро к точке клика
-    let bestEdge = -1, bestDist = TRIM_TOLERANCE;
+    let bestEdge = -1, bestDist = _getEffectiveTrimTolerance();
     for (let i = 0; i < edges.length; i++) {
         const d = _pointToSegmentDist(clickX, clickY,
             edges[i].p1.x, edges[i].p1.y, edges[i].p2.x, edges[i].p2.y);
@@ -510,7 +516,7 @@ function _trimPolyline(obj, clickX, clickY) {
     if (typeof objects === 'undefined') return false;
 
     // Находим ближайший сегмент к точке клика
-    let bestSeg = -1, bestDist = TRIM_TOLERANCE;
+    let bestSeg = -1, bestDist = _getEffectiveTrimTolerance();
     for (let i = 0; i < obj.points.length - 1; i++) {
         const d = _pointToSegmentDist(clickX, clickY,
             obj.points[i].x, obj.points[i].y,

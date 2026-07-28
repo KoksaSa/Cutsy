@@ -529,13 +529,19 @@
                 <input type="number" id="textFontSize" step="1" min="8" max="100" style="padding:6px;background:#3c3c3c;color:#fff;border:1px solid #555;border-radius:4px;">
             </div>
             
-            <!-- Блок выравнивания для линий -->
+<!-- Блок выравнивания для линий -->
             <div id="lineAlignProps" style="display: none;margin-top:15px;padding-top:15px;border-top:1px solid #3c3c3c;">
                 <h4 style="color:#007acc;font-size:12px;margin:0 0 10px 0;">⚖️ Выравнивание линии</h4>
                 <button class="align-btn" id="alignHProp">↔️ По горизонтали (X)</button>
                 <button class="align-btn" id="alignVProp">↕️ По вертикали (Y)</button>
                 <button class="align-btn" id="alignParallelProp">∥️ Параллельно</button>
                 <button class="align-btn" id="alignPerpendicularProp">⊥️ Перпендикулярно</button>
+            </div>
+            
+            <!-- Блок линии гиба (Bend Notch) для линий контура -->
+            <div id="bendNotchProps" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #3c3c3c;">
+                <h4 style="color:#5bc0de;font-size:12px;margin:0 0 10px 0;">🔧 Линия гиба</h4>
+                <button class="align-btn" id="applyBendNotchBtn" style="background:#2d5a7a;">✂️ Надрез 1×1 мм в контур</button>
             </div>
             
             <button class="action-btn danger" id="deleteObj" style="margin-top: 15px;">🗑️ Удалить объект</button>

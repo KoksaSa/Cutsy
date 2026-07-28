@@ -553,7 +553,14 @@ window.addEventListener('blur', () => {
 // ═══════════════════════════════════════════════════════════════
 // ИНСТРУМЕНТ ЛАСТИК (Усечь кривую)
 // ═══════════════════════════════════════════════════════════════
-const ERASER_TOLERANCE = 3; // мм — расстояние срабатывания ластика
+// v4.98: Допуск ластика зависит от зума — при сильном увеличении
+// точность повышается. В пикселях на экране допуск ~6px.
+const ERASER_TOLERANCE = 3; // мм — сохранено для обратной совместимости
+window.getEffectiveEraserTolerance = function() {
+    const z = (typeof zoom !== 'undefined' && zoom > 0) ? zoom : 1;
+    const pxDist = 6 / z; // 6 пикселей на экране → модельные мм
+    return Math.min(ERASER_TOLERANCE, pxDist);
+};
 
 function isObjectHitByEraser(obj, eraserLine, tolerance) {
     const e = eraserLine;

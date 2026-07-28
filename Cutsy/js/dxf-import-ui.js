@@ -599,6 +599,8 @@ async function processMultiImport(files) {
                     duplicateCount: dedupResult.removedCount,
                     auxLineInfo: auxLineInfo,       // информация о вспомогательных линиях
                     auxLineFilters: auxLineFilters, // состояние чекбоксов
+                    bendNotchEnabled: false,        // вырезы под гибку (Bend Notch)
+                    bendNotchSize: 1,               // размер выреза 1×1 мм
                     selected: true,
                     error: null,
                     groupsDetected: groups.length
@@ -682,6 +684,18 @@ function renderImportFileList() {
             }
         }
 
+// Чекбокс "Вырезы под гибку" (Bend Notch) — если есть линии гиба, осевые или пунктирные линии
+        let bendNotchCheckbox = '';
+        if (item.auxLineInfo && (item.auxLineInfo.bend || item.auxLineInfo.axial || item.auxLineInfo.dashed)) {
+            const notchSize = item.bendNotchSize || 1;
+            bendNotchCheckbox = `<div class="import-bend-notch" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;color:#5bc0de;cursor:pointer;" title="Добавляет прямоугольные вырезы ${notchSize}×${notchSize} мм на концах линий гиба (как Bend Notch в SolidWorks)">
+                    <input type="checkbox" class="bend-notch-filter" data-index="${idx}" ${item.bendNotchEnabled ? 'checked' : ''}>
+                    🔧 Вырезы под гибку (${notchSize}×${notchSize} мм)
+                </label>
+            </div>`;
+        }
+
         // Текущее количество объектов (после фильтрации)
         const currentObjCount = item.objects.length;
         const totalObjCount = item.allObjects ? item.allObjects.length : currentObjCount;
@@ -699,7 +713,8 @@ function renderImportFileList() {
                         📐 ${Math.round(item.bounds.width)} × ${Math.round(item.bounds.height)} мм |
                         🔷 Объектов: ${currentObjCount}${filteredOutCount > 0 ? ` <span style="color:#e8a735;">(-${filteredOutCount})</span>` : ''}${hasDuplicates ? ` из ${item.entityCount}` : ''}
                     </div>
-                    ${auxLineCheckboxes}
+${auxLineCheckboxes}
+                    ${bendNotchCheckbox}
                     <div class="import-file-inputs">
                         <label>📝 Имя:</label>
                         <input type="text" class="import-part-name" data-index="${idx}" value="${escapeHtml(item.partName)}" style="flex:2;min-width:150px;">
@@ -779,6 +794,31 @@ function renderImportFileList() {
             // Обновляем счётчик объектов
             updateObjectCountDisplay(idx);
 
+updateImportSummary();
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // ОБРАБОТЧИК ЧЕКБОКСА "ВЫРЕЗЫ ПОД ГИБКУ" (BEND NOTCH)
+    // ═══════════════════════════════════════════════════════════
+    container.querySelectorAll('.bend-notch-filter').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            const item = multiImportData[idx];
+            if (!item) return;
+
+            // Обновляем состояние
+            item.bendNotchEnabled = e.target.checked;
+
+            // Пересчитываем объекты с учётом вырезов
+            applyAuxLineFilters(idx);
+
+            // Обновляем миниатюру
+            if (item.objects && item.objects.length > 0) {
+                drawThumbnail(idx, item.objects, item.bounds);
+            }
+
+            updateObjectCountDisplay(idx);
             updateImportSummary();
         });
     });
@@ -861,8 +901,17 @@ function applyAuxLineFilters(idx) {
         return category && enabledCategories.has(category);
     });
 
-    item.objects = filtered;
+item.objects = filtered;
     item.bounds = calculateBounds(filtered);
+
+    // ═══════════════════════════════════════════════════════════
+    // ПРИМЕНЕНИЕ ВЫРЕЗОВ ПОД ГИБКУ (BEND NOTCH)
+    // ═══════════════════════════════════════════════════════════
+    if (item.bendNotchEnabled) {
+        const notchResult = createBendNotches(item.objects, item.allObjects);
+        item.objects = notchResult.objects;
+        item.bounds = calculateBounds(item.objects);
+    }
 }
 
 /**
@@ -1206,6 +1255,240 @@ function toggleAllFileCheckboxes(checked) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// СОЗДАНИЕ ВЫРЕЗОВ ПОД ГИБКУ (BEND NOTCH) — модификация контура
+// ═══════════════════════════════════════════════════════════════
+// ВМЕСТО добавления прямоугольников поверх контура, функция
+// модифицирует сам контур: разбивает отрезок в точке пересечения
+// и вставляет 3 новых отрезка, образующих прямоугольное углубление.
+//
+// Визуально (вид сверху на край детали):
+//   Было:  ────────────────
+//                          ↑ точка пересечения
+//   Стало: ────┬─────┬────
+//               │     │
+//               │ 1мм │ 1мм
+//               │     │
+//               └─────┘
+//                ←1мм→
+//
+// Алгоритм:
+// 1. Найти все линии гиба/осевые во allObjects
+// 2. Для каждой конечной точки — найти какой отрезок контура
+//    содержит эту точку (с допуском 0.5 мм)
+// 3. В каждом найденном отрезке контура — разбить его и вставить
+//    3 отрезка выреза, образующих прямоугольник 1×1 мм
+// 4. Линии гиба/осевые удаляются из результата
+
+function createBendNotches(objects, allObjects) {
+    if (!allObjects || allObjects.length === 0) return { objects: objects || [] };
+
+    // 1. Находим все линии гиба и осевые линии
+    const bendLines = findBendAndAxialLines(allObjects);
+    if (bendLines.length === 0) return { objects: objects || [] };
+
+    // 2. Собираем endpoints с направлением "вглубь детали"
+    const bendEndpoints = [];
+    for (const bl of bendLines) {
+        const len = Math.hypot(bl.x2 - bl.x1, bl.y2 - bl.y1);
+        if (len < 0.01) continue;
+        const dx = (bl.x2 - bl.x1) / len;
+        const dy = (bl.y2 - bl.y1) / len;
+        bendEndpoints.push({ x: bl.x1, y: bl.y1, dirX: dx, dirY: dy });
+        bendEndpoints.push({ x: bl.x2, y: bl.y2, dirX: -dx, dirY: -dy });
+    }
+
+    // 3. Для каждого endpoint находим отрезок контура, на котором он лежит
+    const notchPositions = [];
+    const DIST_THRESHOLD = 0.5;
+
+    for (const ep of bendEndpoints) {
+        let bestDist = DIST_THRESHOLD;
+        let bestObjIdx = -1;
+        let bestT = 0;
+
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (!obj || obj.type !== 'line') continue;
+            if (isBendOrAxialLine(obj)) continue;
+
+            const dist = pointToSegmentDist(ep.x, ep.y, obj.x1, obj.y1, obj.x2, obj.y2);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestObjIdx = i;
+                const ldx = obj.x2 - obj.x1;
+                const ldy = obj.y2 - obj.y1;
+                const lenSq = ldx * ldx + ldy * ldy;
+                if (lenSq > 0.0001) {
+                    bestT = Math.max(0, Math.min(1, ((ep.x - obj.x1) * ldx + (ep.y - obj.y1) * ldy) / lenSq));
+                }
+            }
+        }
+
+        if (bestObjIdx >= 0) {
+            let alreadyAdded = false;
+            for (const np of notchPositions) {
+                if (Math.hypot(np.x - ep.x, np.y - ep.y) < 0.1) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+            if (!alreadyAdded) {
+                notchPositions.push({
+                    x: ep.x, y: ep.y,
+                    lineIdx: bestObjIdx,
+                    t: bestT,
+                    dirX: ep.dirX,
+                    dirY: ep.dirY
+                });
+            }
+        }
+    }
+
+    if (notchPositions.length === 0) return { objects: objects || [] };
+
+    // 4. Группируем вырезы по отрезкам контура, сортируем lineIdx по убыванию
+    const groupedByLine = {};
+    for (const np of notchPositions) {
+        if (!groupedByLine[np.lineIdx]) groupedByLine[np.lineIdx] = [];
+        groupedByLine[np.lineIdx].push(np);
+    }
+
+    const sortedLineIdxs = Object.keys(groupedByLine).map(Number).sort((a, b) => b - a);
+    const result = [...objects];
+    const notchSize = 1;
+    const halfNotch = notchSize / 2;
+
+    for (const lineIdx of sortedLineIdxs) {
+        const obj = result[lineIdx];
+        if (!obj || obj.type !== 'line') continue;
+
+        const lx = obj.x2 - obj.x1;
+        const ly = obj.y2 - obj.y1;
+        const lineLen = Math.hypot(lx, ly);
+        if (lineLen < 0.01) continue;
+
+        const notches = groupedByLine[lineIdx].sort((a, b) => a.t - b.t);
+        const newSegments = [];
+        let prevT = 0;
+
+        for (const notch of notches) {
+            const t = notch.t;
+            const tHalf = halfNotch / lineLen;
+            const t1 = Math.max(prevT, t - tHalf);
+            const t2 = Math.min(1, t + tHalf);
+
+            const p1x = obj.x1 + lx * t1;
+            const p1y = obj.y1 + ly * t1;
+            const p2x = obj.x1 + lx * t2;
+            const p2y = obj.y1 + ly * t2;
+
+            const a1x = p1x + notch.dirX * notchSize;
+            const a1y = p1y + notch.dirY * notchSize;
+            const a2x = p2x + notch.dirX * notchSize;
+            const a2y = p2y + notch.dirY * notchSize;
+
+            // Сегмент контура от prevT до t1
+            if (t1 - prevT > 0.001) {
+                newSegments.push({
+                    type: 'line',
+                    x1: obj.x1 + lx * prevT,
+                    y1: obj.y1 + ly * prevT,
+                    x2: p1x, y2: p1y,
+                    id: Date.now() + Math.random() + Math.random()
+                });
+            }
+
+            // 3 сегмента выреза: (P1→A1), (A1→A2), (A2→P2)
+            newSegments.push({
+                type: 'line', x1: p1x, y1: p1y, x2: a1x, y2: a1y,
+                id: Date.now() + Math.random() + Math.random(),
+                _isBendNotch: true, color: '#00aadd'
+            });
+            newSegments.push({
+                type: 'line', x1: a1x, y1: a1y, x2: a2x, y2: a2y,
+                id: Date.now() + Math.random() + Math.random(),
+                _isBendNotch: true, color: '#00aadd'
+            });
+            newSegments.push({
+                type: 'line', x1: a2x, y1: a2y, x2: p2x, y2: p2y,
+                id: Date.now() + Math.random() + Math.random(),
+                _isBendNotch: true, color: '#00aadd'
+            });
+
+            prevT = t2;
+        }
+
+        // Финальный сегмент от последнего выреза до конца отрезка
+        if (1 - prevT > 0.001) {
+            newSegments.push({
+                type: 'line',
+                x1: obj.x1 + lx * prevT,
+                y1: obj.y1 + ly * prevT,
+                x2: obj.x2, y2: obj.y2,
+                id: Date.now() + Math.random() + Math.random()
+            });
+        }
+
+        result.splice(lineIdx, 1, ...newSegments);
+    }
+
+    // 5. Удаляем линии гиба/осевые из результата
+    const filtered = result.filter(obj => !obj || !isBendOrAxialLine(obj));
+
+    console.log(`🔧 Bend Notch: врезано ${notchPositions.length} вырезов 1×1 мм в контур детали`);
+    return { objects: filtered };
+}
+
+/**
+ * Проверяет, является ли объект линией гиба или осевой линией
+ */
+function isBendOrAxialLine(obj) {
+    if (!obj) return false;
+    const layerName = (obj.layer || '').toString().trim().toLowerCase();
+    const lineType = (obj._effectiveLineType || '').toString().trim().toUpperCase();
+    const isBend = obj._layerIsAuxiliary === true && /^bend/i.test(layerName);
+    const isAxial = (
+        /^осев|^_осев|^center|^_center|^axis/i.test(layerName) ||
+        /CENTER|^AXIS/i.test(lineType)
+    ) && (obj._layerIsAuxiliary === true || obj._isContinuous === false);
+    // Любая пунктирная/штриховая линия (DASHED, HIDDEN, PHANTOM и т.д.)
+    const isDashed = obj._isContinuous === false;
+    return isBend || isAxial || isDashed;
+}
+
+/**
+ * Находит все линии гиба и осевые линии в массиве объектов
+ */
+function findBendAndAxialLines(objects) {
+    const result = [];
+    for (const obj of objects) {
+        if (!obj) continue;
+        if (isBendOrAxialLine(obj) && obj.type === 'line') {
+            const x1 = obj.x1, y1 = obj.y1;
+            const x2 = obj.x2, y2 = obj.y2;
+            if (Math.hypot(x2 - x1, y2 - y1) > 0.01) {
+                result.push({ x1, y1, x2, y2, obj });
+            }
+        }
+    }
+    return result;
+}
+
+/**
+ * Расстояние от точки до отрезка
+ */
+function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) return Math.hypot(px - x1, py - y1);
+    const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+    const projX = x1 + t * dx;
+    const projY = y1 + t * dy;
+return Math.hypot(px - projX, py - projY);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ИМПОРТ ВЫБРАННЫХ ДЕТАЛЕЙ
 // ═══════════════════════════════════════════════════════════════
 
@@ -1221,8 +1504,15 @@ function importSelectedParts() {
 
     selectedItems.forEach(item => {
         const thickness = item.thickness || 0.8;
-        
-        const part = createPartFromImportData(item.objects, item.bounds, item.quantity, item.partName, thickness, item.oneCutEnabled);
+
+        // Применяем вырезы под гибку, если включены (на случай, если пользователь не менял чекбоксы)
+        let objectsToImport = item.objects;
+        if (item.bendNotchEnabled) {
+            const notchResult = createBendNotches(objectsToImport, item.allObjects);
+            objectsToImport = notchResult.objects;
+        }
+
+        const part = createPartFromImportData(objectsToImport, item.bounds, item.quantity, item.partName, thickness, item.oneCutEnabled);
         if (part) {
             importedCount++;
         }
@@ -1376,7 +1666,7 @@ function normalizeImportObjects(objects, bounds) {
 
 function convertToCadObjects(objects) {
     // Метаданные, которые нужно перенести с исходных объектов на CAD-объекты
-    const META_PROPS = ['color', '_isContinuous', '_effectiveLineType', '_layerIsAuxiliary', 'layer'];
+    const META_PROPS = ['color', '_isContinuous', '_effectiveLineType', '_layerIsAuxiliary', 'layer', '_isBendNotch'];
 
     function copyMeta(src, dst) {
         if (!src || !dst) return;

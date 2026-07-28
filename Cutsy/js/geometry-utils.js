@@ -750,7 +750,7 @@ function _trimEdge(edge, eraserLine, tolerance, parentObj) {
 function smartEraseWithLine(obj, eraserLine) {
     if (!obj) return false;
 
-    const tolerance = (typeof ERASER_TOLERANCE !== 'undefined') ? ERASER_TOLERANCE : 3;
+    const tolerance = (typeof getEffectiveEraserTolerance === 'function') ? getEffectiveEraserTolerance() : 3;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // СТИРАНИЕ ЛИНИЙ / ПРЯМОУГОЛЬНИКОВ / ПОЛИГОНОВ

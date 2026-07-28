@@ -1028,8 +1028,8 @@ canvas.addEventListener('mousedown', (e) => {
             return;
         }
 
-        if (currentTool === 'line' && isDrawing && currentShape) {
-            if (currentShape.length >= 1) {
+if (currentTool === 'line' && isDrawing && currentShape) {
+            if (currentShape.length >= 0.1) {
                 saveState();
                 objects.push(currentShape);
                 selectedObjects.length = 0; selectedObjects.push(currentShape);
@@ -2667,7 +2667,7 @@ canvas.addEventListener('mouseup', (e) => {
         // DRAG (протягивание) → Erase: удаляем пересечённые объекты
         const toErase = [];
         for (const obj of objects) {
-            if (isObjectHitByEraser(obj, eraserLine, ERASER_TOLERANCE)) {
+            if (isObjectHitByEraser(obj, eraserLine, typeof getEffectiveEraserTolerance === 'function' ? getEffectiveEraserTolerance() : ERASER_TOLERANCE)) {
                 toErase.push(obj);
             }
         }
@@ -2711,7 +2711,7 @@ canvas.addEventListener('mouseup', (e) => {
         // Для circle/rect/polygon фиксация только по второму клику (mousedown)
         if (currentTool === 'circle' || currentTool === 'rect' || currentTool === 'polygon') return;
         let valid = true;
-        if (currentTool === 'line' && currentShape.length < 1) valid = false;
+        if (currentTool === 'line' && currentShape.length < 0.1) valid = false;
         if (currentTool === 'circle' && currentShape.radius < POINT_SNAP_TOLERANCE) valid = false;
         if (currentTool === 'rect' && (currentShape.absWidth < 1 || currentShape.absHeight < 1)) valid = false;
         if (currentTool === 'polygon' && currentShape.radius < POINT_SNAP_TOLERANCE) valid = false;

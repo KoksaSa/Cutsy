@@ -2071,7 +2071,7 @@ window.render = function render() {
             ctx.lineWidth = 3 / zoom;
             ctx.setLineDash([3 / zoom, 3 / zoom]);
             for (const obj of objects) {
-                if (typeof isObjectHitByEraser === 'function' && isObjectHitByEraser(obj, currentShape, ERASER_TOLERANCE)) {
+                if (typeof isObjectHitByEraser === 'function' && isObjectHitByEraser(obj, currentShape, typeof getEffectiveEraserTolerance === 'function' ? getEffectiveEraserTolerance() : ERASER_TOLERANCE)) {
                     obj.draw(ctx);
                 }
             }
