@@ -82,6 +82,16 @@ function showProperties(obj) {
     }
 
     dimProps.style.display = 'none';
+    document.getElementById('bendNotchProps').style.display = 'none';
+
+    // Показываем блок "Линия гиба" если среди выделенных есть хоть одна линия
+    const hasLine = selectedObjects.some(o => o.type === 'line');
+    if (hasLine) {
+        const lineCount = selectedObjects.filter(o => o.type === 'line').length;
+        const cntEl = document.getElementById('bendNotchCount');
+        if (cntEl) cntEl.textContent = lineCount;
+        document.getElementById('bendNotchProps').style.display = 'block';
+    }
 
     if (selectedObjects.length > 1) {
         multiInfo.style.display = 'block';
@@ -112,20 +122,17 @@ function showProperties(obj) {
     const singlePalEntry = COLOR_PALETTE.find(c => c.value.toLowerCase() === objColor);
     singleSwatch.style.background = objColor;
     singleName.textContent = singlePalEntry ? singlePalEntry.name : objColor;
-document.getElementById('lineProps').style.display = 'none';
+    document.getElementById('lineProps').style.display = 'none';
     document.getElementById('circleProps').style.display = 'none';
     document.getElementById('rectProps').style.display = 'none';
     document.getElementById('polygonProps').style.display = 'none';
     document.getElementById('lineAlignProps').style.display = 'none';
-    document.getElementById('bendNotchProps').style.display = 'none';
     
 if (obj.type === 'line') {
         document.getElementById('lineProps').style.display = 'flex';
         document.getElementById('lineLength').value = obj.length.toFixed(2);
         // Показываем блок выравнивания для линий
         document.getElementById('lineAlignProps').style.display = 'block';
-        // Показываем блок "Линия гиба" для любой линии (независимо от принадлежности детали)
-        document.getElementById('bendNotchProps').style.display = 'block';
     } else if (obj.type === 'circle') {
         document.getElementById('circleProps').style.display = 'flex';
         document.getElementById('circleD').value = (obj.radius * 2).toFixed(2);
@@ -850,21 +857,53 @@ document.getElementById('makeParallelToEdge').addEventListener('click', () => {
 //   └──────────────────────┘
 
 document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
-    if (selectedObjects.length !== 1 || selectedObjects[0].type !== 'line') {
-        alert('Выберите одну линию');
+    // Фильтруем только линии из выделенных объектов
+    const bendLines = selectedObjects.filter(o => o.type === 'line' && o.length >= 0.5);
+    if (bendLines.length === 0) {
+        alert('Выберите хотя бы одну линию (минимум 0.5 мм)');
         return;
     }
 
-    const bendLine = selectedObjects[0];
-    if (bendLine.length < 0.5) {
-        alert('Линия слишком короткая (минимум 0.5 мм)');
+    saveState();
+
+    // Центр всех объектов (для направления "вглубь")
+    const allBounds = calculateBounds(objects);
+    const centerX = (allBounds.minX + allBounds.maxX) / 2;
+    const centerY = (allBounds.minY + allBounds.maxY) / 2;
+
+    let totalNotches = 0;
+    let processedCount = 0;
+
+    // Обрабатываем каждую линию гиба
+    for (const bendLine of bendLines) {
+        const result = _processBendNotchForLine(bendLine, centerX, centerY);
+        if (result > 0) {
+            totalNotches += result;
+            processedCount++;
+        }
+    }
+
+    if (totalNotches === 0) {
+        alert('Ни одна из выбранных линий не пересекается с контуром. Нарисуйте линию от края до края контура.');
         return;
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // 1. Собираем все line-объекты для пересечения.
-    //    Если rect пересекается с bendLine — разбиваем его на 4 линии.
-    // ═══════════════════════════════════════════════════════════
+    // Сбрасываем выделение
+    selectedObjects.length = 0;
+
+    if (typeof saveToCache === 'function') saveToCache();
+    render();
+    showProperties(null);
+
+    console.log(`🔧 Bend Notch: обработано ${processedCount} лин(ий), всего ${totalNotches} вырез(ов)`);
+});
+
+/**
+ * Обрабатывает одну линию гиба: находит пересечения с контуром,
+ * делает вырезы 1×1 мм, удаляет линию гиба.
+ * Возвращает количество сделанных вырезов.
+ */
+function _processBendNotchForLine(bendLine, centerX, centerY) {
     const bendSeg = { p1: { x: bendLine.x1, y: bendLine.y1 }, p2: { x: bendLine.x2, y: bendLine.y2 } };
 
     const workingLines = [];          // { line, sourceRect }
@@ -872,18 +911,18 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
 
     for (const obj of objects) {
         if (obj === bendLine) continue;
+        // Не используем другие выбранные линии гиба как контур
+        if (selectedObjects.includes(obj) && obj.type === 'line') continue;
 
         if (obj.type === 'line') {
             workingLines.push({ line: obj, sourceRect: null });
         } else if (obj.type === 'rect') {
-            // 4 ребра прямоугольника
             const edges = [
                 { p1: { x: obj.x, y: obj.y }, p2: { x: obj.x + obj.width, y: obj.y } },
                 { p1: { x: obj.x + obj.width, y: obj.y }, p2: { x: obj.x + obj.width, y: obj.y + obj.height } },
                 { p1: { x: obj.x + obj.width, y: obj.y + obj.height }, p2: { x: obj.x, y: obj.y + obj.height } },
                 { p1: { x: obj.x, y: obj.y + obj.height }, p2: { x: obj.x, y: obj.y } }
             ];
-            // Проверяем, пересекается ли хоть одно ребро с bendLine
             let intersects = false;
             for (const edge of edges) {
                 const pt = findSegmentIntersection(bendSeg, edge);
@@ -893,7 +932,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
                 }
             }
             if (intersects) {
-                // Превращаем rect в 4 линии
                 const rectLines = edges.map(e => {
                     const l = new Line(e.p1.x, e.p1.y, e.p2.x, e.p2.y);
                     l.color = obj.color || '#00aadd';
@@ -907,9 +945,7 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // 2. Находим все пересечения bendLine с workingLines
-    // ═══════════════════════════════════════════════════════════
+    // Находим все пересечения bendLine с workingLines
     const intersections = [];
     for (const wl of workingLines) {
         const other = wl.line;
@@ -917,7 +953,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         if (!pt) continue;
 
         const tContour = projectPointOnLine(pt.x, pt.y, other.x1, other.y1, other.x2, other.y2);
-
         const exists = intersections.some(ip => Math.hypot(ip.x - pt.x, ip.y - pt.y) < 0.05);
         if (!exists) {
             intersections.push({
@@ -929,21 +964,9 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         }
     }
 
-    if (intersections.length === 0) {
-        alert('Линия гиба не пересекается с контуром. Нарисуйте линию от края до края контура.');
-        return;
-    }
+    if (intersections.length === 0) return 0;
 
-    saveState();
-
-    // Центр всех объектов (для направления "вглубь")
-    const allBounds = calculateBounds(objects);
-    const centerX = (allBounds.minX + allBounds.maxX) / 2;
-    const centerY = (allBounds.minY + allBounds.maxY) / 2;
-
-    // ═══════════════════════════════════════════════════════════
-    // 3. Группируем пересечения по контурным линиям
-    // ═══════════════════════════════════════════════════════════
+    // Группируем пересечения по контурным линиям
     const groupedByLine = {};
     for (const ip of intersections) {
         const lineIdx = workingLines.findIndex(w => w.line === ip.contourLine);
@@ -952,11 +975,8 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         groupedByLine[lineIdx].push(ip);
     }
 
-    const oldToNewMap = new Map(); // старый line → новые сегменты
-
-    // Обрабатываем линии от конца к началу (чтобы не смещать индексы)
+    const oldToNewMap = new Map();
     const sortedLineIdxs = Object.keys(groupedByLine).map(Number).sort((a, b) => b - a);
-    const result = [...objects];
     const notchSize = 1;
     const halfNotch = notchSize / 2;
 
@@ -985,7 +1005,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
             const p2x = contourLine.x1 + lx * t2;
             const p2y = contourLine.y1 + ly * t2;
 
-            // Перпендикуляр к контурной линии, в сторону центра
             const perpX = -ly / contourLen;
             const perpY = lx / contourLen;
 
@@ -1001,7 +1020,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
             const a2x = p2x + inwardX * notchSize;
             const a2y = p2y + inwardY * notchSize;
 
-            // Сегмент контура от prevT до t1
             if (t1 - prevT > 0.001) {
                 const seg = new Line(
                     contourLine.x1 + lx * prevT,
@@ -1012,7 +1030,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
                 newSegments.push(seg);
             }
 
-            // 3 сегмента выреза
             const wall1 = new Line(p1x, p1y, a1x, a1y);
             wall1._isBendNotch = true; wall1.color = '#00aadd';
             newSegments.push(wall1);
@@ -1028,7 +1045,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
             prevT = t2;
         }
 
-        // Финальный сегмент после последнего выреза
         if (1 - prevT > 0.001) {
             const seg = new Line(
                 contourLine.x1 + lx * prevT,
@@ -1040,7 +1056,6 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         }
 
         if (newSegments.length > 0) {
-            // Если эта линия — ребро rect, заменяем в rectLines
             if (wl.sourceRect && rectsToReplace.has(wl.sourceRect)) {
                 const rectLines = rectsToReplace.get(wl.sourceRect);
                 const rlIdx = rectLines.indexOf(contourLine);
@@ -1048,36 +1063,29 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
                     rectLines.splice(rlIdx, 1, ...newSegments);
                 }
             } else {
-                // Обычная линия — заменяем в result
-                const rIdx = result.indexOf(contourLine);
+                const rIdx = objects.indexOf(contourLine);
                 if (rIdx >= 0) {
-                    result.splice(rIdx, 1, ...newSegments);
+                    objects.splice(rIdx, 1, ...newSegments);
                     oldToNewMap.set(contourLine, newSegments);
                 }
             }
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // 4. Заменяем rect→линии в result
-    // ═══════════════════════════════════════════════════════════
+    // Заменяем rect→линии в objects
     for (const [rect, rectLines] of rectsToReplace) {
-        const rIdx = result.indexOf(rect);
+        const rIdx = objects.indexOf(rect);
         if (rIdx >= 0) {
-            result.splice(rIdx, 1, ...rectLines);
+            objects.splice(rIdx, 1, ...rectLines);
             oldToNewMap.set(rect, rectLines);
         }
     }
 
-    // 5. Удаляем линию гиба
-    const bendIdx = result.indexOf(bendLine);
+    // Удаляем линию гиба
+    const bendIdx = objects.indexOf(bendLine);
     if (bendIdx >= 0) {
-        result.splice(bendIdx, 1);
+        objects.splice(bendIdx, 1);
     }
-
-    // Обновляем objects
-    objects.length = 0;
-    objects.push(...result);
 
     // Обновляем part.objects, если линия принадлежит детали
     const part = findPartForObject(bendLine);
@@ -1094,15 +1102,8 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
         updatePartBounds(part);
     }
 
-    // Сбрасываем выделение
-    selectedObjects.length = 0;
-
-    if (typeof saveToCache === 'function') saveToCache();
-    render();
-    showProperties(null);
-
-    console.log(`🔧 Bend Notch: сделано ${intersections.length} вырез(ов) в контуре по линии гиба`);
-});
+    return intersections.length;
+}
 
 /**
  * Проецирует точку на отрезок, возвращает параметр t (0..1)

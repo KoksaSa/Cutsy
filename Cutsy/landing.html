@@ -538,13 +538,13 @@
                 <button class="align-btn" id="alignPerpendicularProp">⊥️ Перпендикулярно</button>
             </div>
             
-            <!-- Блок линии гиба (Bend Notch) для линий контура -->
-            <div id="bendNotchProps" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #3c3c3c;">
-                <h4 style="color:#5bc0de;font-size:12px;margin:0 0 10px 0;">🔧 Линия гиба</h4>
-                <button class="align-btn" id="applyBendNotchBtn" style="background:#2d5a7a;">✂️ Надрез 1×1 мм в контур</button>
-            </div>
-            
             <button class="action-btn danger" id="deleteObj" style="margin-top: 15px;">🗑️ Удалить объект</button>
+        </div>
+
+        <!-- Блок линии гиба (Bend Notch) — вне propertiesForm, виден и при множественном выделении -->
+        <div id="bendNotchProps" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #3c3c3c;">
+            <h4 style="color:#5bc0de;font-size:12px;margin:0 0 10px 0;">🔧 Линия гиба (<span id="bendNotchCount">1</span>)</h4>
+            <button class="align-btn" id="applyBendNotchBtn" style="background:#2d5a7a;">✂️ Надрез 1×1 мм в контур</button>
         </div>
         
     <!-- flip-selection-btn.js -->
