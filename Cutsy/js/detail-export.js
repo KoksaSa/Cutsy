@@ -177,6 +177,8 @@ function exportSelectedObjectsToSVG() {
 
 // ═══════════════════════════════════════════════════════════════
 // DXF ЭКСПОРТ - экспортируеем нарисованные детали, фигуры с холста в DXF
+// v5.00: TABLES (LTYPE/LAYER/STYLE), $ACADVER R12, форматирование чисел,
+//        поддержка plain objects из DXF-импорта, spline/ellipse
 // ═══════════════════════════════════════════════════════════════
 
 function exportSelectedObjectsToDXF() {
@@ -185,20 +187,74 @@ function exportSelectedObjectsToDXF() {
         return;
     }
 
+    // ── Форматирование чисел: фикс 6 знаков, убираем trailing zeros ──
+    // Предотвращает float-артефакты типа 0.30000000000000004 в DXF
+    function n(v) {
+        v = Number(v);
+        if (!isFinite(v)) v = 0;
+        return parseFloat(v.toFixed(6)).toString();
+    }
+
     let dxf = [];
 
-    // HEADER
+    // ══ HEADER ══
     dxf.push("0","SECTION","2","HEADER");
-    dxf.push("9","$INSUNITS","70","4"); // мм
+    dxf.push("9","$ACADVER","1","AC1009");       // R12 — максимальная совместимость
+    dxf.push("9","$INSUNITS","70","4");           // мм
+    dxf.push("9","$HANDSEED","5","FFFF");
     dxf.push("0","ENDSEC");
 
+    // ══ TABLES (LTYPE, LAYER, STYLE) — нужны для AutoCAD, SolidWorks, etc. ══
+    dxf.push("0","SECTION","2","TABLES");
+
+    // LTYPE
+    dxf.push("0","TABLE","2","LTYPE","70","1");
+    dxf.push("0","LTYPE","2","CONTINUOUS","70","0","3","Solid line","72","65","73","0","40","0");
+    dxf.push("0","ENDTAB");
+
+    // LAYER
+    dxf.push("0","TABLE","2","LAYER","70","1");
+    dxf.push("0","LAYER","2","0","70","0","62","7","6","CONTINUOUS");
+    dxf.push("0","ENDTAB");
+
+    // STYLE (нужен для TEXT)
+    dxf.push("0","TABLE","2","STYLE","70","1");
+    dxf.push("0","STYLE","2","STANDARD","70","0","40","0","41","1","50","0","71","0","42","5","3","txt","4","");
+    dxf.push("0","ENDTAB");
+
+    dxf.push("0","ENDSEC");
+
+    // ══ ENTITIES ══
     dxf.push("0","SECTION","2","ENTITIES");
+
+    // ── Универсальная функция получения точек объекта ──
+    // Работает и с классами (Line, Circle, Polygon, ...), и с plain objects из DXF-импорта
+    function getObjPoints(obj) {
+        if (typeof obj.getPoints === 'function') return obj.getPoints();
+        const pts = [];
+        if (obj.type === 'line') {
+            pts.push({x: obj.x1, y: obj.y1}, {x: obj.x2, y: obj.y2});
+        } else if (obj.type === 'circle' || obj.type === 'arc') {
+            pts.push({x: obj.cx, y: obj.cy});
+        } else if (obj.type === 'rect') {
+            pts.push({x: obj.x, y: obj.y}, {x: obj.x + obj.width, y: obj.y + obj.height});
+        } else if (obj.type === 'ellipse') {
+            const rx = obj.rx || 0, ry = obj.ry || 0;
+            pts.push({x: obj.cx - rx, y: obj.cy - ry}, {x: obj.cx + rx, y: obj.cy + ry});
+        } else if (obj.points || obj.vertices) {
+            pts.push(...(obj.points || obj.vertices));
+        } else if (obj.fitPoints || obj.controlPoints) {
+            pts.push(...(obj.fitPoints || obj.controlPoints));
+        }
+        return pts;
+    }
 
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
 
     selectedObjects.forEach(obj => {
-        obj.getPoints().forEach(p => {
+        getObjPoints(obj).forEach(p => {
+            if (!p || typeof p.x !== 'number') return;
             minX = Math.min(minX, p.x);
             minY = Math.min(minY, p.y);
             maxX = Math.max(maxX, p.x);
@@ -206,27 +262,30 @@ function exportSelectedObjectsToDXF() {
         });
     });
 
+    if (!isFinite(minX)) { minX = 0; maxX = 0; }
+    if (!isFinite(minY)) { minY = 0; maxY = 0; }
+
     const widthMm = maxX - minX;
     const heightMm = maxY - minY;
 
-    const fixX = x => x - minX;
-    const fixY = y => maxY - y;
+    const fixX = x => n(x - minX);
+    const fixY = y => n(maxY - y);
 
     selectedObjects.forEach(obj => {
 
         if (obj.type === 'line') {
             dxf.push(
                 "0","LINE","8","0",
-                "10",fixX(obj.x1),"20",fixY(obj.y1),"30",0,
-                "11",fixX(obj.x2),"21",fixY(obj.y2),"31",0
+                "10",fixX(obj.x1),"20",fixY(obj.y1),"30","0",
+                "11",fixX(obj.x2),"21",fixY(obj.y2),"31","0"
             );
         }
 
         else if (obj.type === 'circle') {
             dxf.push(
                 "0","CIRCLE","8","0",
-                "10",fixX(obj.cx),"20",fixY(obj.cy),"30",0,
-                "40",obj.radius
+                "10",fixX(obj.cx),"20",fixY(obj.cy),"30","0",
+                "40",n(obj.radius)
             );
         }
 
@@ -240,10 +299,10 @@ function exportSelectedObjectsToDXF() {
 
             if (isClockwise(verts)) verts.reverse();
 
-            dxf.push("0","LWPOLYLINE","8","0","90",4,"70",1,"43",0);
+            dxf.push("0","LWPOLYLINE","8","0","90",verts.length,"70",1);
 
             verts.forEach(v => {
-                dxf.push("10",v.x,"20",v.y,"30",0);
+                dxf.push("10",v.x,"20",v.y);
             });
         }
 
@@ -268,18 +327,19 @@ function exportSelectedObjectsToDXF() {
             endDeg = ((endDeg % 360) + 360) % 360;
             dxf.push(
                 "0","ARC","8","0",
-                "10",fixX(obj.cx),"20",fixY(obj.cy),"30",0,
-                "40",obj.radius,
-                "50",startDeg.toFixed(4),"51",endDeg.toFixed(4)
+                "10",fixX(obj.cx),"20",fixY(obj.cy),"30","0",
+                "40",n(obj.radius),
+                "50",n(startDeg),"51",n(endDeg)
             );
         }
 
         else if (obj.type === 'polyline' || obj.type === 'lwpolyline') {
             const pts = obj.points || obj.vertices || [];
             if (pts.length < 2) return;
-            dxf.push("0","LWPOLYLINE","8","0","90",pts.length,"70",0,"43",0);
+            const isClosed = obj.closed ? 1 : 0;
+            dxf.push("0","LWPOLYLINE","8","0","90",pts.length,"70",isClosed);
             pts.forEach(p => {
-                dxf.push("10",fixX(p.x),"20",fixY(p.y),"30",0);
+                dxf.push("10",fixX(p.x),"20",fixY(p.y));
             });
         }
 
@@ -298,23 +358,52 @@ function exportSelectedObjectsToDXF() {
             } else {
                 return;
             }
-            
+
             if (isClockwise(verts)) verts.reverse();
 
-            dxf.push("0","LWPOLYLINE","8","0","90",verts.length,"70",1,"43",0);
+            dxf.push("0","LWPOLYLINE","8","0","90",verts.length,"70",1);
 
             verts.forEach(v => {
-                dxf.push("10",v.x,"20",v.y,"30",0);
+                dxf.push("10",v.x,"20",v.y);
             });
         }
 
         else if (obj.type === 'text') {
             dxf.push(
                 "0","TEXT","8","0",
-                "10",fixX(obj.x),"20",fixY(obj.y),"30",0,
-                "40",obj.fontSize || 5,
-                "1",obj.text
+                "10",fixX(obj.x),"20",fixY(obj.y),"30","0",
+                "40",n(obj.fontSize || 5),
+                "1",obj.text || "",
+                "7","STANDARD"
             );
+        }
+
+        // Spline → LWPOLYLINE (аппроксимация по fit/control точкам)
+        else if (obj.type === 'spline') {
+            const pts = obj.fitPoints || obj.controlPoints || obj.points || obj.vertices || [];
+            if (pts.length < 2) return;
+            const isClosed = obj.closed ? 1 : 0;
+            dxf.push("0","LWPOLYLINE","8","0","90",pts.length,"70",isClosed);
+            pts.forEach(p => {
+                dxf.push("10",fixX(p.x),"20",fixY(p.y));
+            });
+        }
+
+        // Ellipse → LWPOLYLINE (аппроксимация, 36 сегментов)
+        else if (obj.type === 'ellipse') {
+            const cx = obj.cx || 0, cy = obj.cy || 0;
+            const rx = Math.abs(obj.rx || 0), ry = Math.abs(obj.ry || 0);
+            if (rx < 0.001 || ry < 0.001) return;
+            const seg = 36;
+            const pts = [];
+            for (let i = 0; i <= seg; i++) {
+                const a = (Math.PI * 2 / seg) * i;
+                pts.push({x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry});
+            }
+            dxf.push("0","LWPOLYLINE","8","0","90",pts.length,"70",1);
+            pts.forEach(p => {
+                dxf.push("10",fixX(p.x),"20",fixY(p.y));
+            });
         }
     });
 
