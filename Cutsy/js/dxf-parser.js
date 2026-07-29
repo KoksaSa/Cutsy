@@ -200,8 +200,8 @@ function parseDXF(dxfContent) {
                             if (cloned.controlPoints) cloned.controlPoints.forEach(p => { p.x += insert.x; p.y += insert.y; });
                             if (cloned.fitPoints) cloned.fitPoints.forEach(p => { p.x += insert.x; p.y += insert.y; });
                         } else if (cloned.type === 'ELLIPSE') {
+                            // v5.01: majorAxisEndPoint — ВЕКТОР, не сдвигается, только центр
                             if (cloned.center) { cloned.center.x += insert.x; cloned.center.y += insert.y; }
-                            if (cloned.majorAxisEndPoint) { cloned.majorAxisEndPoint.x += insert.x; cloned.majorAxisEndPoint.y += insert.y; }
                         } else if (cloned.type === 'LWPOLYLINE' || cloned.type === 'POLYLINE') {
                             if (cloned.vertices) cloned.vertices.forEach(v => { v.x += insert.x; v.y += insert.y; });
                         }
@@ -282,18 +282,15 @@ function parseEntity(tokens, startIdx, type, header) {
             idx++;
         }
         if (cx !== undefined && cy !== undefined && r > 0 && startAngle !== undefined && endAngle !== undefined) {
-            // DXF хранит углы в градусах — конвертируем в радианы
-            // для совместимости с approximateArc() в dxf-import.js,
-            // которая ожидает радианы или градусы и сама определяет
-            const startAngleRad = startAngle * Math.PI / 180;
-            const endAngleRad = endAngle * Math.PI / 180;
-
+            // v5.01: Возвращаем углы в ГРАДУСАХ (как в DXF-файле),
+            // для совместимости с npm dxf-parser.
+            // approximateArc() в dxf-import.js сама конвертирует в радианы.
             return {
                 type: 'ARC',
                 center: { x: cx, y: cy },
                 radius: r,
-                startAngle: startAngleRad,
-                endAngle: endAngleRad
+                startAngle: startAngle,
+                endAngle: endAngle
             };
         }
     }
@@ -314,12 +311,12 @@ function parseEntity(tokens, startIdx, type, header) {
             idx++;
         }
         if (cx !== undefined && cy !== undefined && majorX !== undefined && majorY !== undefined) {
-            // В DXF majorAxisEndPoint — это вектор ОТ центра до конца большой полуоси
-            // В dxf-import.js ожидается формат majorAxisEndPoint: {x, y}
+            // v5.01: majorAxisEndPoint — ВЕКТОР от центра (как в DXF spec),
+            // НЕ абсолютная точка. approximateEllipse() вычисляет длину вектора.
             return {
                 type: 'ELLIPSE',
                 center: { x: cx, y: cy },
-                majorAxisEndPoint: { x: cx + majorX, y: cy + majorY },
+                majorAxisEndPoint: { x: majorX, y: majorY },
                 axisRatio: ratio || 1,
                 startAngle: startParam,
                 endAngle: endParam
