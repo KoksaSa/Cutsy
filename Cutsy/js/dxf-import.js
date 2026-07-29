@@ -1,7 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
 // ИМПОРТ ДЕТАЛЕЙ ИЗ DXF — С ПОДДЕРЖКОЙ БЛОКОВ ("макро" файлы)
-// v5.01: $INSUNITS scaling, ELLIPSE partial arcs, POLYLINE bulge,
-//        ARC angle fix (always degrees→radians), custom parser fallback
 // ═══════════════════════════════════════════════════════════════
 
 let importedObjects = [];
@@ -711,61 +709,7 @@ function parseEntityLinetypesFromRaw(rawText) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// v5.01: ПАРСИНГ $INSUNITS ИЗ HEADER
-// ═══════════════════════════════════════════════════════════════
-// Возвращает масштабный коэффициент для конвертации в мм.
-// $INSUNITS: 1=дюйм, 2=фут, 4=мм, 5=см, 6=м, 0=безразмерный
-function parseInsUnitsFromRaw(rawText) {
-    if (!rawText) return 1;
-    const lines = rawText.split(/\r?\n/);
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].trim() === '$INSUNITS' && i + 2 < lines.length) {
-            // $INSUNITS → code 70 → value
-            if (lines[i + 1].trim() === '70') {
-                const val = parseInt(lines[i + 2].trim());
-                switch (val) {
-                    case 0: return 1;   // Безразмерный — не масштабируем
-                    case 1: return 25.4; // Дюймы → мм
-                    case 2: return 304.8; // Футы → мм
-                    case 4: return 1;   // Уже мм
-                    case 5: return 10;  // см → мм
-                    case 6: return 1000; // м → мм
-                    default: return 1;
-                }
-            }
-        }
-    }
-    return 1; // По умолчанию — мм (не масштабируем)
-}
-
-// v5.01: МАСШТАБИРОВАНИЕ КООРДИНАТ СУЩНОСТЕЙ
-function scaleDXFEntities(entities, scale) {
-    if (!entities || scale === 1) return;
-    const scalePoint = (p) => {
-        if (!p) return p;
-        if (typeof p.x === 'number') p.x *= scale;
-        if (typeof p.y === 'number') p.y *= scale;
-        return p;
-    };
-    for (const e of entities) {
-        if (!e) continue;
-        if (e.start) scalePoint(e.start);
-        if (e.end) scalePoint(e.end);
-        if (e.center) scalePoint(e.center);
-        if (e.position) scalePoint(e.position);
-        if (e.radius && typeof e.radius === 'number') e.radius *= scale;
-        if (e.vertices && Array.isArray(e.vertices)) e.vertices.forEach(v => scalePoint(v));
-        if (e.controlPoints && Array.isArray(e.controlPoints)) e.controlPoints.forEach(v => scalePoint(v));
-        if (e.fitPoints && Array.isArray(e.fitPoints)) e.fitPoints.forEach(v => scalePoint(v));
-        if (e.majorAxisEndPoint) scalePoint(e.majorAxisEndPoint);
-        if (e.xScale) e.xScale *= scale;
-        if (e.yScale) e.yScale *= scale;
-        // INSERT position
-        if (e.position) scalePoint(e.position);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
+// АНАЛИЗ ВСПОМОГАТЕЛЬНЫХ ЛИНИЙ В ДЕТАЛИ
 // ═══════════════════════════════════════════════════════════════
 // Возвращает сводку: какие типы вспомогательных линий содержит
 // деталь, и сколько объектов каждого типа.
@@ -1089,12 +1033,9 @@ function transformEntity(entity, offsetX, offsetY, scaleX, scaleY, rotation) {
                 const c = transformPoint(cloned.center.x, cloned.center.y);
                 cloned.center = { x: c.x, y: c.y };
                 // Поворот углов дуги
-                // cloned.startAngle/endAngle в ГРАДУСАХ (из DXF/npm-парсера),
-                // rotation — в РАДИАНАХ. Конвертируем rotation в градусы.
                 if (rotation !== 0) {
-                    const rotDeg = rotation * 180 / Math.PI;
-                    cloned.startAngle = (cloned.startAngle || 0) + rotDeg;
-                    cloned.endAngle = (cloned.endAngle || 0) + rotDeg;
+                    cloned.startAngle = (cloned.startAngle || 0) + rotation;
+                    cloned.endAngle = (cloned.endAngle || 0) + rotation;
                 }
                 // v4.74: Зеркальное отражение (одно из scaleX/scaleY отрицательное)
                 // меняет направление обхода дуги.
@@ -1271,29 +1212,12 @@ async function importDXF(file) {
         const text = await file.text();
         
         let dxf;
-        let usedCustomParser = false;
-        
         if (typeof DxfParser !== 'undefined') {
-            try {
-                const parser = new DxfParser();
-                dxf = parser.parseSync(text);
-            } catch (parseErr) {
-                console.warn('⚠️ npm DxfParser не смог распарсить файл, использую кастомный парсер:', parseErr.message);
-                dxf = null;
-            }
-        }
-        
-        // Fallback на кастомный парсер (dxf-parser.js)
-        // Он надёжнее для нестандартных DXF от Компас-3D и Fusion 360
-        if (!dxf && typeof parseDXF === 'function') {
-            console.log('📋 Использую кастомный parseDXF (fallback)');
-            dxf = parseDXF(text);
-            usedCustomParser = true;
-        }
-        
-        if (!dxf) {
+            const parser = new DxfParser();
+            dxf = parser.parseSync(text);
+        } else {
             console.error('DxfParser не подключён');
-            alert('❌ Ошибка: не удалось распарсить DXF файл. Библиотека dxf-parser не подключена.');
+            alert('❌ Ошибка: библиотека dxf-parser не подключена');
             return null;
         }
         
@@ -1303,18 +1227,6 @@ async function importDXF(file) {
         // и linetype (group code 6) из определений слоёв.
         // Поэтому сохраняем сырой текст для парсинга этих данных.
         dxf._rawText = text;
-
-        // ═══════════════════════════════════════════════════════
-        // v5.01: ПРОВЕРКА ЕДИНИЦ ИЗМЕРЕНИЯ ($INSUNITS)
-        // ═══════════════════════════════════════════════════════
-        // DXF может хранить размеры в дюймах, футах, километрах и т.д.
-        // $INSUNITS определяет единицы: 1=英寸, 2=фут, 4=мм, 5=см, 6=м
-        // Мы работаем в мм. Если файл в других единицах — масштабируем.
-        const unitScale = parseInsUnitsFromRaw(text);
-        if (unitScale !== 1 && unitScale > 0) {
-            console.log(`📐 $INSUNITS: масштабирование координат ×${unitScale} (в мм)`);
-            scaleDXFEntities(dxf.entities, unitScale);
-        }
 
         // ═══════════════════════════════════════════════════════
         // ДОПОЛНИТЕЛЬНЫЙ ПАРСИНГ ТИПОВ ЛИНИЙ СУЩНОСТЕЙ
@@ -1585,13 +1497,9 @@ function convertDXFEntity(entity) {
             if (entity.vertices && entity.vertices.length > 0) {
                 const normalizedVertices = entity.vertices.map(v => {
                     if (Array.isArray(v)) {
-                        return { x: v[0] ?? 0, y: v[1] ?? 0, bulge: v[2] ?? 0 };
+                        return { x: v[0] ?? 0, y: v[1] ?? 0 };
                     } else if (v && typeof v === 'object') {
-                        return {
-                            x: v.x ?? v[0] ?? 0,
-                            y: v.y ?? v[1] ?? 0,
-                            bulge: v.bulge ?? v.b ?? 0
-                        };
+                        return { x: v.x ?? v[0] ?? 0, y: v.y ?? v[1] ?? 0 };
                     }
                     return null;
                 }).filter(v => v !== null);
@@ -1599,29 +1507,22 @@ function convertDXFEntity(entity) {
                 // Проверка: полилиния замкнута?
                 const isClosed = entity.closed === true || entity.shape === true;
                 
-                // v5.01: Обработка bulge (дуговых сегментов) — как в LWPOLYLINE
+                // Рисуем все сегменты
                 const vertexCount = isClosed ? normalizedVertices.length : normalizedVertices.length - 1;
                 for (let i = 0; i < vertexCount; i++) {
                     const v1 = normalizedVertices[i];
                     const v2 = normalizedVertices[(i + 1) % normalizedVertices.length];
-                    const bulge = v1.bulge || 0;
-
-                    if (Math.abs(bulge) < 0.001) {
-                        // Прямой сегмент
-                        if (typeof Line !== 'undefined') {
-                            importedObjects.push(new Line(v1.x, v1.y, v2.x, v2.y));
-                        } else {
-                            importedObjects.push({
-                                type: 'line',
-                                x1: v1.x, y1: v1.y,
-                                x2: v2.x, y2: v2.y,
-                                id: Date.now() + Math.random()
-                            });
-                        }
+                    // Fallback для Line
+                    if (typeof Line !== 'undefined') {
+                        const line = new Line(v1.x, v1.y, v2.x, v2.y);
+                        importedObjects.push(line);
                     } else {
-                        // Дуговой сегмент (bulge)
-                        const arcLines = approximateBulgeArc(v1, v2, bulge);
-                        importedObjects.push(...arcLines);
+                        importedObjects.push({
+                            type: 'line',
+                            x1: v1.x, y1: v1.y,
+                            x2: v2.x, y2: v2.y,
+                            id: Date.now() + Math.random()
+                        });
                     }
                 }
             }
@@ -1840,16 +1741,9 @@ function approximateArc(arc) {
     let startAngle = arc.startAngle;
     let endAngle = arc.endAngle;
 
-    // DXF хранит углы ARC в ГРАДУСАХ. npm dxf-parser возвращает их как есть.
-    // Кастомный parseDXF (fallback) тоже возвращает градусы (v5.01).
-    // Надёжная конвертация: если значение > 2π — точно градусы.
-    // Если ≤ 2π — можем проверить флаг _angleUnit.
-    // Большинство реальных дуг имеют углы 0-360°, значения 1-6° (радиан)
-    // практически не встречаются. Для надежности: если нет флага _angleInRadians,
-    // всегда конвертируем из градусов.
-    if (!arc._angleInRadians) {
-        startAngle = startAngle * Math.PI / 180;
-        endAngle = endAngle * Math.PI / 180;
+    if (Math.abs(startAngle) > Math.PI * 2 || Math.abs(endAngle) > Math.PI * 2) {
+        startAngle *= Math.PI / 180;
+        endAngle *= Math.PI / 180;
     }
 
     // Определяем направление: DXF ARC всегда CCW (против часовой)
@@ -2010,40 +1904,22 @@ function approximateBulgeArc(v1, v2, bulge) {
 
 function approximateEllipse(ellipse) {
     const lines = [];
-    const segments = 72; // v5.01: увеличено с 36 до 72 для точности
+    const segments = 36;
     
-    // majorAxisEndPoint — ВЕКТОР от центра до конца большой полуоси (из DXF)
     const a = Math.sqrt(ellipse.majorAxisEndPoint.x * ellipse.majorAxisEndPoint.x + 
                         ellipse.majorAxisEndPoint.y * ellipse.majorAxisEndPoint.y);
-    const b = a * (ellipse.axisRatio || 1);
+    const b = a * ellipse.axisRatio;
     const rotation = Math.atan2(ellipse.majorAxisEndPoint.y, ellipse.majorAxisEndPoint.x);
     
-    // v5.01: Поддержка частичных эллипсов (startParam/endParam в радианах)
-    // DXF ELLIPSE хранит startParam (code 41) и endParam (code 42) в РАДИАНАХ.
-    // Полный эллипс: startParam=0, endParam=2π.
-    // npm dxf-parser возвращает их как startAngle/endAngle.
-    let startParam = ellipse.startAngle ?? 0;
-    let endParam = ellipse.endAngle ?? (2 * Math.PI);
-    
-    // Нормализуем: если параметры выглядят как градусы (> 2π), конвертируем
-    // (некоторые CAD могут хранить в градусах, хотя спецификация требует радианы)
-    if (Math.abs(startParam) > Math.PI * 2 || Math.abs(endParam) > Math.PI * 2) {
-        startParam = startParam * Math.PI / 180;
-        endParam = endParam * Math.PI / 180;
-    }
-    
-    // Если полный эллипс (0 → 2π) — рисуем замкнутый контур
-    const isFull = Math.abs(startParam - 0) < 0.001 && Math.abs(endParam - 2 * Math.PI) < 0.001;
-    const segCount = isFull ? segments : Math.max(8, Math.ceil(segments * (endParam - startParam) / (2 * Math.PI)));
-    
-    for (let i = 0; i < segCount; i++) {
-        const t1 = startParam + (endParam - startParam) * (i / segCount);
-        const t2 = startParam + (endParam - startParam) * ((i + 1) / segCount);
+    // Исправлено: i < segments (без лишнего сегмента)
+    for (let i = 0; i < segments; i++) {
+        const angle = (2 * Math.PI * i) / segments;
+        const nextAngle = (2 * Math.PI * (i + 1)) / segments;
         
-        const x1 = ellipse.center.x + (a * Math.cos(t1) * Math.cos(rotation) - b * Math.sin(t1) * Math.sin(rotation));
-        const y1 = ellipse.center.y + (a * Math.cos(t1) * Math.sin(rotation) + b * Math.sin(t1) * Math.cos(rotation));
-        const x2 = ellipse.center.x + (a * Math.cos(t2) * Math.cos(rotation) - b * Math.sin(t2) * Math.sin(rotation));
-        const y2 = ellipse.center.y + (a * Math.cos(t2) * Math.sin(rotation) + b * Math.sin(t2) * Math.cos(rotation));
+        const x1 = ellipse.center.x + (a * Math.cos(angle) * Math.cos(rotation) - b * Math.sin(angle) * Math.sin(rotation));
+        const y1 = ellipse.center.y + (a * Math.cos(angle) * Math.sin(rotation) + b * Math.sin(angle) * Math.cos(rotation));
+        const x2 = ellipse.center.x + (a * Math.cos(nextAngle) * Math.cos(rotation) - b * Math.sin(nextAngle) * Math.sin(rotation));
+        const y2 = ellipse.center.y + (a * Math.cos(nextAngle) * Math.sin(rotation) + b * Math.sin(nextAngle) * Math.cos(rotation));
         
         if (typeof Line !== 'undefined') {
             lines.push(new Line(x1, y1, x2, y2));
