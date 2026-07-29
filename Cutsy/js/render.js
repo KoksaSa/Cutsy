@@ -2227,7 +2227,16 @@ window.render = function render() {
                 angle = angle > 0 ? angle - Math.PI : angle + Math.PI;
             }
             ctx.rotate(angle);
-            ctx.fillText(dim.value, 0, -5);
+
+            // v1.4: Фон под текстом размера — чтобы числа не сливались
+            const textStr = String(dim.value);
+            const textWidth = ctx.measureText(textStr).width;
+            ctx.fillStyle = 'rgba(20, 20, 30, 0.85)';
+            ctx.fillRect(-textWidth / 2 - 4, -30, textWidth + 8, 24);
+
+            // Текст поверх фона
+            ctx.fillStyle = isSelected ? '#ffff00' : '#00ff00';
+            ctx.fillText(textStr, 0, -5);
             ctx.restore();
         });
     }
