@@ -158,7 +158,8 @@ function updatePartsList() {
         }
 
         // [FIX #8] Экранируем part.id для использования в HTML-атрибутах
-        list.innerHTML = parts.map((part, idx) => {
+        // v5.07: Новые детали сверху — отображаем в обратном порядке
+        list.innerHTML = [...parts].reverse().map((part, idx) => {
             // Считаем сколько деталей этой детали размещено на ВСЕХ листах
             let totalPlacedCount = 0;
             if (window.allSheets && window.allSheets.length > 0) {
