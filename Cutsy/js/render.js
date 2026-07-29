@@ -2347,9 +2347,14 @@ window.render = function render() {
         const width = screenEndX - screenStartX;
         const height = screenEndY - screenStartY;
 
-        ctx.fillStyle = 'rgba(0, 122, 204, 0.2)';
+        // v5.02: Shift+рамка — зелёная (deselect), обычная — синяя (select)
+        const isShiftSel = typeof isShiftPressed !== 'undefined' && isShiftPressed;
+        const fillColor = isShiftSel ? 'rgba(204, 50, 50, 0.15)' : 'rgba(0, 122, 204, 0.15)';
+        const strokeColor = isShiftSel ? '#cc3232' : '#007acc';
+
+        ctx.fillStyle = fillColor;
         ctx.fillRect(screenStartX, screenStartY, width, height);
-        ctx.strokeStyle = '#007acc';
+        ctx.strokeStyle = strokeColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.strokeRect(screenStartX, screenStartY, width, height);

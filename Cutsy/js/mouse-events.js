@@ -266,6 +266,135 @@ canvas.addEventListener('wheel', (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// v5.02: CROSSING SELECTION — пересечение объекта с прямоугольником
+// ═══════════════════════════════════════════════════════════════
+// Возвращает true, если объект пересекается с прямоугольником или
+// хотя бы одна его точка внутри прямоугольника.
+// Работает с классами (Line, Circle, Polygon, Arc) и plain objects.
+
+function _segIntersectsRect(x1, y1, x2, y2, minX, minY, maxX, maxY) {
+    const p1Inside = x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY;
+    const p2Inside = x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY;
+    if (p1Inside || p2Inside) return true;
+    if (_segSegIntersect(x1, y1, x2, y2, minX, minY, minX, maxY)) return true;
+    if (_segSegIntersect(x1, y1, x2, y2, maxX, minY, maxX, maxY)) return true;
+    if (_segSegIntersect(x1, y1, x2, y2, minX, minY, maxX, minY)) return true;
+    if (_segSegIntersect(x1, y1, x2, y2, minX, maxY, maxX, maxY)) return true;
+    return false;
+}
+
+function _segSegIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+    const d = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3);
+    if (Math.abs(d) < 1e-10) return false;
+    const t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d;
+    const u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / d;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+function _circleIntersectsRect(cx, cy, r, minX, minY, maxX, maxY) {
+    const nx = Math.max(minX, Math.min(cx, maxX));
+    const ny = Math.max(minY, Math.min(cy, maxY));
+    const dx = cx - nx, dy = cy - ny;
+    return dx * dx + dy * dy <= r * r;
+}
+
+function _arcIntersectsRect(cx, cy, r, startAngle, endAngle, direction, minX, minY, maxX, maxY) {
+    let sweep;
+    if (direction === 'CW') {
+        sweep = startAngle - endAngle;
+        if (sweep < 0) sweep += Math.PI * 2;
+    } else {
+        sweep = endAngle - startAngle;
+        if (sweep < 0) sweep += Math.PI * 2;
+    }
+    const seg = Math.max(8, Math.ceil(sweep / (Math.PI / 12)));
+    const step = sweep / seg;
+    const dir = direction === 'CW' ? -1 : 1;
+    let prevX = cx + Math.cos(startAngle) * r;
+    let prevY = cy + Math.sin(startAngle) * r;
+    for (let i = 1; i <= seg; i++) {
+        const a = startAngle + dir * step * i;
+        const px = cx + Math.cos(a) * r;
+        const py = cy + Math.sin(a) * r;
+        if (_segIntersectsRect(prevX, prevY, px, py, minX, minY, maxX, maxY)) return true;
+        prevX = px; prevY = py;
+    }
+    return false;
+}
+
+function objectIntersectsRect(obj, minX, minY, maxX, maxY) {
+    if (!obj) return false;
+    const type = obj.type;
+    
+    if (type === 'line') {
+        return _segIntersectsRect(obj.x1, obj.y1, obj.x2, obj.y2, minX, minY, maxX, maxY);
+    }
+    if (type === 'circle') {
+        return _circleIntersectsRect(obj.cx, obj.cy, obj.radius, minX, minY, maxX, maxY);
+    }
+    if (type === 'arc') {
+        const r = Math.abs(obj.radius || 0);
+        if (r < 0.001) return false;
+        const sa = obj.startAngle ?? 0;
+        const ea = obj.endAngle ?? (2 * Math.PI);
+        const dir = obj.direction || 'CCW';
+        if (!_circleIntersectsRect(obj.cx, obj.cy, r, minX, minY, maxX, maxY)) return false;
+        return _arcIntersectsRect(obj.cx, obj.cy, r, sa, ea, dir, minX, minY, maxX, maxY);
+    }
+    if (type === 'rect') {
+        const x = obj.x, y = obj.y, w = obj.width, h = obj.height;
+        if (_segIntersectsRect(x, y, x + w, y, minX, minY, maxX, maxY)) return true;
+        if (_segIntersectsRect(x + w, y, x + w, y + h, minX, minY, maxX, maxY)) return true;
+        if (_segIntersectsRect(x + w, y + h, x, y + h, minX, minY, maxX, maxY)) return true;
+        if (_segIntersectsRect(x, y + h, x, y, minX, minY, maxX, maxY)) return true;
+        return false;
+    }
+    if (type === 'polygon' || type === 'polyline' || type === 'lwpolyline') {
+        let verts;
+        if (typeof obj.getVertices === 'function') {
+            verts = obj.getVertices();
+        } else if (obj.points && Array.isArray(obj.points)) {
+            verts = obj.points;
+        } else if (obj.vertices && Array.isArray(obj.vertices)) {
+            verts = obj.vertices;
+        } else {
+            return false;
+        }
+        if (verts.length < 2) return false;
+        const isClosed = type === 'polygon' || obj.closed;
+        const segCount = isClosed ? verts.length : verts.length - 1;
+        for (let i = 0; i < segCount; i++) {
+            const v1 = verts[i];
+            const v2 = verts[(i + 1) % verts.length];
+            if (_segIntersectsRect(v1.x, v1.y, v2.x, v2.y, minX, minY, maxX, maxY)) return true;
+        }
+        return false;
+    }
+    if (type === 'text') {
+        return obj.x >= minX && obj.x <= maxX && obj.y >= minY && obj.y <= maxY;
+    }
+    if (type === 'spline') {
+        const pts = obj.fitPoints || obj.controlPoints || obj.points || obj.vertices || [];
+        for (let i = 0; i < pts.length - 1; i++) {
+            if (_segIntersectsRect(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, minX, minY, maxX, maxY)) return true;
+        }
+        return false;
+    }
+    if (type === 'ellipse') {
+        const cx = obj.cx || 0, cy = obj.cy || 0;
+        const rx = Math.abs(obj.rx || 0), ry = Math.abs(obj.ry || 0);
+        if (cx + rx < minX || cx - rx > maxX || cy + ry < minY || cy - ry > maxY) return false;
+        return true;
+    }
+    if (typeof obj.getPoints === 'function') {
+        for (const pt of obj.getPoints()) {
+            if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) return true;
+        }
+    }
+    return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 2. Панорамирование средней кнопкой мыши
 // ═══════════════════════════════════════════════════════════════
 canvas.addEventListener('mousedown', (e) => {
@@ -864,7 +993,8 @@ canvas.addEventListener('mousedown', (e) => {
                 render();
                 return;
             }
-            // v1.0: Shift+клик и Ctrl+клик — добавление к выделению
+            // v5.02: Shift+клик — toggle (добавить/убрать), как в Компас-3D
+            // Ctrl+клик — тоже toggle (для совместимости)
             if (isCtrlPressed || isShiftPressed) {
                 const idx = selectedObjects.indexOf(clickedObject);
                 // v4.97: Shift+клик по УЖЕ ВЫДЕЛЕННОМУ объекту → начало ортогонального drag
@@ -2586,11 +2716,27 @@ canvas.addEventListener('mouseup', (e) => {
     if (isSelecting) {
         const minX = Math.min(selectStart.x, selectEnd.x), maxX = Math.max(selectStart.x, selectEnd.x);
         const minY = Math.min(selectStart.y, selectEnd.y), maxY = Math.max(selectStart.y, selectEnd.y);
+        
+        // v5.02: Crossing selection — как в Компас-3D.
+        // Объект выделяется, если рамка ПЕРЕСЕКАЕТ его (а не только если он полностью внутри).
+        // Для линий: проверяем пересечение отрезка со сторонами прямоугольника.
+        // Для кругов/дуг: проверяем попадание центра ИЛИ пересечение дуги со сторонами.
+        // Для полигонов/полилиний: проверяем каждый сегмент.
+        // Если хотя бы одна точка объекта внутри прямоугольника — тоже выбираем.
+        
+        // Если Shift зажат — убираем пересечённые объекты из выделения (deselect)
+        const shiftSelect = isShiftPressed;
+        
         objects.forEach(obj => {
-            if (!obj || typeof obj.getPoints !== 'function') return;
-            for (let pt of obj.getPoints()) {
-                if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
-                    if (!selectedObjects.includes(obj)) selectedObjects.push(obj); break;
+            if (!obj) return;
+            const intersects = objectIntersectsRect(obj, minX, minY, maxX, maxY);
+            if (intersects) {
+                if (shiftSelect) {
+                    // Shift+рамка — убираем из выделения
+                    const idx = selectedObjects.indexOf(obj);
+                    if (idx >= 0) selectedObjects.splice(idx, 1);
+                } else {
+                    if (!selectedObjects.includes(obj)) selectedObjects.push(obj);
                 }
             }
         });
