@@ -2186,7 +2186,6 @@ window.render = function render() {
     if (dimsToShow.length > 0) {
         ctx.lineWidth = 1;
         ctx.setLineDash([]);
-        ctx.font = '30px Segoe UI';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
@@ -2195,15 +2194,23 @@ window.render = function render() {
             ctx.strokeStyle = isSelected ? '#ffff00' : '#00ff00';
             ctx.fillStyle = isSelected ? '#ffff00' : '#00ff00';
 
-            const tickSize = 8;
             const midX = (dim.x1 + dim.x2) / 2;
             const midY = (dim.y1 + dim.y2) / 2;
 
             const dx = dim.x2 - dim.x1;
             const dy = dim.y2 - dim.y1;
             const length = Math.sqrt(dx * dx + dy * dy);
-            const offsetX = -dy / length * 15;
-            const offsetY = dx / length * 15;
+
+            // v5.05: Адаптивный размер шрифта, засечек и отступа
+            // пропорционально длине размерной линии (габариту детали).
+            // clamp(длина × 0.15, 6, 30) — для 80мм → 12, для 200мм → 30
+            const fontSize = Math.max(6, Math.min(30, length * 0.15));
+            const tickSize = Math.max(3, fontSize * 0.35);
+            const lineOffset = Math.max(8, fontSize * 0.6);
+            const offsetX = -dy / length * lineOffset;
+            const offsetY = dx / length * lineOffset;
+
+            ctx.font = fontSize + 'px Segoe UI';
 
             // Основная линия
             ctx.beginPath();
@@ -2231,12 +2238,13 @@ window.render = function render() {
             // v1.4: Фон под текстом размера — чтобы числа не сливались
             const textStr = String(dim.value);
             const textWidth = ctx.measureText(textStr).width;
+            const bgPad = fontSize * 0.2;
             ctx.fillStyle = 'rgba(20, 20, 30, 0.85)';
-            ctx.fillRect(-textWidth / 2 - 4, -30, textWidth + 8, 24);
+            ctx.fillRect(-textWidth / 2 - bgPad, -fontSize - bgPad, textWidth + bgPad * 2, fontSize + bgPad);
 
             // Текст поверх фона
             ctx.fillStyle = isSelected ? '#ffff00' : '#00ff00';
-            ctx.fillText(textStr, 0, -5);
+            ctx.fillText(textStr, 0, -bgPad);
             ctx.restore();
         });
     }

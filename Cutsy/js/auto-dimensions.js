@@ -103,15 +103,18 @@ function generatePartDimensions(part) {
     const w = b.width || (maxX - minX);
     const h = b.height || (maxY - minY);
 
+    // v5.05: Отступы масштабируются от габарита детали
+    // Для 80мм → ~6мм отступ, для 500мм → ~15мм
+    const maxDim = Math.max(w, h);
+    const gabOffset = Math.max(6, Math.min(20, maxDim * 0.06));
+
     // Габаритные размеры (dim='gabarit-*')
-    const offsetBottom = 15;
     dimensionLines.push({
-        x1: minX, y1: maxY + offsetBottom, x2: maxX, y2: maxY + offsetBottom,
+        x1: minX, y1: maxY + gabOffset, x2: maxX, y2: maxY + gabOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', partId: part.id, dim: 'gabarit-width'
     });
-    const offsetRight = 15;
     dimensionLines.push({
-        x1: maxX + offsetRight, y1: minY, x2: maxX + offsetRight, y2: maxY,
+        x1: maxX + gabOffset, y1: minY, x2: maxX + gabOffset, y2: maxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', partId: part.id, dim: 'gabarit-height'
     });
 
@@ -148,15 +151,17 @@ function generateObjectDimensions(objs) {
     const h = gMaxY - gMinY;
     if (w < 0.1 && h < 0.1) return;
 
+    // v5.05: Отступы масштабируются от общего габарита
+    const maxDim = Math.max(w, h);
+    const gabOffset = Math.max(6, Math.min(20, maxDim * 0.06));
+
     // Габаритные размеры (dim='gabarit-*')
-    const offsetBottom = 15;
     dimensionLines.push({
-        x1: gMinX, y1: gMaxY + offsetBottom, x2: gMaxX, y2: gMaxY + offsetBottom,
+        x1: gMinX, y1: gMaxY + gabOffset, x2: gMaxX, y2: gMaxY + gabOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', dim: 'gabarit-width'
     });
-    const offsetRight = 15;
     dimensionLines.push({
-        x1: gMaxX + offsetRight, y1: gMinY, x2: gMaxX + offsetRight, y2: gMaxY,
+        x1: gMaxX + gabOffset, y1: gMinY, x2: gMaxX + gabOffset, y2: gMaxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', dim: 'gabarit-height'
     });
 }
@@ -171,16 +176,18 @@ function generateIndividualDimension(obj, normX, normY) {
     const h = bb.maxY - bb.minY;
     if (w < 0.1 && h < 0.1) return;
 
-    // Индивидуальный размер ширины (сверху объекта, отступ 8мм)
-    const offsetTop = 8;
+    // v5.05: Отступы масштабируются от размера объекта
+    const maxDim = Math.max(w, h);
+    const indOffset = Math.max(4, Math.min(12, maxDim * 0.05));
+
+    // Индивидуальный размер ширины (сверху объекта)
     dimensionLines.push({
-        x1: bb.minX, y1: bb.minY - offsetTop, x2: bb.maxX, y2: bb.minY - offsetTop,
+        x1: bb.minX, y1: bb.minY - indOffset, x2: bb.maxX, y2: bb.minY - indOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', dim: 'individual-width'
     });
-    // Индивидуальный размер высоты (слева от объекта, отступ 8мм)
-    const offsetLeft = 8;
+    // Индивидуальный размер высоты (слева от объекта)
     dimensionLines.push({
-        x1: bb.minX - offsetLeft, y1: bb.minY, x2: bb.minX - offsetLeft, y2: bb.maxY,
+        x1: bb.minX - indOffset, y1: bb.minY, x2: bb.minX - indOffset, y2: bb.maxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', dim: 'individual-height'
     });
 }
