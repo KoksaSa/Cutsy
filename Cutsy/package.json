@@ -9,11 +9,14 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "devDependencies": {
-    "javascript-obfuscator": "^4.1.0",
+    "clean-css": "^5.3.3",
     "html-minifier-terser": "^7.2.0",
-    "clean-css": "^5.3.3"
+    "javascript-obfuscator": "^4.1.0"
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "electron-packager": "^17.1.2"
   }
 }

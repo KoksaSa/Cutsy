@@ -434,6 +434,18 @@
                 </span>
                 <span>Разгр.</span>
             </button>
+
+            <!-- Кнопка "Создать деталь" — Развёртка противней -->
+            <button class="tool-btn" id="createDetailBtn" title="Создать развертку детали — противни" style="background:#1a7a4a;border:1px solid #2ecc71;">
+                <span class="icon">
+                    <svg width="20" height="20">
+                        <rect x="3" y="4" width="14" height="12" stroke="#2ecc71" stroke-width="2" fill="none"/>
+                        <line x1="3" y1="8" x2="17" y2="8" stroke="#2ecc71" stroke-width="1.5" stroke-dasharray="2,2"/>
+                        <path d="M 6 11 L 8 8 L 10 11 L 12 8 L 14 11" stroke="#2ecc71" stroke-width="1.5" fill="none"/>
+                    </svg>
+                </span>
+                <span>Создать деталь</span>
+            </button>
         </div>
 
         <h3 style="margin-top: 20px;" data-i18n="parts_title">📋 Детали</h3>
@@ -1161,6 +1173,64 @@ if (window.Nesting) {
 
     <!-- app-init.js -->
     <script src="js/app-init.js?v=3.27"></script>
+
+    <!-- v4.78-debug: тест dropdown -->
+    <script>
+        window.addEventListener('load', function() {
+            var btn = document.getElementById('filletDropdownBtn');
+            var menu = document.getElementById('filletDropdownMenu');
+            var mainBtn = document.getElementById('filletMainBtn');
+            var mainLabel = document.getElementById('filletBtnLabel');
+            console.log('[TEST] filletDropdownBtn:', btn ? 'НАЙДЕН' : 'НЕ НАЙДЕН');
+            console.log('[TEST] filletDropdownMenu:', menu ? 'НАЙДЕН' : 'НЕ НАЙДЕН');
+            console.log('[TEST] filletMainBtn:', mainBtn ? 'НАЙДЕН' : 'НЕ НАЙДЕН');
+            console.log('[TEST] filletBtnLabel:', mainLabel ? 'НАЙДЕН' : 'НЕ НАЙДЕН');
+            if (btn && menu) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[TEST] ▼ КЛИК ПО КНОПКЕ! Меню было:', menu.style.display);
+                    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                    console.log('[TEST] Меню теперь:', menu.style.display);
+                }, true); // capture phase
+            }
+            if (menu) {
+                menu.querySelectorAll('[data-tool]').forEach(function(item) {
+                    item.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var tool = item.dataset.tool;
+                        console.log('[TEST] ВЫБРАН ИНСТРУМЕНТ:', tool);
+                        if (mainLabel) mainLabel.textContent = tool === 'chamfer' ? 'Фаска' : 'Скругл.';
+                        if (mainBtn) mainBtn.dataset.tool = tool;
+                        if (mainBtn) {
+                            mainBtn.title = tool === 'chamfer' ? 'F — Фаска угла' : 'F — Скругление угла';
+                            // Обновляем иконку SVG
+                            var iconSpan = mainBtn.querySelector('.icon');
+                            if (iconSpan) {
+                                if (tool === 'chamfer') {
+                                    iconSpan.innerHTML = '<svg width="20" height="20"><path d="M 3 17 L 17 3" stroke="#fff" stroke-width="2" fill="none"/><path d="M 3 17 L 17 17 L 17 3" stroke="#fff" stroke-width="1" fill="none" stroke-dasharray="2,2"/></svg>';
+                                } else {
+                                    iconSpan.innerHTML = '<svg width="20" height="20"><path d="M 3 17 L 3 10 A 7 7 0 0 1 10 3 L 17 3" stroke="#fff" stroke-width="2" fill="none"/></svg>';
+                                }
+                                console.log('[TEST] Иконка обновлена:', tool);
+                            } else {
+                                console.error('[TEST] Не найден .icon!');
+                            }
+                        }
+                        menu.style.display = 'none';
+                        if (mainBtn) mainBtn.click();
+                    }, true); // capture phase
+                });
+            }
+            // Закрытие меню при клике вне
+            document.addEventListener('click', function(e) {
+                if (menu && !menu.contains(e.target) && btn && e.target !== btn) {
+                    menu.style.display = 'none';
+                }
+            }, true);
+        });
+    </script>
 
 
     

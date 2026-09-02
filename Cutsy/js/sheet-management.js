@@ -285,6 +285,16 @@ function loadSheet(index) {
     nestedParts = sheet.nestedParts || [];
     sheetSize = { ...sheet.sheetSize };
 
+<<<<<<< HEAD
+=======
+    // v5.06: Загрузка толщины листа
+    if (sheet.thickness != null) {
+        // толщина сохранена — используем
+    } else {
+        sheet.thickness = 0.8; // fallback для старых листов
+    }
+
+>>>>>>> master
     markupRects = sheet.markupRects || [];
     window.markupRects = markupRects;
     window.cutRemnantLine = sheet.cutRemnantLine || null;
@@ -340,6 +350,10 @@ document.getElementById('showSheet').addEventListener('click', () => {
             id: 1,
             name: 'Лист 1',
             sheetSize: { ...sheetSize },
+<<<<<<< HEAD
+=======
+            thickness: 0.8, // v5.06: толщина по умолчанию
+>>>>>>> master
             nestedParts: [],
             markupRects: []
         }];
@@ -367,6 +381,10 @@ document.getElementById('clearNesting').addEventListener('click', () => {
             id: 1,
             name: 'Лист 1',
             sheetSize: { ...sheetSize },
+<<<<<<< HEAD
+=======
+            thickness: 0.8, // v5.06: толщина по умолчанию
+>>>>>>> master
             nestedParts: [],
             markupRects: []
         }];
@@ -411,6 +429,7 @@ document.getElementById('addSheet').addEventListener('click', () => {
 
     const sheetWidthInput = prompt('Введите ширину листа (мм):', sheetSize.width);
     if (sheetWidthInput === null) return;
+<<<<<<< HEAD
     const width = safeParseInt(sheetWidthInput, 1250); // [FIX #4]
 
     const sheetHeightInput = prompt('Введите высоту листа (мм):', sheetSize.height);
@@ -418,6 +437,22 @@ document.getElementById('addSheet').addEventListener('click', () => {
     const height = safeParseInt(sheetHeightInput, 2500); // [FIX #4]
 
     // [FIX #5] Валидация
+=======
+    const width = safeParseInt(sheetWidthInput, 1250);
+
+    const sheetHeightInput = prompt('Введите высоту листа (мм):', sheetSize.height);
+    if (sheetHeightInput === null) return;
+    const height = safeParseInt(sheetHeightInput, 2500);
+
+    // v5.06: Запрос толщины листа
+    const currentSheet = window.allSheets && window.allSheets.length > 0 ? window.allSheets[window.allSheets.length - 1] : null;
+    const defaultThickness = currentSheet?.thickness || 0.8;
+    const sheetThicknessInput = prompt('Введите толщину листа (мм):', defaultThickness);
+    if (sheetThicknessInput === null) return;
+    const thickness = parseFloat(sheetThicknessInput) || 0.8;
+
+    // Валидация
+>>>>>>> master
     if (width <= 0 || height <= 0) {
         alert('Размер листа должен быть больше 0');
         return;
@@ -426,28 +461,48 @@ document.getElementById('addSheet').addEventListener('click', () => {
         alert('Размер листа не должен превышать 10000 мм');
         return;
     }
+<<<<<<< HEAD
 
     if (typeof saveState === 'function') saveState();
 
     // [FIX #18] Защита от null allSheets
+=======
+    if (thickness <= 0 || thickness > 100) {
+        alert('Толщина листа должна быть от 0.1 до 100 мм');
+        return;
+    }
+
+    if (typeof saveState === 'function') saveState();
+
+>>>>>>> master
     if (!window.allSheets) {
         window.allSheets = [];
         window.currentSheetIndex = 0;
     }
 
+<<<<<<< HEAD
     // [FIX #7] sheetNum = реальный индекс + 1
+=======
+>>>>>>> master
     const newSheet = {
         sheetNum: window.allSheets.length + 1,
         nestedParts: [],
         unplacedParts: [],
         utilization: 0,
         sheetSize: { width, height },
+<<<<<<< HEAD
+=======
+        thickness: thickness, // v5.06: толщина листа
+>>>>>>> master
         markupRects: [],
         cutRemnantLine: null,
         showCutRemnantLine: false
     };
 
+<<<<<<< HEAD
     // [FIX #6] Сохраняем текущий лист перед добавлением нового
+=======
+>>>>>>> master
     saveCurrentSheet();
 
     window.allSheets.push(newSheet);
@@ -578,6 +633,7 @@ document.getElementById('resizeSheet').addEventListener('click', () => {
     const currentSheet = window.allSheets[window.currentSheetIndex];
     const oldWidth = currentSheet.sheetSize.width;
     const oldHeight = currentSheet.sheetSize.height;
+<<<<<<< HEAD
 
     const newWidth = prompt('Введите новую ширину листа (мм):', oldWidth);
     if (newWidth === null) return;
@@ -588,6 +644,24 @@ document.getElementById('resizeSheet').addEventListener('click', () => {
     const height = safeParseInt(newHeight, oldHeight); // [FIX #4]
 
     // [FIX #5] Валидация
+=======
+    const oldThickness = currentSheet.thickness || 0.8;
+
+    const newWidth = prompt('Введите новую ширину листа (мм):', oldWidth);
+    if (newWidth === null) return;
+    const width = safeParseInt(newWidth, oldWidth);
+
+    const newHeight = prompt('Введите новую высоту листа (мм):', oldHeight);
+    if (newHeight === null) return;
+    const height = safeParseInt(newHeight, oldHeight);
+
+    // v5.06: Запрос толщины листа
+    const newThickness = prompt('Введите толщину листа (мм):', oldThickness);
+    if (newThickness === null) return;
+    const thickness = parseFloat(newThickness) || 0.8;
+
+    // Валидация
+>>>>>>> master
     if (width <= 0 || height <= 0) {
         alert('Размер листа должен быть больше 0');
         return;
@@ -596,12 +670,23 @@ document.getElementById('resizeSheet').addEventListener('click', () => {
         alert('Размер листа не должен превышать 10000 мм');
         return;
     }
+<<<<<<< HEAD
+=======
+    if (thickness <= 0 || thickness > 100) {
+        alert('Толщина листа должна быть от 0.1 до 100 мм');
+        return;
+    }
+>>>>>>> master
 
     if (typeof saveState === 'function') saveState();
 
     currentSheet.nestedParts = [...nestedParts];
     currentSheet.markupRects = [...(window.markupRects || markupRects || [])];
     currentSheet.sheetSize = { width, height };
+<<<<<<< HEAD
+=======
+    currentSheet.thickness = thickness; // v5.06: сохраняем толщину
+>>>>>>> master
 
     sheetSize = { width, height };
     const widthEl = document.getElementById('sheetWidth');

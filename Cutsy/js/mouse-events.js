@@ -266,6 +266,81 @@ canvas.addEventListener('wheel', (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+<<<<<<< HEAD
+=======
+// v5.03: МАСШТАБИРОВАНИЕ КОНТУРА — вспомогательные функции
+// ═══════════════════════════════════════════════════════════════
+
+function _snapshotObject(obj) {
+    if (obj.type === 'line') return { obj, type: 'line', x1: obj.x1, y1: obj.y1, x2: obj.x2, y2: obj.y2 };
+    if (obj.type === 'circle') return { obj, type: 'circle', cx: obj.cx, cy: obj.cy, radius: obj.radius };
+    if (obj.type === 'arc') return { obj, type: 'arc', cx: obj.cx, cy: obj.cy, radius: obj.radius, startAngle: obj.startAngle, endAngle: obj.endAngle, direction: obj.direction };
+    if (obj.type === 'rect') return { obj, type: 'rect', x: obj.x, y: obj.y, width: obj.width, height: obj.height };
+    if (obj.type === 'polygon') return { obj, type: 'polygon', cx: obj.cx, cy: obj.cy, radius: obj.radius, vertices: obj.vertices ? obj.vertices.map(v => ({x:v.x, y:v.y})) : null };
+    if (obj.type === 'text') return { obj, type: 'text', x: obj.x, y: obj.y };
+    if (obj.type === 'polyline' || obj.type === 'lwpolyline') return { obj, type: obj.type, points: obj.points ? obj.points.map(p => ({x:p.x, y:p.y})) : null };
+    return { obj, type: obj.type || 'unknown' };
+}
+
+function _scaleObjectFromSnapshot(snap, cx, cy, scale) {
+    const obj = snap.obj;
+    const sx = (p) => cx + (p - cx) * scale;
+    const sy = (p) => cy + (p - cy) * scale;
+
+    if (snap.type === 'line') {
+        obj.x1 = sx(snap.x1); obj.y1 = sy(snap.y1);
+        obj.x2 = sx(snap.x2); obj.y2 = sy(snap.y2);
+    } else if (snap.type === 'circle') {
+        obj.cx = sx(snap.cx); obj.cy = sy(snap.cy);
+        obj.radius = Math.max(0.01, snap.radius * scale);
+    } else if (snap.type === 'arc') {
+        obj.cx = sx(snap.cx); obj.cy = sy(snap.cy);
+        obj.radius = Math.max(0.01, snap.radius * scale);
+        // Углы не меняются при масштабировании
+    } else if (snap.type === 'rect') {
+        const x2 = snap.x + snap.width, y2 = snap.y + snap.height;
+        const nx1 = sx(snap.x), ny1 = sy(snap.y);
+        const nx2 = sx(x2), ny2 = sy(y2);
+        obj.x = Math.min(nx1, nx2); obj.y = Math.min(ny1, ny2);
+        obj.width = Math.abs(nx2 - nx1); obj.height = Math.abs(ny2 - ny1);
+    } else if (snap.type === 'polygon') {
+        obj.cx = sx(snap.cx); obj.cy = sy(snap.cy);
+        obj.radius = Math.max(0.01, snap.radius * scale);
+        if (snap.vertices && obj.vertices) {
+            for (let i = 0; i < snap.vertices.length && i < obj.vertices.length; i++) {
+                obj.vertices[i].x = sx(snap.vertices[i].x);
+                obj.vertices[i].y = sy(snap.vertices[i].y);
+            }
+        }
+    } else if (snap.type === 'text') {
+        obj.x = sx(snap.x); obj.y = sy(snap.y);
+    } else if (snap.type === 'polyline' || snap.type === 'lwpolyline') {
+        if (snap.points && obj.points) {
+            for (let i = 0; i < snap.points.length && i < obj.points.length; i++) {
+                obj.points[i].x = sx(snap.points[i].x);
+                obj.points[i].y = sy(snap.points[i].y);
+            }
+        }
+    }
+}
+
+function _getSelectionCentroid(objs) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const obj of objs) {
+        if (!obj || typeof obj.getPoints !== 'function') continue;
+        for (const pt of obj.getPoints()) {
+            if (pt.x < minX) minX = pt.x;
+            if (pt.y < minY) minY = pt.y;
+            if (pt.x > maxX) maxX = pt.x;
+            if (pt.y > maxY) maxY = pt.y;
+        }
+    }
+    if (minX === Infinity) return { x: 0, y: 0 };
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+}
+
+// ═══════════════════════════════════════════════════════════════
+>>>>>>> master
 // v5.02: CROSSING SELECTION — пересечение объекта с прямоугольником
 // ═══════════════════════════════════════════════════════════════
 // Возвращает true, если объект пересекается с прямоугольником или
@@ -847,6 +922,29 @@ canvas.addEventListener('mousedown', (e) => {
 
         const objPoint = findObjectPoint(x, y);
         if (objPoint && objPoint.pointType !== 'center') {
+<<<<<<< HEAD
+=======
+            // v5.03: Если объект — часть мультивыделения (контур), включаем
+            // режим масштабирования вместо перемещения одной точки.
+            if (selectedObjects.includes(objPoint.obj) && selectedObjects.length > 1) {
+                isScalingContour = true;
+                draggedPoint = objPoint;
+                selectedEdge = null;
+                saveState();
+                // Снапшот начальных координат всех выделенных объектов
+                scaleContourInitial = selectedObjects.map(o => _snapshotObject(o));
+                // Центр масштабирования — центроид bbox всех выделенных объектов
+                scaleContourCenter = _getSelectionCentroid(selectedObjects);
+                // Начальное расстояние от центра до точки
+                scaleContourInitialDist = Math.hypot(
+                    objPoint.point.x - scaleContourCenter.x,
+                    objPoint.point.y - scaleContourCenter.y
+                );
+                if (scaleContourInitialDist < 0.001) scaleContourInitialDist = 1; // защита
+                render();
+                return;
+            }
+>>>>>>> master
             draggedPoint = objPoint;
             selectedEdge = null;
             saveState();
@@ -2131,6 +2229,63 @@ canvas.addEventListener('mousemove', (e) => {
         dimensionLabel.style.left = (e.clientX + 5) + 'px'; dimensionLabel.style.top = (e.clientY - 10) + 'px'; 
     }
 
+<<<<<<< HEAD
+=======
+    // v5.03: Масштабирование контура — тянем за точку, весь контур масштабируется
+    if (isScalingContour && draggedPoint && scaleContourInitial && scaleContourCenter) {
+        let mx = x, my = y;
+        // Snapping для точки
+        if (snapEnabled && objects.length > 0) {
+            const closest = findSnapPoint(x, y, draggedPoint.obj);
+            if (closest) { mx = closest.x; my = closest.y; }
+        }
+        const cx = scaleContourCenter.x, cy = scaleContourCenter.y;
+        const curDist = Math.hypot(mx - cx, my - cy);
+        let scale = curDist / scaleContourInitialDist;
+        // Ограничение: не меньше 0.01
+        if (scale < 0.01) scale = 0.01;
+        // Применяем масштаб ко всем выделенным объектам
+        for (const snap of scaleContourInitial) {
+            _scaleObjectFromSnapshot(snap, cx, cy, scale);
+        }
+        // Обновляем draggedPoint.point на новую позицию
+        const obj = draggedPoint.obj;
+        if (obj.type === 'line') {
+            if (draggedPoint.pointType === 'start') draggedPoint.point = { x: obj.x1, y: obj.y1 };
+            else if (draggedPoint.pointType === 'end') draggedPoint.point = { x: obj.x2, y: obj.y2 };
+        } else if (obj.type === 'circle' || obj.type === 'arc') {
+            if (draggedPoint.pointType === 'edge') {
+                // Точка на окружности — пересчитываем
+                const pts = obj.getPoints();
+                if (pts && pts.length > 1) draggedPoint.point = { x: pts[1].x, y: pts[1].y };
+            }
+        } else if (typeof obj.getPoints === 'function') {
+            const pts = obj.getPoints();
+            // Находим ближайшую точку к мыши
+            let bestPt = pts[0], bestD = Infinity;
+            for (const pt of pts) {
+                const d = Math.hypot(pt.x - mx, pt.y - my);
+                if (d < bestD) { bestD = d; bestPt = pt; }
+            }
+            if (bestPt) draggedPoint.point = { x: bestPt.x, y: bestPt.y };
+        }
+        // Показываем масштаб
+        if (dimensionLabel) {
+            dimensionLabel.style.display = 'block';
+            const pct = Math.round(scale * 100);
+            dimensionLabel.textContent = `Масштаб: ${pct}%`;
+            dimensionLabel.style.left = (e.clientX + 15) + 'px';
+            dimensionLabel.style.top = (e.clientY - 25) + 'px';
+        }
+        if (isEditingPart && editingPartId !== null) {
+            const part = parts.find(p => samePartId(p.id, editingPartId));
+            if (part) updatePartBounds(part);
+        }
+        render();
+        return;
+    }
+
+>>>>>>> master
     // Перетаскивание конечной точки
     if (draggedPoint) {
         let snappedX = x, snappedY = y;
@@ -2742,7 +2897,22 @@ canvas.addEventListener('mouseup', (e) => {
         });
         isSelecting = false; showProperties(selectedObjects.length === 1 ? selectedObjects[0] : null); render(); return;
     }
+<<<<<<< HEAD
     if (draggedPoint) { draggedPoint = null; snapIndicator.style.display = 'none'; render(); return; }
+=======
+    if (draggedPoint) {
+        // v5.03: Сброс режима масштабирования контура
+        if (isScalingContour) {
+            isScalingContour = false;
+            scaleContourInitial = null;
+            scaleContourCenter = null;
+            scaleContourInitialDist = 0;
+            if (dimensionLabel) dimensionLabel.style.display = 'none';
+            if (typeof saveToCache === 'function') saveToCache();
+        }
+        draggedPoint = null; snapIndicator.style.display = 'none'; render(); return;
+    }
+>>>>>>> master
 
     // ЗАВЕРШЕНИЕ МИКРОСТЫКА — клик второй точкой
     if (currentTool === 'microjoint' && appState.microjointIsDrawing && appState.microjointLineStart) {
@@ -3069,7 +3239,20 @@ window.addEventListener('mouseup', (e) => {
     if (isPanning) { isPanning = false; canvas.style.cursor = 'default'; }
     if (isDraggingDimension) { isDraggingDimension = false; draggedDimensionIndex = -1; snapIndicator.style.display = 'none'; render(); }
     if (isSelecting) { isSelecting = false; render(); }
+<<<<<<< HEAD
     if (draggedPoint) { draggedPoint = null; snapIndicator.style.display = 'none'; render(); }
+=======
+    if (draggedPoint) {
+        if (isScalingContour) {
+            isScalingContour = false;
+            scaleContourInitial = null;
+            scaleContourCenter = null;
+            scaleContourInitialDist = 0;
+            if (dimensionLabel) dimensionLabel.style.display = 'none';
+        }
+        draggedPoint = null; snapIndicator.style.display = 'none'; render();
+    }
+>>>>>>> master
     hoveredPoint = null;
 });
 
