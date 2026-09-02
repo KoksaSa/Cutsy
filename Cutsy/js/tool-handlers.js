@@ -33,6 +33,13 @@ document.querySelectorAll('.tool-btn').forEach(function(btn) {
     if (btn.id === 'microjointTool') return;
     // v1.0: Пропускаем кнопки группы — у них свой обработчик (не очищают selectedObjects)
     if (btn.id === 'groupBtn' || btn.id === 'ungroupBtn') return;
+    // Кнопка "Создать деталь" — открывает страницу развертки (не инструмент)
+    if (btn.id === 'createDetailBtn') return;
+    // v4.78: Кнопка ▼ выпадающего списка Скругление — не инструмент, обрабатывается отдельно
+    if (btn.id === 'filletDropdownBtn') {
+        console.log('[tool-btn skip] filletDropdownBtn — пропущен');
+        return;
+    }
 
     btn.addEventListener('click', function() {
         // ═══════════════════════════════════════════════════════
@@ -614,14 +621,21 @@ safeAddToolListener('autoNestingCheckbox', 'change', function() {
     const mainBtn = document.getElementById('filletMainBtn');
     const mainLabel = document.getElementById('filletBtnLabel');
 
-    if (!dropdownBtn || !dropdownMenu || !mainBtn) return;
+    if (!dropdownBtn || !dropdownMenu || !mainBtn) {
+        console.error('[fillet dropdown] ОШИБКА: элементы не найдены!');
+        console.error('  dropdownBtn:', !!dropdownBtn, 'dropdownMenu:', !!dropdownMenu, 'mainBtn:', !!mainBtn);
+        return;
+    }
+    console.log('[fillet dropdown] ✅ инициализирован (btn, menu, mainBtn найдены)');
 
     // Клик по стрелочке ▼ — показать/скрыть меню
     dropdownBtn.addEventListener('click', function(e) {
+        console.log('[fillet dropdown] ▼ клик по кнопке!', 'display:', dropdownMenu.style.display);
         e.preventDefault();
         e.stopPropagation();
         const isVisible = dropdownMenu.style.display !== 'none';
         dropdownMenu.style.display = isVisible ? 'none' : 'block';
+        console.log('[fillet dropdown] ▼ меню:', dropdownMenu.style.display);
     });
 
     // Клик по пункту меню — выбор инструмента (fillet или chamfer)
@@ -656,6 +670,9 @@ safeAddToolListener('autoNestingCheckbox', 'change', function() {
                         '<path d="M 3 17 L 3 10 A 7 7 0 0 1 10 3 L 17 3" stroke="#fff" stroke-width="2" fill="none"/>' +
                         '</svg>';
                 }
+                console.log('[fillet dropdown] Иконка обновлена:', tool);
+            } else {
+                console.error('[fillet dropdown] Не найден .icon внутри mainBtn!');
             }
 
             // Активируем инструмент (имитируем клик по основной кнопке)
@@ -680,4 +697,17 @@ safeAddToolListener('autoNestingCheckbox', 'change', function() {
             item.style.background = '';
         });
     });
+});
+
+// ═══════════════════════════════════════════════════════════
+// КНОПКА "СОЗДАТЬ ДЕТАЛЬ" — Развёртка противней
+// ═══════════════════════════════════════════════════════════
+(function() {
+    var createDetailBtn = document.getElementById('createDetailBtn');
+    if (createDetailBtn) {
+        createDetailBtn.addEventListener('click', function() {
+            // Открываем страницу развертки в новой вкладке
+            window.open('razvertki/Развертки противней2 (1).html', '_blank');
+        });
+    }
 })();

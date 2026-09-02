@@ -582,8 +582,8 @@ function eraseCircleArc(circle, clickX, clickY, intersections) {
     if (startIdx === -1) return []; // Не нашли дугу
 
     // Аппроксимируем оставшуюся часть круга линиями
-    const startAngle = intersections[endIdx].angle;
-    let endAngle = intersections[startIdx].angle;
+    const startAngle = intersections[startIdx].angle;  // начало оставшейся дуги
+let endAngle = intersections[endIdx].angle; 
     
     // Убеждаемся что идём по правильной дуге
     if (endAngle < startAngle) endAngle += 2 * Math.PI;
@@ -899,6 +899,40 @@ document.getElementById('applyBendNotchBtn').addEventListener('click', () => {
 });
 
 /**
+ * Пересечение прямой линии с дугой.
+ * Возвращает массив точек пересечения (до 2), попадающих в пределы дуги.
+ */
+function findLineArcIntersection(line, arc) {
+    // Ищем пересечение с полной окружностью
+    const circle = { cx: arc.cx, cy: arc.cy, radius: arc.radius };
+    const pts = findLineCircleIntersection(line, circle);
+    if (!pts || pts.length === 0) return null;
+
+    // Определяем угловой диапазон дуги
+    let startA = arc.startAngle || 0;
+    let endA = arc.endAngle !== undefined ? arc.endAngle : startA + Math.PI * 2;
+
+    // Нормализуем:确保 endA >= startA
+    if (endA < startA) endA += Math.PI * 2;
+    const arcSpan = endA - startA;
+
+    const result = [];
+    for (const pt of pts) {
+        const angle = Math.atan2(pt.y - arc.cy, pt.x - arc.cx);
+        // Проверяем, попадает ли angle в диапазон [startA, endA]
+        // Учитываем переход через -π/π
+        let normalized = angle - startA;
+        while (normalized < 0) normalized += Math.PI * 2;
+        while (normalized >= Math.PI * 2) normalized -= Math.PI * 2;
+
+        if (normalized >= -0.01 && normalized <= arcSpan + 0.01) {
+            result.push({ x: pt.x, y: pt.y, angle: angle });
+        }
+    }
+    return result.length > 0 ? result : null;
+}
+
+/**
  * Обрабатывает одну линию гиба: находит пересечения с контуром,
  * делает вырезы 1×1 мм, удаляет линию гиба.
  * Возвращает количество сделанных вырезов.
@@ -907,6 +941,8 @@ function _processBendNotchForLine(bendLine, centerX, centerY) {
     const bendSeg = { p1: { x: bendLine.x1, y: bendLine.y1 }, p2: { x: bendLine.x2, y: bendLine.y2 } };
 
     const workingLines = [];          // { line, sourceRect }
+    const workingArcs = [];           // { arc, color }
+    const workingCircles = [];        // { circle, color }
     const rectsToReplace = new Map(); // rect → [line1, line2, line3, line4]
 
     for (const obj of objects) {
@@ -942,6 +978,25 @@ function _processBendNotchForLine(bendLine, centerX, centerY) {
                     workingLines.push({ line: rl, sourceRect: obj });
                 }
             }
+        } else if (obj.type === 'arc') {
+            // Проверяем, пересекает ли линия гиба дугу (хотя бы приближённо)
+            const arcCircle = { cx: obj.cx, cy: obj.cy, radius: obj.radius };
+            const lineForCircle = { x1: bendLine.x1, y1: bendLine.y1, x2: bendLine.x2, y2: bendLine.y2 };
+            const circlePts = findLineCircleIntersection(lineForCircle, arcCircle);
+            if (circlePts && circlePts.length > 0) {
+                const arcPts = findLineArcIntersection(bendLine, obj);
+                if (arcPts && arcPts.length > 0) {
+                    workingArcs.push({ arc: obj, color: obj.color || '#00aadd' });
+                }
+            }
+        } else if (obj.type === 'circle') {
+            // Проверяем пересечение линии с кругом
+            const circle = { cx: obj.cx, cy: obj.cy, radius: obj.radius };
+            const lineForCircle = { x1: bendLine.x1, y1: bendLine.y1, x2: bendLine.x2, y2: bendLine.y2 };
+            const circlePts = findLineCircleIntersection(lineForCircle, circle);
+            if (circlePts && circlePts.length > 0) {
+                workingCircles.push({ circle: obj, color: obj.color || '#00aadd' });
+            }
         }
     }
 
@@ -964,22 +1019,91 @@ function _processBendNotchForLine(bendLine, centerX, centerY) {
         }
     }
 
+    // Находим пересечения bendLine с дугами
+    for (const wa of workingArcs) {
+        const arc = wa.arc;
+        const arcPts = findLineArcIntersection(bendLine, arc);
+        if (!arcPts) continue;
+        for (const pt of arcPts) {
+            const exists = intersections.some(ip => Math.hypot(ip.x - pt.x, ip.y - pt.y) < 0.05);
+            if (!exists) {
+                // Параметризуем по углу: t = (angle - startAngle) / arcSpan
+                let startA = arc.startAngle || 0;
+                let endA = arc.endAngle !== undefined ? arc.endAngle : startA + Math.PI * 2;
+                if (endA < startA) endA += Math.PI * 2;
+                const arcSpan = endA - startA;
+                let ang = pt.angle - startA;
+                while (ang < 0) ang += Math.PI * 2;
+                while (ang >= Math.PI * 2) ang -= Math.PI * 2;
+                const t = arcSpan > 0.001 ? Math.max(0.001, Math.min(0.999, ang / arcSpan)) : 0.5;
+                intersections.push({
+                    x: pt.x, y: pt.y,
+                    contourArc: arc,
+                    t: t,
+                    angle: pt.angle,
+                    sourceRect: null
+                });
+            }
+        }
+    }
+
+    // Находим пересечения bendLine с кругами
+    for (const wc of workingCircles) {
+        const circ = wc.circle;
+        const circPts = findLineCircleIntersection(bendLine, circ);
+        if (!circPts) continue;
+        for (const pt of circPts) {
+            const exists = intersections.some(ip => Math.hypot(ip.x - pt.x, ip.y - pt.y) < 0.05);
+            if (!exists) {
+                const angle = Math.atan2(pt.y - circ.cy, pt.x - circ.cx);
+                // Для круга t = angle / (2π), нормализуем в [0, 1)
+                const t = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
+                intersections.push({
+                    x: pt.x, y: pt.y,
+                    contourCircle: circ,
+                    t: Math.max(0.001, Math.min(0.999, t)),
+                    angle: angle,
+                    sourceRect: null
+                });
+            }
+        }
+    }
+
     if (intersections.length === 0) return 0;
 
-    // Группируем пересечения по контурным линиям
+    // Группируем пересечения по контурным линиям, дугам и кругам
     const groupedByLine = {};
+    const groupedByArc = {};
+    const groupedByCircle = {};
     for (const ip of intersections) {
-        const lineIdx = workingLines.findIndex(w => w.line === ip.contourLine);
-        if (lineIdx < 0) continue;
-        if (!groupedByLine[lineIdx]) groupedByLine[lineIdx] = [];
-        groupedByLine[lineIdx].push(ip);
+        if (ip.contourLine) {
+            const lineIdx = workingLines.findIndex(w => w.line === ip.contourLine);
+            if (lineIdx < 0) continue;
+            if (!groupedByLine[lineIdx]) groupedByLine[lineIdx] = [];
+            groupedByLine[lineIdx].push(ip);
+        } else if (ip.contourArc) {
+            const arcIdx = workingArcs.findIndex(w => w.arc === ip.contourArc);
+            if (arcIdx < 0) continue;
+            if (!groupedByArc[arcIdx]) groupedByArc[arcIdx] = [];
+            groupedByArc[arcIdx].push(ip);
+        } else if (ip.contourCircle) {
+            const circIdx = workingCircles.findIndex(w => w.circle === ip.contourCircle);
+            if (circIdx < 0) continue;
+            if (!groupedByCircle[circIdx]) groupedByCircle[circIdx] = [];
+            groupedByCircle[circIdx].push(ip);
+        }
     }
 
     const oldToNewMap = new Map();
     const sortedLineIdxs = Object.keys(groupedByLine).map(Number).sort((a, b) => b - a);
+    const sortedArcIdxs = Object.keys(groupedByArc).map(Number).sort((a, b) => b - a);
+    const sortedCircleIdxs = Object.keys(groupedByCircle).map(Number).sort((a, b) => b - a);
     const notchSize = 1;
     const halfNotch = notchSize / 2;
 
+    // ═══════════════════════════════════════════════════════
+    // ОБРАБОТКА ПРОМЫХ ЛИНИЙ (существующая логика)
+    // ═══════════════════════════════════════════════════════
     for (const wlIdx of sortedLineIdxs) {
         const wl = workingLines[wlIdx];
         const contourLine = wl.line;
@@ -1005,20 +1129,25 @@ function _processBendNotchForLine(bendLine, centerX, centerY) {
             const p2x = contourLine.x1 + lx * t2;
             const p2y = contourLine.y1 + ly * t2;
 
-            const perpX = -ly / contourLen;
-            const perpY = lx / contourLen;
+            // Направление линии гиба — стенки выреза параллельны ей
+            const bendDx = bendLine.x2 - bendLine.x1;
+            const bendDy = bendLine.y2 - bendLine.y1;
+            const bendLen = Math.hypot(bendDx, bendDy);
+            const bendDirX = bendDx / bendLen;
+            const bendDirY = bendDy / bendLen;
 
+            // Определяем направление "внутрь" вдоль bendLine (к центру всех объектов)
             const midX = (p1x + p2x) / 2;
             const midY = (p1y + p2y) / 2;
-            const dot = perpX * (centerX - midX) + perpY * (centerY - midY);
+            const dot = bendDirX * (centerX - midX) + bendDirY * (centerY - midY);
 
-            let inwardX = perpX, inwardY = perpY;
-            if (dot < 0) { inwardX = -perpX; inwardY = -perpY; }
+            let inwardDirX = bendDirX, inwardDirY = bendDirY;
+            if (dot < 0) { inwardDirX = -bendDirX; inwardDirY = -bendDirY; }
 
-            const a1x = p1x + inwardX * notchSize;
-            const a1y = p1y + inwardY * notchSize;
-            const a2x = p2x + inwardX * notchSize;
-            const a2y = p2y + inwardY * notchSize;
+            const a1x = p1x + inwardDirX * notchSize;
+            const a1y = p1y + inwardDirY * notchSize;
+            const a2x = p2x + inwardDirX * notchSize;
+            const a2y = p2y + inwardDirY * notchSize;
 
             if (t1 - prevT > 0.001) {
                 const seg = new Line(
@@ -1068,6 +1197,302 @@ function _processBendNotchForLine(bendLine, centerX, centerY) {
                     objects.splice(rIdx, 1, ...newSegments);
                     oldToNewMap.set(contourLine, newSegments);
                 }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ОБРАБОТКА ДУГ (arc) — с учётом направления CW/CCW
+    // ═══════════════════════════════════════════════════════
+    for (const arcIdx of sortedArcIdxs) {
+        const wa = workingArcs[arcIdx];
+        const arc = wa.arc;
+        const arcColor = wa.color;
+        const R = arc.radius || 1;
+        const cx = arc.cx;
+        const cy = arc.cy;
+
+        let startA = arc.startAngle || 0;
+        let endA = arc.endAngle !== undefined ? arc.endAngle : startA + Math.PI * 2;
+        
+        // Определяем направление: CW = endA < startA (по часовой), CCW = endA > startA
+        const isCW = endA < startA;
+        if (isCW) {
+            // Для CW: direction = true, endA < startA, рисовать по убыванию угла
+        }
+        
+        // Нормализуем endA для CCW в [startA, startA + 2π)
+        if (!isCW && endA < startA) {
+            endA += Math.PI * 2;
+        }
+        
+        const arcSpan = Math.abs(endA - startA);
+        const step = isCW ? -1 : 1;
+
+        const notchSize = 1;
+        const halfNotch = notchSize / 2;
+        const bendDx = bendLine.x2 - bendLine.x1;
+        const bendDy = bendLine.y2 - bendLine.y1;
+        const bendLen = Math.hypot(bendDx, bendDy);
+        const bendDirX = bendDx / bendLen;
+        const bendDirY = bendDy / bendLen;
+        const dAng = halfNotch / R;
+
+        // Собираем вырезные интервалы: для каждой точки пересечения определяем угловой диапазон выреза
+        const notchIntervals = [];
+        for (const ip of groupedByArc[arcIdx]) {
+            let ang = ip.angle; // из atan2, диапазон [-π, π]
+            
+            // Приводим ang к ближайшему эквиваленту относительно startA
+            while (ang > startA + Math.PI) ang -= 2 * Math.PI;
+            while (ang <= startA - Math.PI) ang += 2 * Math.PI;
+            
+            // Проверяем попадание в дугу
+            let inArc = false;
+            if (isCW) {
+                inArc = ang >= endA && ang <= startA;
+            } else {
+                inArc = ang >= startA && ang <= endA;
+            }
+            if (!inArc) continue;
+            
+            notchIntervals.push({
+                center: ang,
+                // Для CW: b1 (entry) > b2 (exit). Для CCW: b1 < b2
+                b1: isCW ? Math.min(startA, ang + dAng) : Math.max(startA, ang - dAng),
+                b2: isCW ? Math.max(endA, ang - dAng) : Math.min(endA, ang + dAng)
+            });
+        }
+
+        // Сортируем по направлению дуги
+        notchIntervals.sort((a, b) => isCW ? b.b1 - a.b1 : a.b1 - b.b1);
+        
+        // Объединяем перекрывающиеся интервалы
+        const mergedIntervals = [];
+        for (const ni of notchIntervals) {
+            if (mergedIntervals.length === 0) {
+                mergedIntervals.push({ ...ni });
+            } else {
+                const last = mergedIntervals[mergedIntervals.length - 1];
+                const overlap = isCW ? (ni.b1 >= last.b2) : (ni.b1 <= last.b2);
+                if (overlap) {
+                    mergedIntervals[mergedIntervals.length - 1].b2 = isCW
+                        ? Math.min(last.b2, ni.b2)
+                        : Math.max(last.b2, ni.b2);
+                    // Обновляем center для направления
+                    mergedIntervals[mergedIntervals.length - 1].center = isCW
+                        ? Math.max(last.center, ni.center)
+                        : Math.min(last.center, ni.center);
+                } else {
+                    mergedIntervals.push({ ...ni });
+                }
+            }
+        }
+
+        const newSegments = [];
+        const ARC_SUBDIV = 0.15;
+
+        // Рисуем последовательно
+        let prevAngle = startA;
+        for (const ni of mergedIntervals) {
+            // Не-вырезной сегмент от prevAngle до b1
+            if (isCW ? (prevAngle > ni.b1 + 0.0001) : (prevAngle < ni.b1 - 0.0001)) {
+                const span = Math.abs(ni.b1 - prevAngle);
+                const count = Math.max(1, Math.ceil(span / ARC_SUBDIV));
+                for (let s = 0; s < count; s++) {
+                    const sa = prevAngle + step * (span * s) / count;
+                    const sb = prevAngle + step * (span * (s + 1)) / count;
+                    const seg = new Line(
+                        cx + Math.cos(sa) * R, cy + Math.sin(sa) * R,
+                        cx + Math.cos(sb) * R, cy + Math.sin(sb) * R
+                    );
+                    seg.color = arcColor;
+                    newSegments.push(seg);
+                }
+            }
+
+            // Рисуем вырез
+            const b1 = ni.b1;
+            const b2 = ni.b2;
+
+            const entryPt = { x: cx + Math.cos(b1) * R, y: cy + Math.sin(b1) * R };
+            const exitPt = { x: cx + Math.cos(b2) * R, y: cy + Math.sin(b2) * R };
+
+            // Направление по ТОЧКЕ ПЕРЕСЕЧЕНИЯ
+            const refPt = { x: cx + Math.cos(ni.center) * R, y: cy + Math.sin(ni.center) * R };
+            const dot = bendDirX * (centerX - refPt.x) + bendDirY * (centerY - refPt.y);
+            let dirX = bendDirX, dirY = bendDirY;
+            if (dot < 0) { dirX = -bendDirX; dirY = -bendDirY; }
+
+            const a1x = entryPt.x + dirX * notchSize;
+            const a1y = entryPt.y + dirY * notchSize;
+            const a2x = exitPt.x + dirX * notchSize;
+            const a2y = exitPt.y + dirY * notchSize;
+
+            const wall1 = new Line(entryPt.x, entryPt.y, a1x, a1y);
+            wall1._isBendNotch = true; wall1.color = '#00aadd';
+            newSegments.push(wall1);
+
+            const bottom = new Line(a1x, a1y, a2x, a2y);
+            bottom._isBendNotch = true; bottom.color = '#00aadd';
+            newSegments.push(bottom);
+
+            const wall2 = new Line(a2x, a2y, exitPt.x, exitPt.y);
+            wall2._isBendNotch = true; wall2.color = '#00aadd';
+            newSegments.push(wall2);
+
+            prevAngle = b2;
+        }
+
+        // Не-вырезной сегмент от последнего выреза до endA
+        if (isCW ? (prevAngle > endA + 0.0001) : (prevAngle < endA - 0.0001)) {
+            const span = Math.abs(endA - prevAngle);
+            const count = Math.max(1, Math.ceil(span / ARC_SUBDIV));
+            for (let s = 0; s < count; s++) {
+                const sa = prevAngle + step * (span * s) / count;
+                const sb = prevAngle + step * (span * (s + 1)) / count;
+                const seg = new Line(
+                    cx + Math.cos(sa) * R, cy + Math.sin(sa) * R,
+                    cx + Math.cos(sb) * R, cy + Math.sin(sb) * R
+                );
+                seg.color = arcColor;
+                newSegments.push(seg);
+            }
+        }
+
+        if (newSegments.length > 0) {
+            const aIdx = objects.indexOf(arc);
+            if (aIdx >= 0) {
+                objects.splice(aIdx, 1, ...newSegments);
+                oldToNewMap.set(arc, newSegments);
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ОБРАБОТКА КРУГОВ (circle) — аналогично
+    // ═══════════════════════════════════════════════════════
+    for (const circIdx of sortedCircleIdxs) {
+        const wc = workingCircles[circIdx];
+        const circ = wc.circle;
+        const circColor = wc.color;
+        const R = circ.radius || 1;
+        const cx = circ.cx;
+        const cy = circ.cy;
+
+        const notchSize = 1;
+        const halfNotch = notchSize / 2;
+        const bendDx = bendLine.x2 - bendLine.x1;
+        const bendDy = bendLine.y2 - bendLine.y1;
+        const bendLen = Math.hypot(bendDx, bendDy);
+        const bendDirX = bendDx / bendLen;
+        const bendDirY = bendDy / bendLen;
+        const dAng = halfNotch / R;
+
+        // Нормализуем точки пересечения в [0, 2π)
+        const ips = groupedByCircle[circIdx].map(ip => {
+            let ang = ((ip.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+            return { ...ip, angle: ang };
+        }).sort((a, b) => a.angle - b.angle);
+
+        const newSegments = [];
+        const ARC_SUBDIV = 0.15;
+
+        // Собираем вырезные интервалы напрямую из пересечений
+        const notchIntervals = [];
+        for (const ip of ips) {
+            notchIntervals.push({
+                b1: Math.max(0, ip.angle - dAng),
+                b2: Math.min(Math.PI * 2, ip.angle + dAng),
+                refAngle: ip.angle
+            });
+        }
+
+        // Сортируем и объединяем перекрывающиеся интервалы
+        notchIntervals.sort((a, b) => a.b1 - b.b1);
+        const mergedIntervals = [];
+        for (const interval of notchIntervals) {
+            if (mergedIntervals.length > 0 && interval.b1 <= mergedIntervals[mergedIntervals.length - 1].b2) {
+                mergedIntervals[mergedIntervals.length - 1].b2 = Math.max(mergedIntervals[mergedIntervals.length - 1].b2, interval.b2);
+            } else {
+                mergedIntervals.push({ b1: interval.b1, b2: interval.b2 });
+            }
+        }
+
+        // Последовательно рисуем: не-вырезные сегменты + вырезы
+        let prevEnd = 0;
+        for (const interval of mergedIntervals) {
+            // Не-вырезной сегмент от prevEnd до b1
+            if (interval.b1 > prevEnd + 0.0001) {
+                const span = interval.b1 - prevEnd;
+                const count = Math.max(1, Math.ceil(span / ARC_SUBDIV));
+                for (let s = 0; s < count; s++) {
+                    const sa = prevEnd + (span * s) / count;
+                    const sb = prevEnd + (span * (s + 1)) / count;
+                    const seg = new Line(
+                        cx + Math.cos(sa) * R, cy + Math.sin(sa) * R,
+                        cx + Math.cos(sb) * R, cy + Math.sin(sb) * R
+                    );
+                    seg.color = circColor;
+                    newSegments.push(seg);
+                }
+            }
+
+            // Рисуем вырез
+            const b1 = interval.b1;
+            const b2 = interval.b2;
+            const mid = (b1 + b2) / 2;
+
+            const entryPt = { x: cx + Math.cos(b1) * R, y: cy + Math.sin(b1) * R };
+            const exitPt = { x: cx + Math.cos(b2) * R, y: cy + Math.sin(b2) * R };
+
+            // Направление по ТОЧКЕ ПЕРЕСЕЧЕНИЯ (refAngle) — она точно на контуре детали
+            const refPt = { x: cx + Math.cos(interval.refAngle) * R, y: cy + Math.sin(interval.refAngle) * R };
+            const dot = bendDirX * (centerX - refPt.x) + bendDirY * (centerY - refPt.y);
+            let dirX = bendDirX, dirY = bendDirY;
+            if (dot < 0) { dirX = -bendDirX; dirY = -bendDirY; }
+
+            const a1x = entryPt.x + dirX * notchSize;
+            const a1y = entryPt.y + dirY * notchSize;
+            const a2x = exitPt.x + dirX * notchSize;
+            const a2y = exitPt.y + dirY * notchSize;
+
+            const wall1 = new Line(entryPt.x, entryPt.y, a1x, a1y);
+            wall1._isBendNotch = true; wall1.color = '#00aadd';
+            newSegments.push(wall1);
+
+            const bottom = new Line(a1x, a1y, a2x, a2y);
+            bottom._isBendNotch = true; bottom.color = '#00aadd';
+            newSegments.push(bottom);
+
+            const wall2 = new Line(a2x, a2y, exitPt.x, exitPt.y);
+            wall2._isBendNotch = true; wall2.color = '#00aadd';
+            newSegments.push(wall2);
+
+            prevEnd = b2;
+        }
+
+        // Не-вырезной сегмент от последнего выреза до 2π
+        if (Math.PI * 2 > prevEnd + 0.0001) {
+            const span = Math.PI * 2 - prevEnd;
+            const count = Math.max(1, Math.ceil(span / ARC_SUBDIV));
+            for (let s = 0; s < count; s++) {
+                const sa = prevEnd + (span * s) / count;
+                const sb = prevEnd + (span * (s + 1)) / count;
+                const seg = new Line(
+                    cx + Math.cos(sa) * R, cy + Math.sin(sa) * R,
+                    cx + Math.cos(sb) * R, cy + Math.sin(sb) * R
+                );
+                seg.color = circColor;
+                newSegments.push(seg);
+            }
+        }
+
+        if (newSegments.length > 0) {
+            const cIdx = objects.indexOf(circ);
+            if (cIdx >= 0) {
+                objects.splice(cIdx, 1, ...newSegments);
+                oldToNewMap.set(circ, newSegments);
             }
         }
     }

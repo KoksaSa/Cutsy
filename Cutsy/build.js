@@ -651,11 +651,6 @@ async function build() {
         const srcPath = path.join(SRC_DIR, item);
         let destPath = path.join(DIST_DIR, item);
 
-        // app-manifest.json копируется как package.json
-        if (item === 'app-manifest.json') {
-            destPath = path.join(DIST_DIR, 'package.json');
-        }
-
         if (!fs.existsSync(srcPath)) {
             console.warn(`   ⚠️  Пропущен: ${item}`);
             continue;
