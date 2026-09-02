@@ -56,6 +56,7 @@ const COPY_AS_IS = [
     'og-image-placeholder.png', // ✅ SEO: Open Graph изображение (PNG)
     'yandex_b7842c43293d7cfb.html', // ✅ Yandex.Webmaster верификация
     // ⚠️ НЕ добавлять screenshots/ — тестовые файлы, не нужны в прод
+    'razvertki/',              // ✅ Развёртки противней — открываются по кнопке
     // nesting-modules обрабатывается отдельно с удалением комментариев
 ];
 
@@ -648,7 +649,12 @@ async function build() {
         if (HTML_FILES.includes(item)) continue;
 
         const srcPath = path.join(SRC_DIR, item);
-        const destPath = path.join(DIST_DIR, item);
+        let destPath = path.join(DIST_DIR, item);
+
+        // app-manifest.json копируется как package.json
+        if (item === 'app-manifest.json') {
+            destPath = path.join(DIST_DIR, 'package.json');
+        }
 
         if (!fs.existsSync(srcPath)) {
             console.warn(`   ⚠️  Пропущен: ${item}`);
