@@ -1,0 +1,40 @@
+{
+    "name": "Cutsy CAD PRO — Программа для раскладки деталей (Nesting)",
+    "short_name": "Cutsy CAD",
+    "description": "Профессиональная программа для автоматической раскладки деталей на листе (Nesting). Импорт/экспорт DXF, оптимизация раскроя металла, фанеры, ДСП. Работает в браузере.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1e1e1e",
+    "theme_color": "#1e1e1e",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "favicon.png",
+            "sizes": "32x32 64x64 128x128 192x192 256x256 512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["design", "productivity", "utilities", "business"],
+    "lang": "ru-RU",
+    "dir": "ltr",
+    "scope": "/",
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "shortcuts": [
+        {
+            "name": "Новый проект",
+            "short_name": "Новый",
+            "description": "Создать новый проект раскладки",
+            "url": "/",
+            "icons": [{ "src": "favicon.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Импорт DXF",
+            "short_name": "Импорт",
+            "description": "Импортировать чертежи DXF",
+            "url": "/?action=import",
+            "icons": [{ "src": "favicon.png", "sizes": "96x96" }]
+        }
+    ]
+}

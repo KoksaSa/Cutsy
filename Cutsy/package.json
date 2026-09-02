@@ -1,0 +1,19 @@
+{
+  "name": "cutsy-cad-pro",
+  "version": "2.6.0",
+  "description": "2D CAD приложение для раскладки деталей на листах",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "generate-key": "node scripts/generate-key.js",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.0",
+    "html-minifier-terser": "^7.2.0",
+    "clean-css": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

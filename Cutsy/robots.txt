@@ -1,0 +1,85 @@
+# ═══════════════════════════════════════════════════════════
+# Cutsy CAD PRO — robots.txt
+# Оптимизированный для максимального SEO
+# ═══════════════════════════════════════════════════════════
+
+# Разрешаем всем поисковым роботам
+User-agent: *
+Allow: /
+Allow: /landing.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /yandex_b7842c43293d7cfb.html
+Allow: /og-image-placeholder.png
+
+# Запрещаем доступ к служебным файлам
+Disallow: /js/
+Disallow: /Cutsy/
+Disallow: /dist/
+Disallow: /node_modules/
+Disallow: /screenshots/
+Disallow: /Presentation.html
+Disallow: /build.js
+Disallow: /google-apps-script-*.js
+Disallow: /*.bak
+Disallow: /package*.json
+
+# Карта сайта
+Sitemap: https://cutsypro.ru/sitemap.xml
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.svg
+
+User-agent: Googlebot-Mobile
+Allow: /
+
+# Yandex
+User-agent: Yandex
+Allow: /
+Crawl-delay: 0
+
+User-agent: YandexImages
+Allow: /
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.svg
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Allow: /*.png
+Allow: /*.jpg
+
+User-agent: msnbot
+Allow: /
+
+# Baidu (для Китая)
+User-agent: Baiduspider
+Allow: /
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
+
+# Социальные сети (для предпросмотра ссылок)
+User-agent: facebookexternalhit
+Allow: /
+Allow: /og-image-placeholder.png
+
+User-agent: Twitterbot
+Allow: /
+Allow: /og-image-placeholder.png
+
+User-agent: LinkedInBot
+Allow: /
+
+# Host (для Яндекса)
+Host: https://cutsypro.ru

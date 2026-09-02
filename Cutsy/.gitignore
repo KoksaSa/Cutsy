@@ -1,0 +1,35 @@
+# Node.js
+node_modules/
+
+# Production build
+dist/
+
+# Environment
+.env
+.env.local
+
+# npm debug
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# License keys (never commit!)
+*.key
+keys.txt
+
+# LocalStorage backup (if any)
+*.json.bak
