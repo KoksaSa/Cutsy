@@ -23,6 +23,9 @@ desktop.ini
 *.swo
 *~
 
+# Electron builds
+release/
+
 # Temporary files
 *.tmp
 *.temp
