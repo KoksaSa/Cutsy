@@ -19,6 +19,7 @@ window.gabaritOnlyMode = gabaritOnlyMode;
 /**
  * Генерирует размеры для видимых деталей или объектов на холсте.
  * v1.3: генерирует габаритные + индивидуальные размеры.
+ * v1.4: stagger — разноска размерных линий для предотвращения наложения текста.
  */
 window.autoDimension = function() {
     clearAutoDimensions();
@@ -41,6 +42,9 @@ window.autoDimension = function() {
         }
         generateObjectDimensions(objects);
     }
+
+    // v1.4: Разносим накладывающиеся размерные линии
+    staggerDimensions();
 
     if (typeof render === 'function') render();
     console.log(`📏 Авто-размеры: сгенерировано`);
@@ -99,15 +103,18 @@ function generatePartDimensions(part) {
     const w = b.width || (maxX - minX);
     const h = b.height || (maxY - minY);
 
+    // v5.05: Отступы масштабируются от габарита детали
+    // Для 80мм → ~6мм отступ, для 500мм → ~15мм
+    const maxDim = Math.max(w, h);
+    const gabOffset = Math.max(6, Math.min(20, maxDim * 0.06));
+
     // Габаритные размеры (dim='gabarit-*')
-    const offsetBottom = 15;
     dimensionLines.push({
-        x1: minX, y1: maxY + offsetBottom, x2: maxX, y2: maxY + offsetBottom,
+        x1: minX, y1: maxY + gabOffset, x2: maxX, y2: maxY + gabOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', partId: part.id, dim: 'gabarit-width'
     });
-    const offsetRight = 15;
     dimensionLines.push({
-        x1: maxX + offsetRight, y1: minY, x2: maxX + offsetRight, y2: maxY,
+        x1: maxX + gabOffset, y1: minY, x2: maxX + gabOffset, y2: maxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', partId: part.id, dim: 'gabarit-height'
     });
 
@@ -144,15 +151,17 @@ function generateObjectDimensions(objs) {
     const h = gMaxY - gMinY;
     if (w < 0.1 && h < 0.1) return;
 
+    // v5.05: Отступы масштабируются от общего габарита
+    const maxDim = Math.max(w, h);
+    const gabOffset = Math.max(6, Math.min(20, maxDim * 0.06));
+
     // Габаритные размеры (dim='gabarit-*')
-    const offsetBottom = 15;
     dimensionLines.push({
-        x1: gMinX, y1: gMaxY + offsetBottom, x2: gMaxX, y2: gMaxY + offsetBottom,
+        x1: gMinX, y1: gMaxY + gabOffset, x2: gMaxX, y2: gMaxY + gabOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', dim: 'gabarit-width'
     });
-    const offsetRight = 15;
     dimensionLines.push({
-        x1: gMaxX + offsetRight, y1: gMinY, x2: gMaxX + offsetRight, y2: gMaxY,
+        x1: gMaxX + gabOffset, y1: gMinY, x2: gMaxX + gabOffset, y2: gMaxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', dim: 'gabarit-height'
     });
 }
@@ -167,18 +176,119 @@ function generateIndividualDimension(obj, normX, normY) {
     const h = bb.maxY - bb.minY;
     if (w < 0.1 && h < 0.1) return;
 
-    // Индивидуальный размер ширины (сверху объекта, отступ 8мм)
-    const offsetTop = 8;
+    // v5.05: Отступы масштабируются от размера объекта
+    const maxDim = Math.max(w, h);
+    const indOffset = Math.max(4, Math.min(12, maxDim * 0.05));
+
+    // Индивидуальный размер ширины (сверху объекта)
     dimensionLines.push({
-        x1: bb.minX, y1: bb.minY - offsetTop, x2: bb.maxX, y2: bb.minY - offsetTop,
+        x1: bb.minX, y1: bb.minY - indOffset, x2: bb.maxX, y2: bb.minY - indOffset,
         value: parseFloat(w.toFixed(2)), type: 'auto', dim: 'individual-width'
     });
-    // Индивидуальный размер высоты (слева от объекта, отступ 8мм)
-    const offsetLeft = 8;
+    // Индивидуальный размер высоты (слева от объекта)
     dimensionLines.push({
-        x1: bb.minX - offsetLeft, y1: bb.minY, x2: bb.minX - offsetLeft, y2: bb.maxY,
+        x1: bb.minX - indOffset, y1: bb.minY, x2: bb.minX - indOffset, y2: bb.maxY,
         value: parseFloat(h.toFixed(2)), type: 'auto', dim: 'individual-height'
     });
+}
+
+/**
+ * v1.4: Разноска накладывающихся размерных линий.
+ * Группирует горизонтальные размеры (ширина) с близкими Y-координатами
+ * и вертикальные размеры (высота) с близкими X-координатами,
+ * затем увеличивает отступ для каждой следующей линии в группе.
+ */
+function staggerDimensions() {
+    if (!dimensionLines || dimensionLines.length === 0) return;
+
+    const STAGGER_STEP = 14;   // шаг разноски (мм)
+    const STAGGER_TOL = 12;    // допуск для определения "близости" (мм)
+    const MIN_TEXT_SPACE = 30; // минимальное расстояние между текстами (мм в модельных координатах)
+
+    // Разделяем на горизонтальные (dy≈0) и вертикальные (dx≈0)
+    const horizontal = []; // ширина — линия горизонтальная
+    const vertical = [];   // высота — линия вертикальная
+
+    for (const dim of dimensionLines) {
+        if (dim.type !== 'auto') continue;
+        const dx = Math.abs(dim.x2 - dim.x1);
+        const dy = Math.abs(dim.y2 - dim.y1);
+        if (dx > dy) horizontal.push(dim);
+        else vertical.push(dim);
+    }
+
+    // --- Горизонтальные размеры: проверяем близость по Y и по X-диапазону ---
+    // Сортируем по Y позиции
+    horizontal.sort((a, b) => (a.y1 + a.y2) / 2 - (b.y1 + b.y2) / 2);
+
+    for (let i = 0; i < horizontal.length; i++) {
+        const dim = horizontal[i];
+        const midY = (dim.y1 + dim.y2) / 2;
+        const midX = (dim.x1 + dim.x2) / 2;
+        const halfLen = Math.abs(dim.x2 - dim.x1) / 2;
+
+        // Считаем сколько предыдущих размерных линий близко по Y и пересекаются по X
+        let staggerLevel = 0;
+        for (let j = 0; j < i; j++) {
+            const other = horizontal[j];
+            const otherMidY = (other.y1 + other.y2) / 2;
+            const otherMidX = (other.x1 + other.x2) / 2;
+            const otherHalfLen = Math.abs(other.x2 - other.x1) / 2;
+            // Близость по Y
+            if (Math.abs(midY - otherMidY) < STAGGER_TOL + staggerLevel * STAGGER_STEP) {
+                // Проверяем перекрытие по X (с учётом ширины текста ~MIN_TEXT_SPACE/2)
+                const xOverlap = Math.abs(midX - otherMidX) < (halfLen + otherHalfLen + MIN_TEXT_SPACE / 2);
+                if (xOverlap) {
+                    staggerLevel++;
+                }
+            }
+        }
+
+        if (staggerLevel > 0) {
+            // Сдвигаем по Y (от объекта)
+            // Для individual-width (сверху, y < объекта) — сдвигаем вверх (больше отрицательный)
+            // Для gabarit-width (снизу, y > объекта) — сдвигаем вниз
+            const isGabaritBottom = dim.dim && dim.dim.indexOf('gabarit') === 0;
+            const dir = isGabaritBottom ? 1 : -1;
+            const shift = staggerLevel * STAGGER_STEP * dir;
+            dim.y1 += shift;
+            dim.y2 += shift;
+        }
+    }
+
+    // --- Вертикальные размеры: проверяем близость по X и по Y-диапазону ---
+    vertical.sort((a, b) => (a.x1 + a.x2) / 2 - (b.x1 + b.x2) / 2);
+
+    for (let i = 0; i < vertical.length; i++) {
+        const dim = vertical[i];
+        const midX = (dim.x1 + dim.x2) / 2;
+        const midY = (dim.y1 + dim.y2) / 2;
+        const halfLen = Math.abs(dim.y2 - dim.y1) / 2;
+
+        let staggerLevel = 0;
+        for (let j = 0; j < i; j++) {
+            const other = vertical[j];
+            const otherMidX = (other.x1 + other.x2) / 2;
+            const otherMidY = (other.y1 + other.y2) / 2;
+            const otherHalfLen = Math.abs(other.y2 - other.y1) / 2;
+            if (Math.abs(midX - otherMidX) < STAGGER_TOL + staggerLevel * STAGGER_STEP) {
+                const yOverlap = Math.abs(midY - otherMidY) < (halfLen + otherHalfLen + MIN_TEXT_SPACE / 2);
+                if (yOverlap) {
+                    staggerLevel++;
+                }
+            }
+        }
+
+        if (staggerLevel > 0) {
+            // Для individual-height (слева, x < объекта) — сдвигаем влево
+            // Для gabarit-height (справа, x > объекта) — сдвигаем вправо
+            const isGabaritRight = dim.dim && dim.dim.indexOf('gabarit') === 0;
+            const dir = isGabaritRight ? 1 : -1;
+            const shift = staggerLevel * STAGGER_STEP * dir;
+            dim.x1 += shift;
+            dim.x2 += shift;
+        }
+    }
 }
 
 /**
@@ -217,5 +327,5 @@ window.toggleGabaritOnly = function(checked) {
     console.log(`📏 Режим "только габариты": ${gabaritOnlyMode ? 'ВКЛ' : 'ВЫКЛ'}`);
 };
 
-console.log('✅ auto-dimensions.js v1.3 загружен');
+console.log('✅ auto-dimensions.js v1.4 загружен');
 })();
