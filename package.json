@@ -1,5 +1,6 @@
 {
-  "dependencies": {
-    "electron-builder": "^26.15.3"
-  }
+  "name": "cutsy-cad-pro",
+  "version": "2.6.0",
+  "main": "index.html",
+  "author": "Cutsy Team"
 }

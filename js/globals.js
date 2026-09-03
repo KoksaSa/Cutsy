@@ -145,12 +145,6 @@ let hoveredPoint = null;  // Точка, на которую наведены (�
 let angleHoveredPoint = null;  // Точка, на которую наведены (для подсветки в режиме Угол)
 const POINT_SNAP_DISTANCE = 1;
 
-// v5.03: Масштабирование контура — потянув за точку выделенного контура
-let isScalingContour = false;
-let scaleContourInitial = null;   // снапшот начальных координат всех объектов
-let scaleContourCenter = null;    // центр масштабирования
-let scaleContourInitialDist = 0;  // начальное расстояние от центра до точки
-
 // Для автоматических размеров
 let dimensionLines = [];
 let selectedDimension = null;
