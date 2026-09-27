@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор разверток листового металла</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        'xs': '475px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .dxf-preview {
+            background-color: #1e293b;
+            border-radius: 8px;
+        }
+        .bend-line {
+            stroke-dasharray: 8, 4;
+        }
+        .svg-bend-line {}
+        .svg-hem-line {}
+        .svg-hem-text {}
+        .hide-bend-lines .svg-bend-line,
+        .hide-bend-lines .svg-hem-line,
+        .hide-bend-lines .svg-hem-text {
+            display: none;
+        }
+        .svg-opalka {}
+        .hem-section {
+            background-color: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+        }
+        .error-input {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2;
+        }
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        .error-msg.visible {
+            display: block;
+        }
+        .preview-3d {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 8px;
+        }
+        @media (max-width: 640px) {
+            .dim-grid { grid-template-columns: 1fr 1fr !important; }
+            .results-grid { grid-template-columns: 1fr !important; }
+            .viz-grid { grid-template-columns: 1fr !important; }
+        }
+
+        /* === Слайдеры === */
+        input[type="range"].range-blue {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"].range-blue::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+            transition: transform 0.1s;
+        }
+        input[type="range"].range-blue::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type="range"].range-blue::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+
+        /* === Бейдж «не используется» === */
+        .unused-badge {
+            display: none;
+            font-size: 9px;
+            color: #b45309;
+            background: #fef3c7;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            vertical-align: middle;
+        }
+        body.plate-mode [data-irrelevant-for="plate"] {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(0.5);
+        }
+        body.plate-mode [data-irrelevant-for="plate"] .unused-badge {
+            display: inline-block;
+        }
+
+        /* === Контролы зума/пана SVG === */
+        .svg-zoom-container {
+            position: relative;
+        }
+        .svg-zoom-overlay {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(4px);
+            padding: 4px 8px;
+            border-radius: 6px;
+            z-index: 10;
+            font-size: 11px;
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+        .svg-zoom-overlay button {
+            background: rgba(255,255,255,0.1);
+            color: #e2e8f0;
+            border: none;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .svg-zoom-overlay button:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        #svgPreview.zoomable {
+            cursor: grab;
+            user-select: none;
+        }
+        #svgPreview.zoomable.panning {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans p-2 sm:p-4 lg:p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Заголовок -->
+        <div class="text-center mb-4 lg:mb-6">
+            <h1 class="text-xl sm:text-2xl font-bold text-blue-700">Развертка листового металла</h1>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            <!-- Левая колонка: Ввод данных -->
+            <div class="lg:col-span-4 bg-white p-3 sm:p-5 rounded-xl shadow-lg">
+                <div class="space-y-3 sm:space-y-4">
+                    <!-- Тип коробки -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Тип изделия</label>
+                        <select id="boxType" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                            <option value="open_top">Открытая сверху (крест)</option>
+                            <option value="u_profile">U-профиль (3 гиба)</option>
+                            <option value="l_angle">L-уголок (1 гиб)</option>
+                            <option value="t_profile">Т-профиль (3 борта)</option>
+                            <option value="plate">Пластина (с каймой)</option>
+                        </select>
+                    </div>
+
+                    <!-- Размеры -->
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3 dim-grid">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Длина (L), мм</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="dimL" value="600" min="1" step="1" class="w-16 border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <input type="range" data-slider-for="dimL" min="10" max="2000" step="1" value="600" class="flex-1 range-blue">
+                            </div>
+                            <div class="error-msg" id="err-dimL">Длина должна быть положительной</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Ширина (W), мм</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="dimW" value="400" min="1" step="1" class="w-16 border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <input type="range" data-slider-for="dimW" min="10" max="2000" step="1" value="400" class="flex-1 range-blue">
+                            </div>
+                            <div class="error-msg" id="err-dimW">Ширина должна быть положительной</div>
+                        </div>
+                        <div data-irrelevant-for="plate">
+                            <label class="block text-xs font-semibold mb-1">Высота бортика (H), мм<span class="unused-badge">не используется</span></label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="dimH" value="10" min="0.1" step="0.1" class="w-16 border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <input type="range" data-slider-for="dimH" min="1" max="200" step="0.1" value="10" class="flex-1 range-blue">
+                            </div>
+                            <div class="error-msg" id="err-dimH">Высота должна быть > 0</div>
+                        </div>
+                    </div>
+
+                    <!-- Параметры гиба -->
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3 dim-grid">
+                        <div data-irrelevant-for="plate">
+                            <label class="block text-xs font-semibold mb-1">Радиус гиба (R), мм<span class="unused-badge">не используется</span></label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="bendR" value="1.6" min="0.1" step="0.1" class="w-16 border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <input type="range" data-slider-for="bendR" min="0.1" max="20" step="0.1" value="1.6" class="flex-1 range-blue">
+                            </div>
+                            <div class="error-msg" id="err-bendR">Радиус должен быть ≥ толщины</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Толщина (T), мм</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="bendT" value="0.8" min="0.1" step="0.1" class="w-16 border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <input type="range" data-slider-for="bendT" min="0.1" max="10" step="0.1" value="0.8" class="flex-1 range-blue">
+                            </div>
+                            <div class="error-msg" id="err-bendT">Толщина должна быть > 0</div>
+                        </div>
+                        <div data-irrelevant-for="plate">
+                            <label class="block text-xs font-semibold mb-1">K-фактор<span class="unused-badge">не используется</span></label>
+                            <select id="kFactor" class="w-full border border-gray-300 rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                                <option value="0.45">Нерж. 0.45</option>
+                                <option value="0.40" selected>Сталь 0.40</option>
+                                <option value="0.35">Алюм. 0.35</option>
+                                <option value="0.33">Медь 0.33</option>
+                                <option value="0.38">Латунь 0.38</option>
+                                <option value="0.50">Унив. 0.50</option>
+                            </select>
+                            <div class="error-msg" style="visibility:hidden;">—</div>
+                        </div>
+                    </div>
+
+                    <!-- КАЙМА (HEM) -->
+                    <div class="hem-section p-3 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="enableHem" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                            <label for="enableHem" class="ml-2 text-sm font-bold text-gray-800 cursor-pointer select-none">
+                                Добавить кайму
+                            </label>
+                        </div>
+                        
+                        <div id="hemSettings" class="space-y-2 transition-opacity duration-200 opacity-50 pointer-events-none">
+                            <div class="grid grid-cols-3 gap-2 sm:gap-3 dim-grid">
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1">Ширина, мм</label>
+                                    <input type="number" id="hemWidth" value="10.0" min="1" step="0.5" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                    <div class="error-msg" id="err-hemWidth">> 0</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1">Радиус, мм</label>
+                                    <input type="number" id="hemRadius" value="0.1" min="0.1" step="0.1" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                    <div class="error-msg" id="err-hemRadius">> 0</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold mb-1">K-фактор</label>
+                                    <input type="number" id="hemKFactor" value="0.42" min="0.1" max="0.99" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                    <div class="error-msg" style="visibility:hidden;">—</div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Стороны:</label>
+                                <div class="grid grid-cols-2 gap-1" id="hemSides">
+                                    <label class="flex items-center hem-side-top">
+                                        <input type="checkbox" id="hemTop" class="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500">
+                                        <span class="ml-1.5 text-xs">Верх (W)</span>
+                                    </label>
+                                    <label class="flex items-center hem-side-bottom">
+                                        <input type="checkbox" id="hemBottom" class="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500">
+                                        <span class="ml-1.5 text-xs">Низ (W)</span>
+                                    </label>
+                                    <label class="flex items-center hem-side-left">
+                                        <input type="checkbox" id="hemLeft" class="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500">
+                                        <span class="ml-1.5 text-xs">Лево (L)</span>
+                                    </label>
+                                    <label class="flex items-center hem-side-right">
+                                        <input type="checkbox" id="hemRight" class="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500">
+                                        <span class="ml-1.5 text-xs">Право (L)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button id="calcBtn" onclick="calculateAndDraw()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition duration-200 text-sm">
+                            Рассчитать
+                        </button>
+                        <button onclick="applyDefaults()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-lg transition duration-200 text-sm">
+                            По умолчанию
+                        </button>
+                        <button onclick="setAsDefaults()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-lg transition duration-200 text-sm">
+                            Задать по умолч.
+                        </button>
+                        <button id="resetBtn" onclick="resetToDefaults()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2.5 rounded-lg transition duration-200 text-sm">
+                            Сбросить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка: Результаты и визуализация -->
+            <div class="lg:col-span-8 space-y-4">
+                <!-- Результаты расчета -->
+                <div class="bg-white p-3 sm:p-5 rounded-xl shadow-lg">
+                    <div class="flex flex-wrap gap-2 sm:gap-3 items-center">
+                        <div class="bg-purple-50 p-2 sm:p-3 rounded-lg flex-1 min-w-[180px]">
+                            <span class="text-gray-600 text-xs">Габариты заготовки:</span>
+                            <div class="text-base sm:text-lg font-bold text-purple-700" id="resTotal">0 × 0 мм</div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="excludeBendLines" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                                <span class="text-sm font-semibold text-gray-700">Удалить линии гиба</span>
+                            </label>
+                            <div class="p-2 rounded-lg border border-green-300 bg-green-50">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" id="enableOpalka" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer">
+                                    <span class="text-sm font-bold text-gray-800">Опалка</span>
+                                </label>
+                                <div id="opalkaSettings" class="flex items-center gap-2 mt-2 transition-opacity duration-200 opacity-40 pointer-events-none">
+                                    <span class="text-xs font-semibold">Отступ:</span>
+                                    <input type="number" id="opalkaOffset" value="1.0" min="0.1" step="0.1" class="w-20 border border-gray-300 rounded-lg p-1.5 text-sm focus:ring-2 focus:ring-green-500">
+                                    <span class="text-xs text-gray-500">мм</span>
+                                </div>
+                            </div>
+                            <button onclick="downloadDXF()" id="dxfBtn" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-5 rounded-lg transition duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span id="dxfBtnText">Скачать DXF</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Внутренние и наружные размеры -->
+                    <div class="grid grid-cols-2 gap-2 sm:gap-3 mt-3">
+                        <div class="bg-emerald-50 p-2 sm:p-3 rounded-lg">
+                            <span class="text-gray-600 text-xs">Внутренние размеры (L×W×H):</span>
+                            <div class="text-sm sm:text-base font-bold text-emerald-700" id="resInternal">—</div>
+                        </div>
+                        <div class="bg-amber-50 p-2 sm:p-3 rounded-lg">
+                            <span class="text-gray-600 text-xs">Наружные размеры (L×W×H):</span>
+                            <div class="text-sm sm:text-base font-bold text-amber-700" id="resExternal">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Визуализация: 3D + Развертка рядом -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 viz-grid">
+                    <!-- 3D вид -->
+                    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-lg">
+                        <h2 class="text-base font-bold mb-3 text-gray-800">3D вид изделия</h2>
+                        <div class="preview-3d p-3 flex items-center justify-center" style="min-height: 220px;">
+                            <svg id="svg3D" width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Развертка -->
+                    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-lg">
+                        <h2 class="text-base font-bold mb-3 text-gray-800">Схема развертки</h2>
+                        <div class="dxf-preview p-3 flex items-center justify-center overflow-hidden svg-zoom-container" style="min-height: 220px;">
+                            <div class="svg-zoom-overlay">
+                                <span id="zoomIndicator">100%</span>
+                                <button onclick="zoomSvgBy(1/1.2)" title="Уменьшить">−</button>
+                                <button onclick="zoomSvgBy(1.2)" title="Увеличить">+</button>
+                                <button onclick="resetSvgView()" title="Сбросить вид">⟲</button>
+                            </div>
+                            <svg id="svgPreview" class="zoomable" width="100%" height="100%" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+                            </svg>
+                        </div>
+                        <div class="flex gap-3 mt-2 text-xs text-gray-500 justify-center flex-wrap">
+                            <div class="flex items-center gap-1"><div class="w-3 h-0.5 bg-gray-400"></div> Контур</div>
+                            <div class="flex items-center gap-1"><div class="w-3 h-0.5 border-t-2 border-dashed border-red-500"></div> Гиб</div>
+                            <div class="flex items-center gap-1"><div class="w-3 h-0.5 border-t-2 border-dashed border-blue-500"></div> Кайма</div>
+                            <div class="flex items-center gap-1"><span title="Зум">🖱️</span> Колесо — зум · Перетаскивание — пан</div>
+                            <div class="flex items-center gap-1"><div class="w-3 h-0.5 border-t-2 border-dashed border-green-500"></div> Опалка</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDXF = "";
+        let currentDXFNoBends = "";
+
+        // ============ СОХРАНЕНИЕ В КЭШ (localStorage + cookie fallback) ============
+
+        const CACHE_KEY = 'sheetmetal_calc_state';
+        const LOG_ENABLED = false;
+
+        function clog() {
+            if (!LOG_ENABLED) return;
+            const args = ['[CACHE]'].concat(Array.prototype.slice.call(arguments));
+            console.log.apply(console, args);
+            // Также выводим на панель отладки на странице
+            const panel = document.getElementById('cacheDebugPanel');
+            if (panel) {
+                const line = document.createElement('div');
+                line.style.cssText = 'border-bottom:1px solid #334155;padding:2px 0;font-size:11px;';
+                line.textContent = args.map(a => (typeof a === 'object') ? JSON.stringify(a) : String(a)).join(' ');
+                panel.appendChild(line);
+                panel.scrollTop = panel.scrollHeight;
+            }
+        }
+
+        // Проверяем доступность localStorage
+        let storageAvailable = false;
+        try {
+            const testKey = '__storage_test__';
+            localStorage.setItem(testKey, '1');
+            localStorage.removeItem(testKey);
+            storageAvailable = true;
+            clog('localStorage: ДОСТУПЕН');
+        } catch (e) {
+            storageAvailable = false;
+            clog('localStorage: НЕДОСТУПЕН —', e.message);
+        }
+
+        // Все поля, которые нужно сохранять
+        const cacheableIds = [
+            'boxType', 'dimL', 'dimW', 'dimH', 'bendR', 'bendT', 'kFactor',
+            'enableHem', 'hemWidth', 'hemRadius', 'hemKFactor',
+            'hemTop', 'hemBottom', 'hemLeft', 'hemRight',
+            'enableOpalka', 'opalkaOffset'
+        ];
+
+        // Заводские значения по умолчанию (типичный противень)
+        const factoryDefaults = {
+            boxType: 'open_top',
+            dimL: '600', dimW: '400', dimH: '10',
+            bendR: '1.6', bendT: '0.8', kFactor: '0.40',
+            enableHem: false,
+            hemWidth: '10.0', hemRadius: '0.1', hemKFactor: '0.42',
+            hemTop: false, hemBottom: false, hemLeft: false, hemRight: false,
+            enableOpalka: false, opalkaOffset: '1.0'
+        };
+
+        // Пользовательские значения по умолчанию (загружаются из кэша)
+        const CUSTOM_DEFAULTS_KEY = 'sheetmetal_custom_defaults';
+        let defaultValues = Object.assign({}, factoryDefaults);
+
+        // Загрузить пользовательские defaults если есть
+        function loadCustomDefaults() {
+            try {
+                let raw = null;
+                if (storageAvailable) {
+                    raw = localStorage.getItem(CUSTOM_DEFAULTS_KEY);
+                }
+                if (!raw) {
+                    // Фоллбэк на cookie
+                    const name = CUSTOM_DEFAULTS_KEY + '=';
+                    const decoded = decodeURIComponent(document.cookie);
+                    const parts = decoded.split(';');
+                    for (let i = 0; i < parts.length; i++) {
+                        let c = parts[i].trim();
+                        if (c.indexOf(name) === 0) {
+                            raw = c.substring(name.length);
+                            break;
+                        }
+                    }
+                }
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    defaultValues = Object.assign({}, factoryDefaults, parsed);
+                    clog('loadCustomDefaults: загружены пользовательские defaults');
+                }
+            } catch(e) {
+                clog('loadCustomDefaults: ошибка —', e.message);
+            }
+        }
+
+        // Сохранить текущие значения как пользовательские defaults
+        function saveCustomDefaults(data) {
+            const json = JSON.stringify(data);
+            if (storageAvailable) {
+                try { localStorage.setItem(CUSTOM_DEFAULTS_KEY, json); } catch(e) {}
+            }
+            try {
+                document.cookie = CUSTOM_DEFAULTS_KEY + '=' + encodeURIComponent(json) +
+                    ';expires=' + new Date(Date.now() + 365*24*60*60*1000).toUTCString() +
+                    ';path=/;SameSite=Lax';
+            } catch(e) {}
+        }
+
+        // Удалить пользовательские defaults
+        function clearCustomDefaults() {
+            if (storageAvailable) {
+                try { localStorage.removeItem(CUSTOM_DEFAULTS_KEY); } catch(e) {}
+            }
+            try {
+                document.cookie = CUSTOM_DEFAULTS_KEY + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+            } catch(e) {}
+        }
+
+        // Инициализируем defaults при загрузке скрипта
+        loadCustomDefaults();
+
+        function cacheWrite(data) {
+            const json = JSON.stringify(data);
+            clog('cacheWrite: длина JSON =', json.length);
+
+            if (storageAvailable) {
+                try {
+                    localStorage.setItem(CACHE_KEY, json);
+                    clog('cacheWrite: записано в localStorage OK');
+                    // Проверяем, что реально записалось
+                    const check = localStorage.getItem(CACHE_KEY);
+                    if (check === json) {
+                        clog('cacheWrite: проверка чтения — СОВПАДАЕТ');
+                    } else {
+                        clog('cacheWrite: проверка чтения — НЕ СОВПАДАЕТ!', 'записано:', json.length, 'прочитано:', check ? check.length : 'null');
+                    }
+                } catch(e) {
+                    clog('cacheWrite: ОШИБКА localStorage —', e.message);
+                }
+            } else {
+                clog('cacheWrite: localStorage недоступен, пропускаем');
+            }
+
+            // Фоллбэк на cookie (живёт 365 дней)
+            try {
+                const cookieStr = CACHE_KEY + '=' + encodeURIComponent(json) +
+                    ';expires=' + new Date(Date.now() + 365*24*60*60*1000).toUTCString() +
+                    ';path=/;SameSite=Lax';
+                document.cookie = cookieStr;
+                clog('cacheWrite: cookie установлена, длина =', cookieStr.length);
+                clog('cacheWrite: document.cookie после записи =', document.cookie.substring(0, 200));
+            } catch(e) {
+                clog('cacheWrite: ОШИБКА cookie —', e.message);
+            }
+        }
+
+        function cacheRead() {
+            clog('cacheRead: начинаем чтение...');
+
+            // Сначала пробуем localStorage
+            if (storageAvailable) {
+                try {
+                    const raw = localStorage.getItem(CACHE_KEY);
+                    clog('cacheRead: localStorage.getItem =', raw ? 'есть данные (' + raw.length + ' символов)' : 'null');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        clog('cacheRead: распарсено из localStorage, ключи:', Object.keys(parsed));
+                        return parsed;
+                    }
+                } catch(e) {
+                    clog('cacheRead: ОШИБКА чтения localStorage —', e.message);
+                }
+            } else {
+                clog('cacheRead: localStorage недоступен');
+            }
+
+            // Фоллбэк: читаем из cookie
+            clog('cacheRead: пробуем cookie... document.cookie =', document.cookie.substring(0, 200));
+            try {
+                const name = CACHE_KEY + '=';
+                const decoded = decodeURIComponent(document.cookie);
+                const parts = decoded.split(';');
+                for (let i = 0; i < parts.length; i++) {
+                    let c = parts[i].trim();
+                    if (c.indexOf(name) === 0) {
+                        const raw = c.substring(name.length);
+                        clog('cacheRead: найдено в cookie, длина =', raw.length);
+                        const parsed = JSON.parse(raw);
+                        clog('cacheRead: распарсено из cookie, ключи:', Object.keys(parsed));
+                        return parsed;
+                    }
+                }
+                clog('cacheRead: cookie НЕ НАЙДЕНА');
+            } catch(e) {
+                clog('cacheRead: ОШИБКА чтения cookie —', e.message);
+            }
+            return null;
+        }
+
+        function cacheClear() {
+            clog('cacheClear: очищаем кэш');
+            if (storageAvailable) {
+                try { localStorage.removeItem(CACHE_KEY); clog('cacheClear: localStorage удалён'); } catch(e) { clog('cacheClear: ошибка LS —', e.message); }
+            }
+            try {
+                document.cookie = CACHE_KEY + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                clog('cacheClear: cookie удалена');
+            } catch(e) { clog('cacheClear: ошибка cookie —', e.message); }
+        }
+
+        function saveToCache() {
+            try {
+                const state = {};
+                cacheableIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) { clog('saveToCache: ЭЛЕМЕНТ НЕ НАЙДЕН —', id); return; }
+                    if (el.type === 'checkbox') {
+                        state[id] = el.checked;
+                    } else {
+                        state[id] = el.value;
+                    }
+                });
+                clog('saveToCache: собираем состояние —', JSON.stringify(state));
+                cacheWrite(state);
+                // Визуальный индикатор
+                showCacheIndicator();
+            } catch (e) {
+                clog('saveToCache: ОШИБКА —', e.message);
+            }
+        }
+
+        function loadFromCache() {
+            clog('loadFromCache: НАЧАЛО');
+            clog('loadFromCache: URL страницы =', window.location.href);
+            clog('loadFromCache: протокол =', window.location.protocol);
+            try {
+                const state = cacheRead();
+                if (!state) {
+                    clog('loadFromCache: кэш ПУСТ — нечего восстанавливать');
+                    return false;
+                }
+                clog('loadFromCache: восстанавливаем состояние...');
+                cacheableIds.forEach(id => {
+                    if (!(id in state)) { clog('loadFromCache: ключ отсутствует —', id); return; }
+                    const el = document.getElementById(id);
+                    if (!el) { clog('loadFromCache: элемент НЕ НАЙДЕН —', id); return; }
+                    if (el.type === 'checkbox') {
+                        el.checked = !!state[id];
+                        clog('loadFromCache:', id, '= (checkbox)', el.checked);
+                    } else {
+                        el.value = state[id];
+                        clog('loadFromCache:', id, '=', el.value, '[было default?]');
+                    }
+                });
+                clog('loadFromCache: ГОТОВО');
+                return true;
+            } catch (e) {
+                clog('loadFromCache: ОШИБКА —', e.message);
+                return false;
+            }
+        }
+
+        // Индикатор сохранения
+        let cacheTimer = null;
+        function showCacheIndicator() {
+            let ind = document.getElementById('cacheIndicator');
+            if (!ind) {
+                ind = document.createElement('div');
+                ind.id = 'cacheIndicator';
+                ind.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#22c55e;color:#fff;' +
+                    'padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;' +
+                    'opacity:0;transition:opacity 0.3s;pointer-events:none;';
+                ind.textContent = 'Сохранено';
+                document.body.appendChild(ind);
+            }
+            ind.style.opacity = '1';
+            clearTimeout(cacheTimer);
+            cacheTimer = setTimeout(function() { ind.style.opacity = '0'; }, 1200);
+        }
+
+        // Вспомогательная: установить поля из объекта values
+        function applyValuesFrom(valuesObj) {
+            cacheableIds.forEach(id => {
+                if (!(id in valuesObj)) return;
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox') {
+                    el.checked = !!valuesObj[id];
+                } else {
+                    el.value = valuesObj[id];
+                }
+            });
+            // Обновить панель каймы
+            const settings = document.getElementById('hemSettings');
+            if (valuesObj.enableHem) {
+                settings.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                settings.classList.add('opacity-50', 'pointer-events-none');
+            }
+            // Синхронизировать слайдеры с новыми значениями input + режим пластины
+            syncSlidersFromInputs();
+            updatePlateMode();
+            updateHemSidesVisibility();
+            calculateAndDraw();
+        }
+
+        // «По умолчанию» — загрузить пользовательские defaults (или заводские)
+        function applyDefaults() {
+            applyValuesFrom(defaultValues);
+            saveToCache();
+        }
+
+        // «Задать по умолчанию» — сохранить текущие значения как новые defaults
+        function setAsDefaults() {
+            const state = {};
+            cacheableIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox') {
+                    state[id] = el.checked;
+                } else {
+                    state[id] = el.value;
+                }
+            });
+            defaultValues = Object.assign({}, factoryDefaults, state);
+            saveCustomDefaults(defaultValues);
+            // Показать индикатор
+            let ind = document.getElementById('cacheIndicator');
+            if (!ind) {
+                ind = document.createElement('div');
+                ind.id = 'cacheIndicator';
+                ind.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#22c55e;color:#fff;' +
+                    'padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;' +
+                    'opacity:0;transition:opacity 0.3s;pointer-events:none;';
+                document.body.appendChild(ind);
+            }
+            ind.textContent = 'Сохранено как умолчания';
+            ind.style.background = '#f59e0b';
+            ind.style.opacity = '1';
+            clearTimeout(cacheTimer);
+            cacheTimer = setTimeout(function() { ind.style.opacity = '0'; }, 1500);
+        }
+
+        // «Сбросить» — заводские значения + очистить всё
+        function resetToDefaults() {
+            defaultValues = Object.assign({}, factoryDefaults);
+            clearCustomDefaults();
+            applyValuesFrom(factoryDefaults);
+            cacheClear();
+        }
+
+        // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
+
+        function getVal(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            const v = parseFloat(el.value);
+            return isNaN(v) ? 0 : v;
+        }
+
+        function setError(id, show) {
+            const el = document.getElementById(id);
+            const err = document.getElementById('err-' + id);
+            if (el) {
+                if (show) el.classList.add('error-input');
+                else el.classList.remove('error-input');
+            }
+            if (err) {
+                err.classList.toggle('visible', show);
+            }
+        }
+
+        function clearAllErrors() {
+            ['dimL','dimW','dimH','bendR','bendT','hemWidth','hemRadius'].forEach(id => setError(id, false));
+        }
+
+        function validateInputs() {
+            clearAllErrors();
+            let valid = true;
+            const type = document.getElementById('boxType').value;
+            const isPlate = (type === 'plate');
+            const L = getVal('dimL');
+            const W = getVal('dimW');
+            const H = getVal('dimH');
+            const R = getVal('bendR');
+            const T = getVal('bendT');
+            if (L <= 0) { setError('dimL', true); valid = false; }
+            if (W <= 0) { setError('dimW', true); valid = false; }
+            if (!isPlate && H <= 0.01) { setError('dimH', true); valid = false; }
+            if (T <= 0) { setError('bendT', true); valid = false; }
+            if (!isPlate && R <= 0) { setError('bendR', true); valid = false; }
+
+            const enableHem = document.getElementById('enableHem').checked;
+            if (enableHem) {
+                if (getVal('hemWidth') <= 0) { setError('hemWidth', true); valid = false; }
+                if (getVal('hemRadius') <= 0) { setError('hemRadius', true); valid = false; }
+            }
+
+            return valid;
+        }
+
+        // ============ АКТИВАЦИЯ НАСТРОЕК КАЙМЫ ============
+
+        document.getElementById('enableHem').addEventListener('change', function() {
+            const settings = document.getElementById('hemSettings');
+            if (this.checked) {
+                settings.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                settings.classList.add('opacity-50', 'pointer-events-none');
+            }
+            calculateAndDraw();
+            saveToCache();
+        });
+
+        // Активация настроек опалки
+        document.getElementById('enableOpalka').addEventListener('change', function() {
+            const settings = document.getElementById('opalkaSettings');
+            if (this.checked) {
+                settings.classList.remove('opacity-40', 'pointer-events-none');
+            } else {
+                settings.classList.add('opacity-40', 'pointer-events-none');
+            }
+            calculateAndDraw();
+            saveToCache();
+        });
+
+        // Управление видимостью чекбоксов сторон каймы — все стороны доступны для всех типов
+        function updateHemSidesVisibility() {
+            const sides = {
+                top:    document.querySelector('.hem-side-top'),
+                bottom: document.querySelector('.hem-side-bottom'),
+                left:   document.querySelector('.hem-side-left'),
+                right:  document.querySelector('.hem-side-right')
+            };
+
+            // Показать все стороны
+            Object.values(sides).forEach(el => { if (el) el.style.display = ''; });
+        }
+
+        // При смене типа изделия — обновить видимость сторон каймы и режим пластины
+        document.getElementById('boxType').addEventListener('change', function() {
+            updatePlateMode();
+            updateHemSidesVisibility();
+            calculateAndDraw();
+            saveToCache();
+        });
+
+        // Управление режимом «Пластина» — затемняет нерелевантные поля (H, R, K-фактор)
+        function updatePlateMode() {
+            const type = document.getElementById('boxType').value;
+            if (type === 'plate') {
+                document.body.classList.add('plate-mode');
+            } else {
+                document.body.classList.remove('plate-mode');
+            }
+        }
+
+        // === СЛАЙДЕРЫ ===
+        // Связка слайдера ↔ input + мгновенный пересчёт
+        function setupSliders() {
+            document.querySelectorAll('input[type="range"][data-slider-for]').forEach(slider => {
+                const targetId = slider.getAttribute('data-slider-for');
+                const target = document.getElementById(targetId);
+                if (!target) return;
+
+                // Слайдер → input + мгновенный пересчёт (без дебаунса)
+                slider.addEventListener('input', function() {
+                    target.value = slider.value;
+                    calculateAndDraw();
+                    saveToCache();
+                });
+
+                // input → слайдер (когда пользователь вводит вручную)
+                target.addEventListener('input', function() {
+                    const v = parseFloat(target.value);
+                    if (!isNaN(v)) {
+                        const min = parseFloat(slider.min);
+                        const max = parseFloat(slider.max);
+                        if (v >= min && v <= max) {
+                            slider.value = v;
+                        } else if (v < min) {
+                            slider.value = min;
+                        } else if (v > max) {
+                            slider.value = max;
+                        }
+                    }
+                });
+            });
+        }
+
+        // Синхронизация слайдеров из значений input (после загрузки из кэша)
+        function syncSlidersFromInputs() {
+            document.querySelectorAll('input[type="range"][data-slider-for]').forEach(slider => {
+                const targetId = slider.getAttribute('data-slider-for');
+                const target = document.getElementById(targetId);
+                if (!target) return;
+                const v = parseFloat(target.value);
+                if (!isNaN(v)) {
+                    const min = parseFloat(slider.min);
+                    const max = parseFloat(slider.max);
+                    slider.value = Math.max(min, Math.min(max, v));
+                }
+            });
+        }
+
+        // Обновление текста кнопки DXF и визуала при клике на чекбокс
+        document.getElementById('excludeBendLines').addEventListener('change', function() {
+            const btnText = document.getElementById('dxfBtnText');
+            const svgPreview = document.getElementById('svgPreview');
+            if (this.checked) {
+                btnText.textContent = 'Скачать DXF (без линий гиба)';
+                svgPreview.classList.add('hide-bend-lines');
+            } else {
+                btnText.textContent = 'Скачать DXF';
+                svgPreview.classList.remove('hide-bend-lines');
+            }
+        });
+
+        // Автопересчёт при изменении любого поля
+        const autoRecalcIds = ['dimL','dimW','dimH','bendR','bendT','kFactor',
+                               'hemWidth','hemRadius','hemKFactor','hemTop','hemBottom','hemLeft','hemRight',
+                               'opalkaOffset'];
+        autoRecalcIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', function() {
+                    calculateAndDraw();
+                    saveToCache();
+                });
+                if (el.tagName === 'INPUT' && el.type === 'number') {
+                    el.addEventListener('input', debounce(function() {
+                        calculateAndDraw();
+                        saveToCache();
+                    }, 300));
+                }
+            }
+        });
+
+        function debounce(fn, ms) {
+            let timer;
+            return function() {
+                clearTimeout(timer);
+                timer = setTimeout(fn, ms);
+            };
+        }
+
+        // ============ ОСНОВНАЯ ФУНКЦИЯ РАСЧЁТА ============
+
+        function calculateAndDraw() {
+            if (!validateInputs()) return;
+
+            const type = document.getElementById('boxType').value;
+            const L = getVal('dimL');
+            const W = getVal('dimW');
+            const H = getVal('dimH');
+            const R_input = getVal('bendR');
+            const T = getVal('bendT');
+            const K = getVal('kFactor');
+            const enableHem = document.getElementById('enableHem').checked;
+            const hemWidth = enableHem ? getVal('hemWidth') : 0;
+            const hemRadius = enableHem ? getVal('hemRadius') : 0;
+            const hemK = enableHem ? getVal('hemKFactor') : 0;
+            const hemTop = enableHem ? document.getElementById('hemTop').checked : false;
+            const hemBottom = enableHem ? document.getElementById('hemBottom').checked : false;
+            const hemLeft = enableHem ? document.getElementById('hemLeft').checked : false;
+            const hemRight = enableHem ? document.getElementById('hemRight').checked : false;
+
+            // Радиус всегда внутренний
+            const R_int = Math.max(R_input, 0.01);
+
+            // R_int используется в расчётах далее
+
+            // Для пластины не нужны бортик/гиб — только кайма
+            const isPlate = (type === 'plate');
+
+            // Bend Allowance для 90°
+            const BA_90 = (Math.PI / 2) * (R_int + K * T);
+
+            // Bend Deduction
+            const R_ext = R_int + T;
+            const BD = 2 * R_ext - BA_90;
+            const flatFlange = isPlate ? 0 : (H - BD);
+
+            if (!isPlate && flatFlange <= 0) {
+                alert('Высота бортика слишком мала для данных параметров гиба. Увеличьте H или уменьшите R/T.');
+                return;
+            }
+
+            // Припуск на кайму (180° закрытый загиб)
+            let hemAdd = 0;
+            if (enableHem && hemWidth > 0) {
+                hemAdd = hemWidth - hemRadius - T + (Math.PI / 2) * (hemRadius + hemK * T);
+            }
+
+            // Генерация геометрии
+            let outlinePoints = [];
+            let bendLines = [];
+            let hemOutlines = [];
+            let totalFlatL = 0;
+            let totalFlatW = 0;
+
+            if (type === 'open_top') {
+                const result = generateOpenTop(L, W, flatFlange, R_int, hemAdd, hemTop, hemBottom, hemLeft, hemRight);
+                outlinePoints = result.outline;
+                bendLines = result.bends;
+                hemOutlines = result.hems;
+                totalFlatL = L + 2 * flatFlange + (hemLeft ? hemAdd : 0) + (hemRight ? hemAdd : 0);
+                totalFlatW = W + 2 * flatFlange + (hemTop ? hemAdd : 0) + (hemBottom ? hemAdd : 0);
+
+            } else if (type === 'u_profile') {
+                const result = generateUProfile(L, W, flatFlange, R_int, hemAdd, hemTop, hemBottom, hemLeft, hemRight);
+                outlinePoints = result.outline;
+                bendLines = result.bends;
+                hemOutlines = result.hems;
+                totalFlatL = L + 2 * flatFlange + (hemLeft ? hemAdd : 0) + (hemRight ? hemAdd : 0);
+                totalFlatW = W + (hemTop ? hemAdd : 0) + (hemBottom ? hemAdd : 0);
+
+            } else if (type === 'l_angle') {
+                const result = generateLAngle(L, W, flatFlange, R_int, hemAdd, hemTop, hemBottom, hemLeft, hemRight);
+                outlinePoints = result.outline;
+                bendLines = result.bends;
+                hemOutlines = result.hems;
+                totalFlatL = L + (hemLeft ? hemAdd : 0) + (hemRight ? hemAdd : 0);
+                totalFlatW = W + flatFlange + R_int + (hemBottom ? hemAdd : 0) + (hemTop ? hemAdd : 0);
+
+            } else if (type === 't_profile') {
+                const result = generateTProfile(L, W, flatFlange, R_int, hemAdd, hemBottom, hemTop, hemLeft, hemRight);
+                outlinePoints = result.outline;
+                bendLines = result.bends;
+                hemOutlines = result.hems;
+                totalFlatL = L + 2 * flatFlange + (hemLeft ? hemAdd : 0) + (hemRight ? hemAdd : 0);
+                totalFlatW = W + flatFlange + (hemBottom ? hemAdd : 0) + (hemTop ? hemAdd : 0);
+
+            } else if (type === 'plate') {
+                const result = generatePlate(L, W, hemAdd, hemTop, hemBottom, hemLeft, hemRight);
+                outlinePoints = result.outline;
+                bendLines = result.bends;
+                hemOutlines = result.hems;
+                totalFlatL = L + (hemLeft ? hemAdd : 0) + (hemRight ? hemAdd : 0);
+                totalFlatW = W + (hemTop ? hemAdd : 0) + (hemBottom ? hemAdd : 0);
+            }
+
+            // Обновление UI
+            document.getElementById('resTotal').textContent = totalFlatL.toFixed(2) + ' × ' + totalFlatW.toFixed(2) + ' мм';
+
+            // Внутренние размеры
+            const intL = L;
+            const intW = W;
+            const intH = isPlate ? T : H;
+
+            // Наружные размеры (внутренние + толщина стен + толщина каймы)
+            let extL, extW;
+            const extH = isPlate ? T : (H + T);
+
+            if (type === 'open_top') {
+                // 4 стены: по T на каждую сторону, +T кайма на соответствующих сторонах
+                extL = L + 2 * T + (hemLeft ? T : 0) + (hemRight ? T : 0);
+                extW = W + 2 * T + (hemTop ? T : 0) + (hemBottom ? T : 0);
+            } else if (type === 'u_profile') {
+                // 2 стены по L-сторонам + кайма на любых рёбрах
+                extL = L + 2 * T + (hemLeft ? T : 0) + (hemRight ? T : 0);
+                extW = W + (hemTop ? T : 0) + (hemBottom ? T : 0);
+            } else if (type === 'l_angle') {
+                // 1 стена по одной W-стороне + кайма на любых рёбрах
+                extL = L + (hemLeft ? T : 0) + (hemRight ? T : 0);
+                extW = W + T + (hemBottom ? T : 0) + (hemTop ? T : 0);
+            } else if (type === 't_profile') {
+                // 3 стены + кайма на любых рёбрах
+                extL = L + 2 * T + (hemLeft ? T : 0) + (hemRight ? T : 0);
+                extW = W + T + (hemBottom ? T : 0) + (hemTop ? T : 0);
+            } else if (type === 'plate') {
+                // Только толщина каймы (если есть) по выбранным сторонам
+                extL = L + (hemLeft ? T : 0) + (hemRight ? T : 0);
+                extW = W + (hemTop ? T : 0) + (hemBottom ? T : 0);
+            }
+
+            document.getElementById('resInternal').textContent =
+                intL.toFixed(1) + ' × ' + intW.toFixed(1) + ' × ' + intH.toFixed(1) + ' мм';
+            document.getElementById('resExternal').textContent =
+                extL.toFixed(1) + ' × ' + extW.toFixed(1) + ' × ' + extH.toFixed(1) + ' мм';
+
+            // Отрисовка
+            drawSVG(outlinePoints, bendLines, hemOutlines, totalFlatL, totalFlatW, type);
+            draw3D(type, L, W, H, R_int, enableHem, hemWidth, hemTop, hemBottom, hemLeft, hemRight);
+
+            // Генерация DXF
+            generateDXF(outlinePoints, bendLines, hemOutlines, totalFlatL, totalFlatW);
+        }
+
+        // ============ ГЕНЕРАТОРЫ ГЕОМЕТРИИ ============
+
+        function generateOpenTop(L, W, f, R, hemAdd, hemT, hemB, hemL, hemR) {
+            const fd = f + R;
+            const Ld = L - 2 * R;
+            const Wd = W - 2 * R;
+
+            const hL = hemL ? hemAdd : 0;
+            const hR = hemR ? hemAdd : 0;
+            const hT = hemT ? hemAdd : 0;
+            const hB = hemB ? hemAdd : 0;
+
+            const outline = [
+                [fd,          -hB],
+                [fd + Ld,     -hB],
+                [fd + Ld,     fd],
+                [fd + Ld + fd + hR, fd],
+                [fd + Ld + fd + hR, fd + Wd],
+                [fd + Ld,     fd + Wd],
+                [fd + Ld,     fd + Wd + fd + hT],
+                [fd,          fd + Wd + fd + hT],
+                [fd,          fd + Wd],
+                [0 - hL,      fd + Wd],
+                [0 - hL,      fd],
+                [fd,          fd]
+            ];
+
+            const bends = [
+                [fd,          fd,     fd + Ld, fd],
+                [fd,          fd+Wd,  fd + Ld, fd+Wd],
+                [fd,          fd,     fd,      fd+Wd],
+                [fd + Ld,     fd,     fd + Ld, fd+Wd]
+            ];
+
+            const hems = [];
+            if (hemB) { hems.push([fd, 0, fd + Ld, 0]); }
+            if (hemT) { hems.push([fd, fd + Wd + fd, fd + Ld, fd + Wd + fd]); }
+            if (hemL) { hems.push([0, fd, 0, fd + Wd]); }
+            if (hemR) { hems.push([fd + Ld + fd, fd, fd + Ld + fd, fd + Wd]); }
+
+            return { outline, bends, hems };
+        }
+
+        function generateUProfile(L, W, f, R, hemAdd, hemTop, hemBottom, hemLeft, hemRight) {
+            const fd = f + R;
+            const Ld = L - 2 * R;
+
+            const hT = hemTop ? hemAdd : 0;
+            const hB = hemBottom ? hemAdd : 0;
+            const hL = hemLeft ? hemAdd : 0;
+            const hR = hemRight ? hemAdd : 0;
+
+            const outline = [
+                [0 - hL,            -hB],
+                [fd + Ld + fd + hR, -hB],
+                [fd + Ld + fd + hR, W + hT],
+                [0 - hL,            W + hT]
+            ];
+
+            const bends = [
+                [fd,       -hB, fd,       W + hT],
+                [fd + Ld,  -hB, fd + Ld,  W + hT]
+            ];
+
+            const hems = [];
+            if (hemBottom) { hems.push([0 - hL, 0, fd + Ld + fd + hR, 0]); }
+            if (hemTop)    { hems.push([0 - hL, W, fd + Ld + fd + hR, W]); }
+            if (hemLeft)   { hems.push([0, -hB, 0, W + hT]); }
+            if (hemRight)  { hems.push([fd + Ld + fd, -hB, fd + Ld + fd, W + hT]); }
+
+            return { outline, bends, hems };
+        }
+
+        function generateLAngle(L, W, f, R, hemAdd, hemTop, hemBottom, hemLeft, hemRight) {
+            const fd = f + R;
+
+            const hT = hemTop ? hemAdd : 0;
+            const hB = hemBottom ? hemAdd : 0;
+            const hL = hemLeft ? hemAdd : 0;
+            const hR = hemRight ? hemAdd : 0;
+
+            // Полка (W) сверху, линия гиба, затем отгиб (fd) + кайма
+            const outline = [
+                [0 - hL,      -hT],
+                [L + hR,      -hT],
+                [L + hR,      W + fd + hB],
+                [0 - hL,      W + fd + hB]
+            ];
+
+            const bends = [
+                [0 - hL, W, L + hR, W]
+            ];
+
+            const hems = [];
+            if (hemTop)    { hems.push([0 - hL, 0, L + hR, 0]); }
+            if (hemBottom) { hems.push([0 - hL, W + fd, L + hR, W + fd]); }
+            if (hemLeft)   { hems.push([0, -hT, 0, W + fd + hB]); }
+            if (hemRight)  { hems.push([L, -hT, L, W + fd + hB]); }
+
+            return { outline, bends, hems };
+        }
+
+        function generateTProfile(L, W, f, R, hemAdd, hemFront, hemBack, hemLeft, hemRight) {
+            const fd = f + R;
+            const Ld = L - 2 * R;
+            const Wd = W - R;  // только один R-вычет: спереди гиб, сзади открытый край
+
+            const hF = hemFront ? hemAdd : 0;
+            const hBk = hemBack ? hemAdd : 0;
+            const hL = hemLeft ? hemAdd : 0;
+            const hR = hemRight ? hemAdd : 0;
+
+            // Т-профиль: 3 стены (передняя, левая, правая), задняя сторона открыта
+            const outline = [
+                [fd,          -hF],               // передний левый угол (с каймой)
+                [fd + Ld,     -hF],               // передний правый угол (с каймой)
+                [fd + Ld,     fd],                // внутренний угол передний-правый
+                [fd + Ld + fd + hR, fd],           // правая стена верх (с каймой)
+                [fd + Ld + fd + hR, fd + Wd + hBk], // правая стена низ (с каймой + задняя кайма)
+                [fd + Ld,     fd + Wd + hBk],      // задний правый угол (с каймой)
+                [fd,          fd + Wd + hBk],      // задний левый угол (с каймой)
+                [0 - hL,      fd + Wd + hBk],      // левая стена низ (с каймой + задняя кайма)
+                [0 - hL,      fd],                 // левая стена верх (с каймой)
+                [fd,          fd]                  // внутренний угол передний-левый
+            ];
+
+            // 3 линии гиба: передняя, левая, правая
+            const bends = [
+                [fd,          fd,     fd + Ld, fd],                // передний гиб
+                [fd,          fd,     fd,      fd + Wd + hBk],    // левый гиб
+                [fd + Ld,     fd,     fd + Ld, fd + Wd + hBk]    // правый гиб
+            ];
+
+            const hems = [];
+            if (hemFront) { hems.push([fd, 0, fd + Ld, 0]); }
+            if (hemBack)  { hems.push([fd, fd + Wd, fd + Ld, fd + Wd]); }
+            if (hemLeft)  { hems.push([0, fd, 0, fd + Wd + hBk]); }
+            if (hemRight) { hems.push([fd + Ld + fd, fd, fd + Ld + fd, fd + Wd + hBk]); }
+
+            return { outline, bends, hems };
+        }
+
+        // ============ ПЛАСТИНА (с каймой и подрезами 45° по углам) ============
+
+        // Срез угла пластины для подреза (фиксированный, мм)
+        const PLATE_CORNER_CUT = 1;
+
+        function generatePlate(L, W, hemAdd, hemTop, hemBottom, hemLeft, hemRight) {
+            const hL = hemLeft   ? hemAdd : 0;
+            const hR = hemRight  ? hemAdd : 0;
+            const hT = hemTop    ? hemAdd : 0;
+            const hB = hemBottom ? hemAdd : 0;
+
+            const c = PLATE_CORNER_CUT; // срез угла пластины (1 мм)
+
+            // Флаги: нужен ли подрез в каждом углу (стык двух кайм)
+            const cutBL = hemBottom && hemLeft;   // нижний-левый
+            const cutBR = hemBottom && hemRight;  // нижний-правый
+            const cutTR = hemTop    && hemRight;  // верхний-правый
+            const cutTL = hemTop    && hemLeft;   // верхний-левый
+
+            // Контур обходится по часовой стрелке, начиная с нижней грани
+            const outline = [];
+
+            // === НИЖНЯЯ ГРАНЬ (y = -hB), слева -> вправо ===
+            // Стартовая точка (нижний-левый угол)
+            if (cutBL) {
+                // Подрез: точка на нижней грани, смещённая на (c + hL) вправо от угла заготовки
+                outline.push([c + hL, -hB]);
+            } else {
+                outline.push([-hL, -hB]);
+            }
+
+            // Конец нижней грани (нижний-правый угол)
+            if (cutBR) {
+                // Точка на нижней грани, смещённая на (c + hR) влево от угла заготовки
+                outline.push([L - c - hR, -hB]);
+                // Диагональ 45° к правой грани
+                outline.push([L + hR, c + hB]);
+            } else {
+                outline.push([L + hR, -hB]);
+            }
+
+            // === ПРАВАЯ ГРАНЬ (x = L + hR), снизу -> вверх ===
+            if (cutTR) {
+                // Точка на правой грани, смещённая на (c + hT) вниз от угла заготовки
+                outline.push([L + hR, W - c - hT]);
+                // Диагональ 45° к верхней грани
+                outline.push([L - c - hR, W + hT]);
+            } else {
+                outline.push([L + hR, W + hT]);
+            }
+
+            // === ВЕРХНЯЯ ГРАНЬ (y = W + hT), справа -> влево ===
+            if (cutTL) {
+                // Точка на верхней грани, смещённая на (c + hL) вправо от угла заготовки
+                outline.push([c + hL, W + hT]);
+                // Диагональ 45° к левой грани
+                outline.push([-hL, W - c - hT]);
+            } else {
+                outline.push([-hL, W + hT]);
+            }
+
+            // === ЛЕВАЯ ГРАНЬ (x = -hL), сверху -> вниз ===
+            if (cutBL) {
+                // Точка на левой грани, смещённая на (c + hB) вверх от угла заготовки
+                outline.push([-hL, c + hB]);
+                // Контур замыкается автоматически с первой точкой [c + hL, -hB]
+            } else {
+                outline.push([-hL, -hB]);
+            }
+
+            // Линии каймы — на гранях пластины (это линии сгиба 180°)
+            const hems = [];
+            if (hemBottom) { hems.push([0, 0, L, 0]); }
+            if (hemTop)    { hems.push([0, W, L, W]); }
+            if (hemLeft)   { hems.push([0, 0, 0, W]); }
+            if (hemRight)  { hems.push([L, 0, L, W]); }
+
+            // Линий гиба (90°) у пластины нет
+            const bends = [];
+
+            return { outline, bends, hems };
+        }
+
+        // ============ 3D ИЗОМЕТРИЧЕСКАЯ ПРОЕКЦИЯ ============
+
+        function draw3D(type, L, W, H, R, enableHem, hemW, hemT, hemB, hemL, hemR) {
+            const svg = document.getElementById('svg3D');
+            svg.innerHTML = '';
+
+            // Изометрические коэффициенты
+            const cos30 = Math.cos(Math.PI / 6); // 0.866
+            const sin30 = 0.5;
+
+            // Нормализация размеров для вписывания в viewBox
+            const maxDim = Math.max(L, W, H);
+            const s = 120 / (maxDim || 1); // масштаб
+
+            const sL = L * s;
+            const sW = W * s;
+            const sH = H * s;
+            const sR = Math.min(R * s, sH * 0.4);
+
+            // Центр viewBox
+            const cx = 200;
+            const cy = 160;
+
+            // Функция проецирования из 3D в 2D изометрию
+            // Ось X — вправо-вниз, ось Y — влево-вниз, ось Z — вверх
+            function iso(x, y, z) {
+                return [
+                    cx + (x - y) * cos30,
+                    cy - z + (x + y) * sin30
+                ];
+            }
+
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            svg.appendChild(g);
+
+            function drawFace(points, fill, stroke) {
+                let d = `M ${points[0][0]} ${points[0][1]} `;
+                for (let i = 1; i < points.length; i++) {
+                    d += `L ${points[i][0]} ${points[i][1]} `;
+                }
+                d += 'Z';
+                const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                el.setAttribute("d", d);
+                el.setAttribute("fill", fill);
+                el.setAttribute("stroke", stroke);
+                el.setAttribute("stroke-width", "1.5");
+                el.setAttribute("stroke-linejoin", "round");
+                g.appendChild(el);
+            }
+
+            function drawLine(p1, p2, color, width, dash) {
+                const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                el.setAttribute("x1", p1[0]); el.setAttribute("y1", p1[1]);
+                el.setAttribute("x2", p2[0]); el.setAttribute("y2", p2[1]);
+                el.setAttribute("stroke", color);
+                el.setAttribute("stroke-width", width || "1");
+                if (dash) el.setAttribute("stroke-dasharray", dash);
+                g.appendChild(el);
+            }
+
+            function drawText(pos, text, color, size) {
+                const el = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                el.setAttribute("x", pos[0]); el.setAttribute("y", pos[1]);
+                el.setAttribute("fill", color || "#94a3b8");
+                el.setAttribute("font-size", size || "10");
+                el.setAttribute("text-anchor", "middle");
+                el.setAttribute("font-weight", "bold");
+                el.textContent = text;
+                g.appendChild(el);
+            }
+
+            if (type === 'open_top') {
+                // Дно
+                const b0 = iso(0, 0, 0);
+                const b1 = iso(sL, 0, 0);
+                const b2 = iso(sL, sW, 0);
+                const b3 = iso(0, sW, 0);
+                drawFace([b0, b1, b2, b3], '#3b82f6', '#1e40af');
+
+                // Передний бортик (y=0)
+                const f0 = iso(0, 0, 0);
+                const f1 = iso(sL, 0, 0);
+                const f2 = iso(sL, 0, sH);
+                const f3 = iso(0, 0, sH);
+                drawFace([f0, f1, f2, f3], '#60a5fa', '#1e40af');
+
+                // Правый бортик (x=L)
+                const r0 = iso(sL, 0, 0);
+                const r1 = iso(sL, sW, 0);
+                const r2 = iso(sL, sW, sH);
+                const r3 = iso(sL, 0, sH);
+                drawFace([r0, r1, r2, r3], '#2563eb', '#1e40af');
+
+                // Задний бортик (y=W) — виден частично
+                const bk0 = iso(0, sW, 0);
+                const bk1 = iso(sL, sW, 0);
+                const bk2 = iso(sL, sW, sH);
+                const bk3 = iso(0, sW, sH);
+                drawFace([bk0, bk1, bk2, bk3], '#1d4ed8', '#1e40af');
+
+                // Левый бортик (x=0) — виден частично
+                const l0 = iso(0, 0, 0);
+                const l1 = iso(0, sW, 0);
+                const l2 = iso(0, sW, sH);
+                const l3 = iso(0, 0, sH);
+                drawFace([l0, l1, l2, l3], '#1e40af', '#1e3a8a');
+
+                // Линии гиба на дне
+                drawLine(iso(sR, 0, 0), iso(sR, sW, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(sL - sR, 0, 0), iso(sL - sR, sW, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(0, sR, 0), iso(sL, sR, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(0, sW - sR, 0), iso(sL, sW - sR, 0), '#fbbf24', '1.2', '5,3');
+
+                // Кайма — линии гиба каймы на вертикальных гранях
+                if (enableHem) {
+                    const hemOffset = Math.min(hemW * s * 0.3, sH * 0.3);
+                    if (hemB) drawLine(iso(0, 0, sH - hemOffset), iso(sL, 0, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemT) drawLine(iso(0, sW, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemL) drawLine(iso(0, 0, sH - hemOffset), iso(0, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemR) drawLine(iso(sL, 0, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                }
+
+                // Размеры
+                drawText(iso(sL / 2, -8, 0), 'L=' + L, '#e2e8f0', '11');
+                drawText(iso(-12, sW / 2, 0), 'W=' + W, '#e2e8f0', '11');
+                drawText(iso(sL + 10, 0, sH / 2), 'H=' + H, '#e2e8f0', '11');
+
+            } else if (type === 'u_profile') {
+                // Дно
+                const b0 = iso(0, 0, 0);
+                const b1 = iso(sL, 0, 0);
+                const b2 = iso(sL, sW, 0);
+                const b3 = iso(0, sW, 0);
+                drawFace([b0, b1, b2, b3], '#3b82f6', '#1e40af');
+
+                // Передний бортик (y=0)
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,0,sH), iso(0,0,sH)], '#60a5fa', '#1e40af');
+
+                // Задний бортик (y=W)
+                drawFace([iso(0,sW,0), iso(sL,sW,0), iso(sL,sW,sH), iso(0,sW,sH)], '#1d4ed8', '#1e40af');
+
+                // Левый торец (открытый)
+                drawLine(iso(0,0,sH), iso(0,sW,sH), '#93c5fd', '1', '4,3');
+                // Правый торец
+                drawLine(iso(sL,0,sH), iso(sL,sW,sH), '#93c5fd', '1', '4,3');
+
+                // Линии гиба
+                drawLine(iso(sR, 0, 0), iso(sR, sW, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(sL - sR, 0, 0), iso(sL - sR, sW, 0), '#fbbf24', '1.2', '5,3');
+
+                // Кайма
+                if (enableHem) {
+                    const hemOffset = Math.min(hemW * s * 0.3, sH * 0.3);
+                    if (hemB) drawLine(iso(0, 0, sH - hemOffset), iso(sL, 0, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemT) drawLine(iso(0, sW, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemL) drawLine(iso(0, 0, sH - hemOffset), iso(0, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemR) drawLine(iso(sL, 0, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                }
+
+                // Размеры
+                drawText(iso(sL / 2, -8, 0), 'L=' + L, '#e2e8f0', '11');
+                drawText(iso(-12, sW / 2, 0), 'W=' + W, '#e2e8f0', '11');
+                drawText(iso(sL + 10, 0, sH / 2), 'H=' + H, '#e2e8f0', '11');
+
+            } else if (type === 'l_angle') {
+                // Горизонтальная полка
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,sW,0), iso(0,sW,0)], '#3b82f6', '#1e40af');
+
+                // Вертикальная стенка (y=0)
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,0,sH), iso(0,0,sH)], '#60a5fa', '#1e40af');
+
+                // Верхний край стенки — открыт
+                drawLine(iso(0,0,sH), iso(sL,0,sH), '#93c5fd', '1', '4,3');
+
+                // Задняя грань полки (y=W) — тонкая
+                drawLine(iso(0,sW,0), iso(sL,sW,0), '#1e40af', '1');
+
+                // Линия гиба
+                drawLine(iso(0, sR, 0), iso(sL, sR, 0), '#fbbf24', '1.2', '5,3');
+
+                // Кайма
+                if (enableHem) {
+                    const hemOffset = Math.min(hemW * s * 0.3, sH * 0.3);
+                    if (hemB) drawLine(iso(0, 0, sH - hemOffset), iso(sL, 0, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemT) drawLine(iso(0, sW, 0), iso(sL, sW, 0), '#3b82f6', '1', '4,2');
+                    if (hemL) drawLine(iso(0, 0, sH - hemOffset), iso(0, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemR) drawLine(iso(sL, 0, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                }
+
+                // Размеры
+                drawText(iso(sL / 2, -8, 0), 'L=' + L, '#e2e8f0', '11');
+                drawText(iso(-12, sW / 2, 0), 'W=' + W, '#e2e8f0', '11');
+                drawText(iso(sL + 10, 0, sH / 2), 'H=' + H, '#e2e8f0', '11');
+
+            } else if (type === 't_profile') {
+                // Дно
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,sW,0), iso(0,sW,0)], '#3b82f6', '#1e40af');
+
+                // Передний бортик (y=0)
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,0,sH), iso(0,0,sH)], '#60a5fa', '#1e40af');
+
+                // Левый бортик (x=0)
+                drawFace([iso(0,0,0), iso(0,sW,0), iso(0,sW,sH), iso(0,0,sH)], '#1d4ed8', '#1e40af');
+
+                // Правый бортик (x=L)
+                drawFace([iso(sL,0,0), iso(sL,sW,0), iso(sL,sW,sH), iso(sL,0,sH)], '#2563eb', '#1e40af');
+
+                // Задний край — открыт
+                drawLine(iso(0,sW,sH), iso(sL,sW,sH), '#93c5fd', '1', '4,3');
+
+                // Линии гиба на дне
+                drawLine(iso(sR, 0, 0), iso(sR, sW, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(sL - sR, 0, 0), iso(sL - sR, sW, 0), '#fbbf24', '1.2', '5,3');
+                drawLine(iso(0, sR, 0), iso(sL, sR, 0), '#fbbf24', '1.2', '5,3');
+
+                // Кайма
+                if (enableHem) {
+                    const hemOffset = Math.min(hemW * s * 0.3, sH * 0.3);
+                    if (hemB) drawLine(iso(0, 0, sH - hemOffset), iso(sL, 0, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemT) drawLine(iso(0, sW, 0), iso(sL, sW, 0), '#3b82f6', '1', '4,2');
+                    if (hemL) drawLine(iso(0, 0, sH - hemOffset), iso(0, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                    if (hemR) drawLine(iso(sL, 0, sH - hemOffset), iso(sL, sW, sH - hemOffset), '#3b82f6', '1', '4,2');
+                }
+
+                // Размеры
+                drawText(iso(sL / 2, -8, 0), 'L=' + L, '#e2e8f0', '11');
+                drawText(iso(-12, sW / 2, 0), 'W=' + W, '#e2e8f0', '11');
+                drawText(iso(sL + 10, 0, sH / 2), 'H=' + H, '#e2e8f0', '11');
+            } else if (type === 'plate') {
+                // Плоский лист
+                drawFace([iso(0,0,0), iso(sL,0,0), iso(sL,sW,0), iso(0,sW,0)], '#3b82f6', '#1e40af');
+
+                // Линии каймы (на гранях пластины)
+                if (enableHem) {
+                    if (hemB) drawLine(iso(0, 0, 0), iso(sL, 0, 0), '#3b82f6', '1.4', '6,3');
+                    if (hemT) drawLine(iso(0, sW, 0), iso(sL, sW, 0), '#3b82f6', '1.4', '6,3');
+                    if (hemL) drawLine(iso(0, 0, 0), iso(0, sW, 0), '#3b82f6', '1.4', '6,3');
+                    if (hemR) drawLine(iso(sL, 0, 0), iso(sL, sW, 0), '#3b82f6', '1.4', '6,3');
+                }
+
+                // Размеры (без H — бортика нет)
+                drawText(iso(sL / 2, -8, 0), 'L=' + L, '#e2e8f0', '11');
+                drawText(iso(-12, sW / 2, 0), 'W=' + W, '#e2e8f0', '11');
+            }
+
+            // Подпись типа
+            const typeLabels = { open_top: 'Открытая сверху', u_profile: 'U-профиль', l_angle: 'L-уголок', t_profile: 'Т-профиль', plate: 'Пластина' };
+            drawText([200, 285], typeLabels[type] || '', '#64748b', '11');
+        }
+
+        // ============ ОТРИСОВКА SVG РАЗВЕРТКИ ============
+
+        // Глобальное состояние зума/пана и ссылка на <g> внутри SVG
+        const svgViewState = { scale: 1, tx: 0, ty: 0 };
+        let svgPreviewG = null;
+
+        function applySvgTransform() {
+            if (svgPreviewG) {
+                svgPreviewG.setAttribute('transform',
+                    `translate(${svgViewState.tx.toFixed(2)} ${svgViewState.ty.toFixed(2)}) scale(${svgViewState.scale.toFixed(4)})`);
+            }
+            const ind = document.getElementById('zoomIndicator');
+            if (ind) ind.textContent = Math.round(svgViewState.scale * 100) + '%';
+        }
+
+        function resetSvgView() {
+            svgViewState.scale = 1;
+            svgViewState.tx = 0;
+            svgViewState.ty = 0;
+            applySvgTransform();
+        }
+
+        function zoomSvgBy(factor) {
+            const svg = document.getElementById('svgPreview');
+            if (!svg) return;
+            // Зум относительно центра viewBox
+            const cx = 400, cy = 300;
+            const newScale = Math.max(0.3, Math.min(15, svgViewState.scale * factor));
+            svgViewState.tx = cx - (cx - svgViewState.tx) * (newScale / svgViewState.scale);
+            svgViewState.ty = cy - (cy - svgViewState.ty) * (newScale / svgViewState.scale);
+            svgViewState.scale = newScale;
+            applySvgTransform();
+        }
+
+        function clientToViewBox(svg, clientX, clientY) {
+            const pt = svg.createSVGPoint();
+            pt.x = clientX;
+            pt.y = clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return { x: 0, y: 0 };
+            return pt.matrixTransform(ctm.inverse());
+        }
+
+        function setupZoomPan() {
+            const svg = document.getElementById('svgPreview');
+            if (!svg) return;
+
+            // Зум колесом мыши
+            svg.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                if (!svgPreviewG) return;
+                const vb = clientToViewBox(svg, e.clientX, e.clientY);
+                const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+                const newScale = Math.max(0.3, Math.min(15, svgViewState.scale * factor));
+                // Зум вокруг курсора — точка под курсором остаётся на месте
+                svgViewState.tx = vb.x - (vb.x - svgViewState.tx) * (newScale / svgViewState.scale);
+                svgViewState.ty = vb.y - (vb.y - svgViewState.ty) * (newScale / svgViewState.scale);
+                svgViewState.scale = newScale;
+                applySvgTransform();
+            }, { passive: false });
+
+            // Пан — начало
+            let isPanning = false;
+            let panStartClient = null;
+            let panStartView = null;
+
+            svg.addEventListener('mousedown', function(e) {
+                if (e.button !== 0) return; // только ЛКМ
+                isPanning = true;
+                panStartClient = { x: e.clientX, y: e.clientY };
+                panStartView = { tx: svgViewState.tx, ty: svgViewState.ty };
+                svg.classList.add('panning');
+                e.preventDefault();
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isPanning) return;
+                const ctm = svg.getScreenCTM();
+                if (!ctm) return;
+                // Перевод пиксельного смещения в координаты viewBox
+                const dxVB = (e.clientX - panStartClient.x) / ctm.a;
+                const dyVB = (e.clientY - panStartClient.y) / ctm.d;
+                svgViewState.tx = panStartView.tx + dxVB;
+                svgViewState.ty = panStartView.ty + dyVB;
+                applySvgTransform();
+            });
+
+            window.addEventListener('mouseup', function() {
+                if (isPanning) {
+                    isPanning = false;
+                    svg.classList.remove('panning');
+                }
+            });
+
+            // Двойной клик — сброс вида
+            svg.addEventListener('dblclick', function() {
+                resetSvgView();
+            });
+        }
+
+        function drawSVG(outline, bends, hemOutlines, maxL, maxW, type) {
+            const svg = document.getElementById('svgPreview');
+            svg.innerHTML = '';
+
+            if (outline.length === 0) return;
+
+            const padding = 65;
+            const viewW = 800;
+            const viewH = 600;
+            const scaleX = (viewW - 2 * padding) / (maxL || 1);
+            const scaleY = (viewH - 2 * padding) / (maxW || 1);
+            const scale = Math.min(scaleX, scaleY) * 0.80;
+            
+            const offsetX = (viewW - maxL * scale) / 2 + 15;
+            const offsetY = (viewH - maxW * scale) / 2 - 5;
+
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            svg.appendChild(g);
+            svgPreviewG = g;
+
+            function tx(x) { return x * scale + offsetX; }
+            function ty(y) { return y * scale + offsetY; }
+
+            // Контур
+            let pathD = `M ${tx(outline[0][0])} ${ty(outline[0][1])} `;
+            for (let i = 1; i < outline.length; i++) {
+                pathD += `L ${tx(outline[i][0])} ${ty(outline[i][1])} `;
+            }
+            pathD += 'Z';
+
+            const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathEl.setAttribute("d", pathD);
+            pathEl.setAttribute("fill", "#f1f5f9");
+            pathEl.setAttribute("stroke", "#64748b");
+            pathEl.setAttribute("stroke-width", "2");
+            g.appendChild(pathEl);
+
+            // Линии гиба
+            bends.forEach(bend => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", tx(bend[0]));
+                line.setAttribute("y1", ty(bend[1]));
+                line.setAttribute("x2", tx(bend[2]));
+                line.setAttribute("y2", ty(bend[3]));
+                line.setAttribute("stroke", "#ef4444");
+                line.setAttribute("stroke-width", "1.5");
+                line.setAttribute("class", "bend-line svg-bend-line");
+                line.setAttribute("opacity", "0.8");
+                g.appendChild(line);
+            });
+
+            // Линии каймы
+            hemOutlines.forEach(hem => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", tx(hem[0]));
+                line.setAttribute("y1", ty(hem[1]));
+                line.setAttribute("x2", tx(hem[2]));
+                line.setAttribute("y2", ty(hem[3]));
+                line.setAttribute("stroke", "#3b82f6");
+                line.setAttribute("stroke-width", "1.5");
+                line.setAttribute("stroke-dasharray", "6,3");
+                line.setAttribute("opacity", "0.9");
+                line.setAttribute("class", "svg-hem-line");
+                g.appendChild(line);
+
+                const mx = (hem[0] + hem[2]) / 2;
+                const my = (hem[1] + hem[3]) / 2;
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", tx(mx));
+                text.setAttribute("y", ty(my) - 5);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "middle");
+                text.setAttribute("fill", "#1d4ed8");
+                text.setAttribute("font-size", "12");
+                text.setAttribute("font-weight", "bold");
+                text.setAttribute("class", "svg-hem-text");
+                text.textContent = "КАЙМА";
+                g.appendChild(text);
+            });
+
+            // Размерные линии
+            drawDimensionLine(g, tx, ty, outline, maxL, maxW, type);
+            drawFlangeDimension(g, tx, ty, outline, bends, type);
+
+            // Прямоугольник опалки
+            const enableOpalka = document.getElementById('enableOpalka').checked;
+            const opalkaOffset = parseFloat(document.getElementById('opalkaOffset').value) || 0;
+            if (enableOpalka && opalkaOffset > 0) {
+                const type = document.getElementById('boxType').value;
+                const L = getVal('dimL');
+                const W = getVal('dimW');
+                const R = Math.max(getVal('bendR'), 0.01);
+                const T = getVal('bendT');
+                const K = getVal('kFactor');
+                const H = getVal('dimH');
+                const R_int = R;
+                const BA_90 = (Math.PI / 2) * (R_int + K * T);
+                const R_ext = R_int + T;
+                const BD = 2 * R_ext - BA_90;
+                const flatFlange = H - BD;
+                const fd = flatFlange + R_int;
+                const off = opalkaOffset;
+
+                let ox1, oy1, ox2, oy2;
+                if (type === 'open_top') {
+                    const Ld = L - 2 * R;
+                    const Wd = W - 2 * R;
+                    ox1 = fd + off; oy1 = fd + off;
+                    ox2 = fd + Ld - off; oy2 = fd + Wd - off;
+                } else if (type === 'u_profile') {
+                    const Ld = L - 2 * R;
+                    ox1 = fd + off; oy1 = off;
+                    ox2 = fd + Ld - off; oy2 = W - off;
+                } else if (type === 'l_angle') {
+                    ox1 = off; oy1 = off;
+                    ox2 = L - off; oy2 = W - off;
+                } else if (type === 't_profile') {
+                    const Ld = L - 2 * R;
+                    const Wd = W - R;
+                    ox1 = fd + off; oy1 = fd + off;
+                    ox2 = fd + Ld - off; oy2 = fd + Wd - off;
+                } else if (type === 'plate') {
+                    // Опалка — прямоугольник внутри пластины с отступом от граней
+                    ox1 = off; oy1 = off;
+                    ox2 = L - off; oy2 = W - off;
+                }
+
+                if (ox1 < ox2 && oy1 < oy2) {
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("x", tx(ox1));
+                    rect.setAttribute("y", ty(oy1));
+                    rect.setAttribute("width", tx(ox2) - tx(ox1));
+                    rect.setAttribute("height", ty(oy2) - ty(oy1));
+                    rect.setAttribute("fill", "none");
+                    rect.setAttribute("stroke", "#22c55e");
+                    rect.setAttribute("stroke-width", "1.5");
+                    rect.setAttribute("stroke-dasharray", "6,4");
+                    rect.setAttribute("opacity", "0.9");
+                    rect.setAttribute("class", "svg-opalka");
+                    g.appendChild(rect);
+
+                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    label.setAttribute("x", (tx(ox1) + tx(ox2)) / 2);
+                    label.setAttribute("y", (ty(oy1) + ty(oy2)) / 2);
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("dominant-baseline", "middle");
+                    label.setAttribute("fill", "#16a34a");
+                    label.setAttribute("font-size", "12");
+                    label.setAttribute("font-weight", "bold");
+                    label.setAttribute("class", "svg-opalka");
+                    label.textContent = "ОПАЛКА";
+                    g.appendChild(label);
+                }
+            }
+        }
+
+        // Применяем сохранённое состояние зума/пана к только что созданной <g>
+        applySvgTransform();
+
+        function drawFlangeDimension(g, tx, ty, outline, bends, type) {
+            if (bends.length === 0) return;
+
+            const firstBend = bends[0];
+            const bendY = firstBend[1];
+
+            const yMin = Math.min(...outline.map(p => p[1]));
+            const yMax = Math.max(...outline.map(p => p[1]));
+
+            const distToBottom = bendY - yMin;
+            const distToTop = yMax - bendY;
+            const flangeDist = Math.min(distToBottom, distToTop);
+            const flangeEdge = (flangeDist === distToBottom) ? yMin : yMax;
+
+            if (flangeDist <= 0) return;
+
+            const xRight = Math.max(...outline.map(p => p[0]));
+            const dimX = tx(xRight) + 15;
+
+            const extLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            extLine.setAttribute("x1", dimX);
+            extLine.setAttribute("y1", ty(flangeEdge));
+            extLine.setAttribute("x2", dimX);
+            extLine.setAttribute("y2", ty(bendY));
+            extLine.setAttribute("stroke", "#ef4444");
+            extLine.setAttribute("stroke-width", "1");
+            g.appendChild(extLine);
+
+            [flangeEdge, bendY].forEach(y => {
+                const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                tick.setAttribute("x1", dimX - 4);
+                tick.setAttribute("y1", ty(y));
+                tick.setAttribute("x2", dimX + 4);
+                tick.setAttribute("y2", ty(y));
+                tick.setAttribute("stroke", "#ef4444");
+                tick.setAttribute("stroke-width", "1");
+                g.appendChild(tick);
+            });
+
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", dimX + 8);
+            text.setAttribute("y", (ty(flangeEdge) + ty(bendY)) / 2);
+            text.setAttribute("dominant-baseline", "middle");
+            text.setAttribute("fill", "#ef4444");
+            text.setAttribute("font-size", "13");
+            text.setAttribute("font-weight", "bold");
+            text.textContent = flangeDist.toFixed(2);
+            g.appendChild(text);
+        }
+
+        function drawDimensionLine(g, tx, ty, outline, maxL, maxW, type) {
+            const dimOffset = 20;
+            const fontSize = '14';
+            const dimColor = '#16a34a';
+
+            // === Дефы для стрелок ===
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+            const markerRight = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+            markerRight.setAttribute("id", "arrow-right");
+            markerRight.setAttribute("markerWidth", "12");
+            markerRight.setAttribute("markerHeight", "8");
+            markerRight.setAttribute("refX", "11");
+            markerRight.setAttribute("refY", "4");
+            markerRight.setAttribute("orient", "auto");
+            const polyR = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            polyR.setAttribute("points", "0 0, 12 4, 0 8");
+            polyR.setAttribute("fill", dimColor);
+            markerRight.appendChild(polyR);
+            defs.appendChild(markerRight);
+
+            const markerLeft = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+            markerLeft.setAttribute("id", "arrow-left");
+            markerLeft.setAttribute("markerWidth", "12");
+            markerLeft.setAttribute("markerHeight", "8");
+            markerLeft.setAttribute("refX", "1");
+            markerLeft.setAttribute("refY", "4");
+            markerLeft.setAttribute("orient", "auto");
+            const polyL = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            polyL.setAttribute("points", "12 0, 0 4, 12 8");
+            polyL.setAttribute("fill", dimColor);
+            markerLeft.appendChild(polyL);
+            defs.appendChild(markerLeft);
+
+            g.appendChild(defs);
+
+            // === Горизонтальный размер (ДЛИНА) ===
+            const yBottom = Math.max(...outline.map(p => p[1]));
+            const xLeft = Math.min(...outline.map(p => p[0]));
+            const xRight = Math.max(...outline.map(p => p[0]));
+
+            const dy = ty(yBottom) + dimOffset + 8;
+            const hLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            hLine.setAttribute("x1", tx(xLeft));
+            hLine.setAttribute("y1", dy);
+            hLine.setAttribute("x2", tx(xRight));
+            hLine.setAttribute("y2", dy);
+            hLine.setAttribute("stroke", dimColor);
+            hLine.setAttribute("stroke-width", "1.2");
+            hLine.setAttribute("marker-start", "url(#arrow-left)");
+            hLine.setAttribute("marker-end", "url(#arrow-right)");
+            g.appendChild(hLine);
+
+            [tx(xLeft), tx(xRight)].forEach(x => {
+                const ext = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                ext.setAttribute("x1", x);
+                ext.setAttribute("y1", ty(yBottom) + 5);
+                ext.setAttribute("x2", x);
+                ext.setAttribute("y2", dy);
+                ext.setAttribute("stroke", dimColor);
+                ext.setAttribute("stroke-width", "0.8");
+                g.appendChild(ext);
+            });
+
+            const hText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            hText.setAttribute("x", (tx(xLeft) + tx(xRight)) / 2);
+            hText.setAttribute("y", dy + 16);
+            hText.setAttribute("text-anchor", "middle");
+            hText.setAttribute("fill", dimColor);
+            hText.setAttribute("font-size", fontSize);
+            hText.setAttribute("font-weight", "bold");
+            hText.textContent = maxL.toFixed(1) + ' мм';
+            g.appendChild(hText);
+
+            // === Вертикальный размер (ШИРИНА) ===
+            const yTop = Math.min(...outline.map(p => p[1]));
+            const dx = tx(xLeft) - dimOffset - 8;
+
+            const vLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            vLine.setAttribute("x1", dx);
+            vLine.setAttribute("y1", ty(yTop));
+            vLine.setAttribute("x2", dx);
+            vLine.setAttribute("y2", ty(yBottom));
+            vLine.setAttribute("stroke", dimColor);
+            vLine.setAttribute("stroke-width", "1.2");
+            vLine.setAttribute("marker-start", "url(#arrow-left)");
+            vLine.setAttribute("marker-end", "url(#arrow-right)");
+            g.appendChild(vLine);
+
+            [ty(yTop), ty(yBottom)].forEach(y => {
+                const ext = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                ext.setAttribute("x1", tx(xLeft) - 5);
+                ext.setAttribute("y1", y);
+                ext.setAttribute("x2", dx);
+                ext.setAttribute("y2", y);
+                ext.setAttribute("stroke", dimColor);
+                ext.setAttribute("stroke-width", "0.8");
+                g.appendChild(ext);
+            });
+
+            const vText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            vText.setAttribute("x", dx - 8);
+            vText.setAttribute("y", (ty(yTop) + ty(yBottom)) / 2);
+            vText.setAttribute("text-anchor", "middle");
+            vText.setAttribute("dominant-baseline", "middle");
+            vText.setAttribute("fill", dimColor);
+            vText.setAttribute("font-size", fontSize);
+            vText.setAttribute("font-weight", "bold");
+            vText.setAttribute("transform", `rotate(-90, ${dx - 8}, ${(ty(yTop) + ty(yBottom)) / 2})`);
+            vText.textContent = maxW.toFixed(1) + ' мм';
+            g.appendChild(vText);
+        }
+
+        // ============ ГЕНЕРАЦИЯ DXF ============
+
+        function generateDXF(outline, bends, hemOutlines, totalL, totalW) {
+            const NL = '\r\n';
+
+            function buildDXF(includeBends) {
+                let dxf = '';
+
+                const allX = outline.map(p => p[0]);
+                const allY = outline.map(p => p[1]);
+                const cx = (Math.min(...allX) + Math.max(...allX)) / 2;
+                const cy = (Math.min(...allY) + Math.max(...allY)) / 2;
+
+                // Форматирование чисел — 6 знаков, без trailing zeros (как в detail-export.js)
+                function n(v) {
+                    v = Number(v);
+                    if (!isFinite(v)) v = 0;
+                    return parseFloat(v.toFixed(6)).toString();
+                }
+
+                // HEADER — R12 (AC1009) для максимальной совместимости
+                dxf += '0' + NL + 'SECTION' + NL;
+                dxf += '2' + NL + 'HEADER' + NL;
+                dxf += '9' + NL + '$ACADVER' + NL + '1' + NL + 'AC1009' + NL;
+                dxf += '9' + NL + '$INSUNITS' + NL + '70' + NL + '4' + NL;
+                dxf += '9' + NL + '$HANDSEED' + NL + '5' + NL + 'FFFF' + NL;
+                dxf += '0' + NL + 'ENDSEC' + NL;
+
+                // TABLES — LTYPE, LAYER, STYLE (нужны для AutoCAD, SolidWorks, etc.)
+                dxf += '0' + NL + 'SECTION' + NL;
+                dxf += '2' + NL + 'TABLES' + NL;
+
+                // LTYPE
+                dxf += '0' + NL + 'TABLE' + NL + '2' + NL + 'LTYPE' + NL + '70' + NL + '2' + NL;
+                dxf += '0' + NL + 'LTYPE' + NL + '2' + NL + 'CONTINUOUS' + NL + '70' + NL + '0' + NL + '3' + NL + 'Solid line' + NL + '72' + NL + '65' + NL + '73' + NL + '0' + NL + '40' + NL + '0' + NL;
+                dxf += '0' + NL + 'LTYPE' + NL + '2' + NL + 'DASHED' + NL + '70' + NL + '0' + NL + '3' + NL + '__ __ __ __ __ __ __ __ __ __ __ __ __' + NL + '72' + NL + '65' + NL + '73' + NL + '2' + NL + '40' + NL + '1.0' + NL;
+                dxf += '49' + NL + '0.5' + NL + '74' + NL + '0' + NL;
+                dxf += '49' + NL + '-0.5' + NL + '74' + NL + '0' + NL;
+                dxf += '0' + NL + 'ENDTAB' + NL;
+
+                // LAYER
+                dxf += '0' + NL + 'TABLE' + NL + '2' + NL + 'LAYER' + NL + '70' + NL + '4' + NL;
+                dxf += '0' + NL + 'LAYER' + NL + '2' + NL + '0' + NL + '70' + NL + '0' + NL + '62' + NL + '7' + NL + '6' + NL + 'CONTINUOUS' + NL;
+                dxf += '0' + NL + 'LAYER' + NL + '2' + NL + 'OUTLINE' + NL + '70' + NL + '0' + NL + '62' + NL + '5' + NL + '6' + NL + 'CONTINUOUS' + NL;
+                if (includeBends) {
+                    dxf += '0' + NL + 'LAYER' + NL + '2' + NL + 'BEND' + NL + '70' + NL + '0' + NL + '62' + NL + '1' + NL + '6' + NL + 'DASHED' + NL;
+                }
+                // Слой опалки
+                const enableOpalka = document.getElementById('enableOpalka').checked;
+                if (enableOpalka) {
+                    dxf += '0' + NL + 'LAYER' + NL + '2' + NL + 'OPALKA' + NL + '70' + NL + '0' + NL + '62' + NL + '3' + NL + '6' + NL + 'DASHED' + NL;
+                }
+                dxf += '0' + NL + 'ENDTAB' + NL;
+
+                // STYLE (нужен для TEXT)
+                dxf += '0' + NL + 'TABLE' + NL + '2' + NL + 'STYLE' + NL + '70' + NL + '1' + NL;
+                dxf += '0' + NL + 'STYLE' + NL + '2' + NL + 'STANDARD' + NL + '70' + NL + '0' + NL + '40' + NL + '0' + NL + '41' + NL + '1' + NL + '50' + NL + '0' + NL + '71' + NL + '0' + NL + '42' + NL + '5' + NL + '3' + NL + 'txt' + NL + '4' + NL + '' + NL;
+                dxf += '0' + NL + 'ENDTAB' + NL;
+
+                dxf += '0' + NL + 'ENDSEC' + NL;
+
+                // ENTITIES
+                dxf += '0' + NL + 'SECTION' + NL;
+                dxf += '2' + NL + 'ENTITIES' + NL;
+
+                // Контур
+                if (outline.length > 1) {
+                    for (let i = 0; i < outline.length; i++) {
+                        const cur = outline[i];
+                        const next = outline[(i + 1) % outline.length];
+                        dxf += '0' + NL + 'LINE' + NL;
+                        dxf += '8' + NL + 'OUTLINE' + NL;
+                        dxf += '10' + NL + n(cur[0] - cx) + NL + '20' + NL + n(cur[1] - cy) + NL + '30' + NL + '0' + NL;
+                        dxf += '11' + NL + n(next[0] - cx) + NL + '21' + NL + n(next[1] - cy) + NL + '31' + NL + '0' + NL;
+                    }
+                }
+
+                if (includeBends) {
+                    // Линии гиба
+                    bends.forEach(bend => {
+                        dxf += '0' + NL + 'LINE' + NL;
+                        dxf += '8' + NL + 'BEND' + NL;
+                        dxf += '10' + NL + n(bend[0] - cx) + NL + '20' + NL + n(bend[1] - cy) + NL + '30' + NL + '0' + NL;
+                        dxf += '11' + NL + n(bend[2] - cx) + NL + '21' + NL + n(bend[3] - cy) + NL + '31' + NL + '0' + NL;
+                    });
+
+                    // Линии каймы — на том же слое BEND, т.к. это тоже линии гиба (180°)
+                    hemOutlines.forEach(hem => {
+                        dxf += '0' + NL + 'LINE' + NL;
+                        dxf += '8' + NL + 'BEND' + NL;
+                        dxf += '10' + NL + n(hem[0] - cx) + NL + '20' + NL + n(hem[1] - cy) + NL + '30' + NL + '0' + NL;
+                        dxf += '11' + NL + n(hem[2] - cx) + NL + '21' + NL + n(hem[3] - cy) + NL + '31' + NL + '0' + NL;
+                    });
+                }
+
+                // Прямоугольник опалки
+                if (enableOpalka) {
+                    const opalkaOffset = parseFloat(document.getElementById('opalkaOffset').value) || 0;
+                    if (opalkaOffset > 0) {
+                        const type = document.getElementById('boxType').value;
+                        const L = getVal('dimL');
+                        const W = getVal('dimW');
+                        const R = Math.max(getVal('bendR'), 0.01);
+                        const T = getVal('bendT');
+                        const K = getVal('kFactor');
+                        const H = getVal('dimH');
+                        const R_int = R;
+                        const BA_90 = (Math.PI / 2) * (R_int + K * T);
+                        const R_ext = R_int + T;
+                        const BD = 2 * R_ext - BA_90;
+                        const flatFlange = H - BD;
+                        const fd = flatFlange + R_int;
+                        const off = opalkaOffset;
+
+                        let ox1, oy1, ox2, oy2;
+                        if (type === 'open_top') {
+                            const Ld = L - 2 * R;
+                            const Wd = W - 2 * R;
+                            ox1 = fd + off; oy1 = fd + off;
+                            ox2 = fd + Ld - off; oy2 = fd + Wd - off;
+                        } else if (type === 'u_profile') {
+                            const Ld = L - 2 * R;
+                            ox1 = fd + off; oy1 = off;
+                            ox2 = fd + Ld - off; oy2 = W - off;
+                        } else if (type === 'l_angle') {
+                            ox1 = off; oy1 = off;
+                            ox2 = L - off; oy2 = W - off;
+                        } else if (type === 't_profile') {
+                            const Ld = L - 2 * R;
+                            const Wd = W - R;
+                            ox1 = fd + off; oy1 = fd + off;
+                            ox2 = fd + Ld - off; oy2 = fd + Wd - off;
+                        } else if (type === 'plate') {
+                            ox1 = off; oy1 = off;
+                            ox2 = L - off; oy2 = W - off;
+                        }
+
+                        if (ox1 < ox2 && oy1 < oy2) {
+                            const corners = [[ox1,oy1],[ox2,oy1],[ox2,oy2],[ox1,oy2]];
+                            for (let i = 0; i < 4; i++) {
+                                const cur = corners[i];
+                                const next = corners[(i + 1) % 4];
+                                dxf += '0' + NL + 'LINE' + NL;
+                                dxf += '8' + NL + 'OPALKA' + NL;
+                                dxf += '10' + NL + n(cur[0] - cx) + NL + '20' + NL + n(cur[1] - cy) + NL + '30' + NL + '0' + NL;
+                                dxf += '11' + NL + n(next[0] - cx) + NL + '21' + NL + n(next[1] - cy) + NL + '31' + NL + '0' + NL;
+                            }
+                        }
+                    }
+                }
+
+                dxf += '0' + NL + 'ENDSEC' + NL;
+                dxf += '0' + NL + 'EOF' + NL;
+                return dxf;
+            }
+
+            currentDXF = buildDXF(true);
+            currentDXFNoBends = buildDXF(false);
+        }
+
+        // ============ СКАЧИВАНИЕ DXF ============
+
+        function downloadDXF() {
+            const excludeBends = document.getElementById('excludeBendLines').checked;
+            const dxfData = excludeBends ? currentDXFNoBends : currentDXF;
+            if (!dxfData || dxfData.length < 50) {
+                alert("Сначала нажмите 'Рассчитать'");
+                return;
+            }
+            const type = document.getElementById('boxType').value;
+            const L = getVal('dimL');
+            const W = getVal('dimW');
+            const H = getVal('dimH');
+            const typeNames = { open_top: 'open', u_profile: 'U', l_angle: 'L', t_profile: 'T', plate: 'PL' };
+            const suffix = excludeBends ? '_no_bends' : '';
+            const blob = new Blob([dxfData], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `razvertka_${typeNames[type] || 'part'}_${L}x${W}x${H}${suffix}.dxf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ============ ИНИЦИАЛИЗАЦИЯ ============
+
+        window.addEventListener('load', function() {
+            loadFromCache();
+            // Восстановить состояние панели каймы после загрузки из кэша
+            const settings = document.getElementById('hemSettings');
+            if (document.getElementById('enableHem').checked) {
+                settings.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                settings.classList.add('opacity-50', 'pointer-events-none');
+            }
+            // Инициализация новых функций
+            setupSliders();
+            syncSlidersFromInputs();
+            setupZoomPan();
+            updatePlateMode();
+            updateHemSidesVisibility();
+            calculateAndDraw();
+        });
+    </script>
+</body>
+</html>
